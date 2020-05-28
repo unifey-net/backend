@@ -48,16 +48,17 @@ object UserManager {
             return false
 
         val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO users (email, username, password, uid) VALUES (?, ?, ?, ?)")
+                .prepareStatement("INSERT INTO users (created_at, email, username, password, uid) VALUES (?, ?, ?, ?, ?)")
 
-        stmt.setString(1, email)
-        stmt.setString(2, username)
+        stmt.setLong(1, System.currentTimeMillis())
+        stmt.setString(2, email)
+        stmt.setString(3, username)
 
         val salt = Authenticator.generateRandomString(8)
         val hashedPassword = DigestUtils.sha256Hex(password + salt)
         val finalPassword = "$salt:$hashedPassword"
-        stmt.setString(3, finalPassword)
-        stmt.setLong(4, Authenticator.generateId())
+        stmt.setString(4, finalPassword)
+        stmt.setLong(5, Authenticator.generateId())
         stmt.execute()
 
         return true;
