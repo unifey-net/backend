@@ -19,7 +19,7 @@ object TokenManager {
         if (tokenCache.containsKey(tokenStr))
             return tokenCache[tokenStr]!!
 
-        val rs = DatabaseHandler.createConnection()
+        val rs = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT token, expires, permissions, owner FROM tokens WHERE token = ?")
                 .apply { setString(1, tokenStr) }
                 .executeQuery()
@@ -50,7 +50,7 @@ object TokenManager {
     fun createToken(tokenStr: String, owner: Long, expire: Long): Token {
         val token = Token(owner, tokenStr, "", expire)
 
-        DatabaseHandler.createConnection()
+        DatabaseHandler.getConnection()
                 .prepareStatement("INSERT INTO tokens (token, expires, permissions, owner) VALUES (?, ?, ?, ?)")
                 .apply {
                     setString(1, token.token)

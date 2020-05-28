@@ -11,6 +11,7 @@ object DatabaseHandler {
     private val url: String
     private val username: String
     private val password: String
+    private var connection: Connection
 
     init {
         val obj = unifeyCfg.asObject<Config>()
@@ -18,12 +19,19 @@ object DatabaseHandler {
         url = obj.url ?: ""
         password = obj.password ?: ""
         username = obj.username ?: ""
+        connection = getConnection()
+    }
+
+    fun getConnection(): Connection {
+        if (connection == null)
+            connection = createConnection()
+        return connection;
     }
 
     /**
      * Create a connection to AWS.
      */
-    fun createConnection(): Connection {
+    private fun createConnection(): Connection {
         val source = MysqlDataSource()
 
         source.user = username

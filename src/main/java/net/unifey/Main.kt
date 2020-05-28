@@ -14,11 +14,14 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.jackson.JacksonConverter
 import io.ktor.jackson.jackson
 import io.ktor.locations.Locations
+import io.ktor.locations.put
+import io.ktor.request.receive
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.post
+import io.ktor.routing.put
 import io.ktor.routing.routing
 import io.ktor.serialization.DefaultJsonConfiguration
 import io.ktor.serialization.serialization
@@ -27,6 +30,7 @@ import io.ktor.server.netty.Netty
 import kotlinx.serialization.json.Json
 import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
+import net.unifey.auth.isAuthenticated
 import net.unifey.response.Response
 import java.text.DateFormat
 
@@ -82,6 +86,21 @@ fun main(args: Array<String>) {
 
             get("/posts") {
                 call.respondText("posts go here")
+            }
+
+            put("/friends") {
+                val token = call.isAuthenticated()
+                val user_uid = token.owner
+
+                val params = call.receiveParameters()
+                val friend_uid = params["uid"]
+
+
+            }
+
+            post("/test_auth") {
+                val token = call.isAuthenticated()
+                call.respond(Response(token))
             }
 
             post("/authenticate") {

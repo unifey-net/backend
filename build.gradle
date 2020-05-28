@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
-    implementation 'mysql:mysql-connector-java:8.0.15'
+    implementation 'mysql:mysql-connector-java:8.0.20'
     implementation 'commons-codec:commons-codec:1.14'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation "io.ktor:ktor-server-netty:$ktor_version"

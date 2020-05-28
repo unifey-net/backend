@@ -20,7 +20,7 @@ object UserManager {
         if (userCache.containsKey(id))
             return userCache[id]!!
 
-        val rs = DatabaseHandler.createConnection()
+        val rs = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT created_at, email, username, password, uid FROM users WHERE uid = ?")
                 .apply { setLong(1, id) }
                 .executeQuery()
@@ -47,7 +47,7 @@ object UserManager {
         if (Authenticator.emailInUse(email) || Authenticator.usernameTaken(username))
             return false
 
-        val stmt = DatabaseHandler.createConnection()
+        val stmt = DatabaseHandler.getConnection()
                 .prepareStatement("INSERT INTO users (email, username, password, uid) VALUES (?, ?, ?, ?)")
 
         stmt.setString(1, email)

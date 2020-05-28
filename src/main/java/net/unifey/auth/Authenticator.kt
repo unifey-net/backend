@@ -16,7 +16,7 @@ object Authenticator {
      * If [username] has been previously used.
      */
     fun usernameTaken(username: String): Boolean {
-        val stmt = DatabaseHandler.createConnection()
+        val stmt = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM users WHERE username = ?")
 
         stmt.setString(1, username)
@@ -29,7 +29,7 @@ object Authenticator {
      * If [email] has been previously used.
      */
     fun emailInUse(email: String): Boolean {
-        val stmt = DatabaseHandler.createConnection()
+        val stmt = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM users WHERE email = ?")
 
         stmt.setString(1, email)
@@ -42,7 +42,7 @@ object Authenticator {
      * Generate a token if [username] and [password] are correct. If not, return null.
      */
     fun generateIfCorrect(username: String, password: String): Token? {
-        val stmt = DatabaseHandler.createConnection()
+        val stmt = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM users WHERE username = ?")
 
         stmt.setString(1, username)
@@ -117,7 +117,7 @@ object Authenticator {
      * Check if the [uid] is in use.
      */
     private fun uidTaken(uid: Long): Boolean {
-        val stmt = DatabaseHandler.createConnection()
+        val stmt = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM users WHERE uid = ?")
 
         stmt.setLong(1, uid)
