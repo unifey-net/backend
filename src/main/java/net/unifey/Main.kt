@@ -1,35 +1,104 @@
 package net.unifey
 
-import com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.Text
+import dev.shog.lib.app.cfg.Config
+import dev.shog.lib.app.cfg.ConfigHandler
+import dev.shog.lib.util.logDiscord
 import io.ktor.application.call
+import io.ktor.application.install
+import io.ktor.features.AutoHeadResponse
+import io.ktor.features.ContentNegotiation
+import io.ktor.features.DefaultHeaders
+import io.ktor.features.StatusPages
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.jackson.JacksonConverter
+import io.ktor.jackson.jackson
+import io.ktor.locations.Locations
 import io.ktor.request.receiveParameters
+import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.get
 import io.ktor.routing.post
 import io.ktor.routing.routing
+import io.ktor.serialization.DefaultJsonConfiguration
+import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import kotlinx.serialization.json.Json
+import net.unifey.auth.Authenticator
+import net.unifey.auth.ex.AuthenticationException
+import net.unifey.response.Response
+import java.text.DateFormat
+
+val unifeyCfg = ConfigHandler.createConfig(ConfigHandler.ConfigType.YML, "unifey", Config::class.java)
 
 fun main(args: Array<String>) {
     val server = embeddedServer(Netty, 8080) {
+        install(ContentNegotiation) {
+            jackson {
+                dateFormat = DateFormat.getDateInstance()
+            }
+
+            register(ContentType.Application.Json, JacksonConverter())
+
+            serialization(
+                    contentType = ContentType.Application.Json,
+                    json = Json(DefaultJsonConfiguration)
+            )
+        }
+
+        install(Locations)
+
+        install(DefaultHeaders) {
+            header("Server", "Unifey")
+        }
+
+        install(AutoHeadResponse)
+
+        install(StatusPages) {
+            exception<AuthenticationException> {
+                call.respond(HttpStatusCode.Unauthorized, Response(it.message))
+            }
+
+            exception<Throwable> {
+                it.printStackTrace()
+
+                call.respond(HttpStatusCode.InternalServerError, Response("There was an internal error processing that request."))
+            }
+
+            status(HttpStatusCode.NotFound) {
+                call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
+            }
+
+            status(HttpStatusCode.Unauthorized) {
+                call.respond(HttpStatusCode.Unauthorized, Response("You are not authorized."))
+            }
+        }
+
         routing {
             get("/") {
-                call.respondText("no api here retard")
+                call.respond(Response("Unifey RESTful Backend"))
             }
+
             get("/posts") {
                 call.respondText("posts go here")
             }
+
             post("/authenticate") {
                 val params = call.receiveParameters();
                 val username = params["username"];
                 val password = params["password"];
 
                 if (username == null || password == null)
-                    call.respondText("invalid credentials dumb dumb");
+                    call.respond(HttpStatusCode.BadRequest, Response(payload = "Invalid arguments."))
                 else {
-                    println(username)
-                    println(password)
+                    val auth = Authenticator.generateIfCorrect(username, password)
+
+                    if (auth == null)
+                        call.respond(HttpStatusCode.Unauthorized, Response(payload = "Invalid credentials."))
+                    else {
+                        call.respond(Response(auth))
+                    }
                 }
             }
         }

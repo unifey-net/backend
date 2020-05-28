@@ -1,20 +1,37 @@
 package net.unifey
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
+import com.mysql.cj.jdbc.MysqlDataSource
+import net.unifey.config.Config
 import java.sql.Connection
-import java.sql.DriverManager
 
+/**
+ * Connect to the database.
+ */
 object DatabaseHandler {
-    private val URL: String = "jdbc:sql://shog-dev.clygxxgfxolj.us-east-2.rds.amazonaws.com:5432/unifey"
-    private val USERNAME: String = "unifey"
-    private val PASSWORD: String = "unifey"
+    private val url: String
+    private val username: String
+    private val password: String
+
+    init {
+        val obj = unifeyCfg.asObject<Config>()
+
+        url = obj.url ?: ""
+        password = obj.password ?: ""
+        username = obj.username ?: ""
+    }
 
     /**
      * Create a connection to AWS.
      */
     fun createConnection(): Connection {
-        Class.forName("org.mysql.Driver")
-        return DriverManager.getConnection(URL, USERNAME, PASSWORD)
+        val source = MysqlDataSource()
+
+        source.user = username
+        source.password = password
+        source.serverName = url
+        source.databaseName = "unifey"
+        source.serverTimezone = "CST"
+
+        return source.connection
     }
 }
