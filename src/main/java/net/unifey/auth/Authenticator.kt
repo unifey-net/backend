@@ -13,34 +13,9 @@ import kotlin.streams.asSequence
  */
 object Authenticator {
     /**
-     * Create an account with [email], [username] and [password].
-     *
-     * TODO make sure username is proper size & move to [UserManager]
-     */
-    fun createAccount(email: String, username: String, password: String): Boolean {
-        if (emailInUse(email) || usernameTaken(username))
-            return false
-
-        val stmt = DatabaseHandler.createConnection()
-                .prepareStatement("INSERT INTO users (email, username, password, uid) VALUES (?, ?, ?, ?)")
-
-        stmt.setString(1, email)
-        stmt.setString(2, username)
-
-        val salt = generateRandomString(8)
-        val hashedPassword = DigestUtils.sha256Hex(password + salt)
-        val finalPassword = "$salt:$hashedPassword"
-        stmt.setString(3, finalPassword)
-        stmt.setLong(4, generateId())
-        stmt.execute()
-
-        return true;
-    }
-
-    /**
      * If [username] has been previously used.
      */
-    private fun usernameTaken(username: String): Boolean {
+    fun usernameTaken(username: String): Boolean {
         val stmt = DatabaseHandler.createConnection()
                 .prepareStatement("SELECT * FROM users WHERE username = ?")
 
@@ -53,7 +28,7 @@ object Authenticator {
     /**
      * If [email] has been previously used.
      */
-    private fun emailInUse(email: String): Boolean {
+    fun emailInUse(email: String): Boolean {
         val stmt = DatabaseHandler.createConnection()
                 .prepareStatement("SELECT * FROM users WHERE email = ?")
 
@@ -94,16 +69,22 @@ object Authenticator {
 
     /**
      * Generate a token.
-     *
-     * TODO make sure it's not taken
      */
-    private fun generateToken(): String =
-            DigestUtils.sha256Hex(generateRandomString(32))
+    private fun generateToken(): String {
+        val token = DigestUtils.sha256Hex(generateRandomString(32))
+        if (tokenUsed(token))
+            return generateToken()
+        return token
+    }
+
+    private fun tokenUsed(token: String): Boolean {
+        return TokenManager.getToken(token) != null
+    }
 
     /**
      * Generate a random string [len].
      */
-    private fun generateRandomString(len: Long): String {
+    fun generateRandomString(len: Long): String {
         val source = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
 
         return java.util.Random().ints(len, 0, source.length)
@@ -114,15 +95,34 @@ object Authenticator {
 
     /**
      * Generate an ID.
-     *
-     * TODO Make sure it's not taken
      */
-    private fun generateId(): Long {
+    fun generateId(): Long {
+        val id = generateRandomLong(18)
+        if (uidTaken(id))
+            return generateId()
+        return id
+    }
+
+    /**
+     * Generate a random Long with the given [len].
+     */
+    private fun generateRandomLong(len: Int): Long {
         var idStr = ""
-
-        for (i in 0 until 18)
+        for (i in 0 until len)
             idStr += Random.nextInt(10).toString()
-
         return idStr.toLong()
+    }
+
+    /**
+     * Check if the [uid] is in use.
+     */
+    private fun uidTaken(uid: Long): Boolean {
+        val stmt = DatabaseHandler.createConnection()
+                .prepareStatement("SELECT * FROM users WHERE uid = ?")
+
+        stmt.setLong(1, uid)
+        stmt.execute()
+
+        return stmt.resultSet.fetchSize > 0
     }
 }

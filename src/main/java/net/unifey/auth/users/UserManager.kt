@@ -1,6 +1,8 @@
 package net.unifey.auth.users
 
 import net.unifey.DatabaseHandler
+import net.unifey.auth.Authenticator
+import org.apache.commons.codec.digest.DigestUtils
 import java.util.concurrent.ConcurrentHashMap
 
 object UserManager {
@@ -36,5 +38,28 @@ object UserManager {
 
             user
         } else null
+    }
+
+    /**
+     * Create an account with [email], [username] and [password].
+     */
+    fun createUser(email: String, username: String, password: String): Boolean {
+        if (Authenticator.emailInUse(email) || Authenticator.usernameTaken(username))
+            return false
+
+        val stmt = DatabaseHandler.createConnection()
+                .prepareStatement("INSERT INTO users (email, username, password, uid) VALUES (?, ?, ?, ?)")
+
+        stmt.setString(1, email)
+        stmt.setString(2, username)
+
+        val salt = Authenticator.generateRandomString(8)
+        val hashedPassword = DigestUtils.sha256Hex(password + salt)
+        val finalPassword = "$salt:$hashedPassword"
+        stmt.setString(3, finalPassword)
+        stmt.setLong(4, Authenticator.generateId())
+        stmt.execute()
+
+        return true;
     }
 }
