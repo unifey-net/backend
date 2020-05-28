@@ -10,11 +10,13 @@ import net.unifey.auth.tokens.TokenManager
 /**
  * Check if an [ApplicationCall] is authenticated.
  */
-fun ApplicationCall.isAuthenticated() {
+fun ApplicationCall.isAuthenticated(): Token {
     val token = getTokenFromCall()
 
     if (TokenManager.isTokenExpired(token))
         throw TokenExpiredException()
+
+    return token
 }
 
 /**
