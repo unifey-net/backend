@@ -1,5 +1,6 @@
 package net.unifey
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.mysql.cj.jdbc.MysqlDataSource
 import net.unifey.config.Config
 import java.sql.Connection
@@ -19,14 +20,12 @@ object DatabaseHandler {
         url = obj.url ?: ""
         password = obj.password ?: ""
         username = obj.username ?: ""
-        connection = getConnection()
+
+        connection = createConnection()
     }
 
-    fun getConnection(): Connection {
-        if (connection == null)
-            connection = createConnection()
-        return connection;
-    }
+    fun getConnection(): Connection =
+            connection
 
     /**
      * Create a connection to AWS.

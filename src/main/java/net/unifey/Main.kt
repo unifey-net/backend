@@ -17,7 +17,7 @@ import io.ktor.locations.Locations
 import io.ktor.locations.delete
 import io.ktor.locations.put
 import io.ktor.request.receive
-import io.ktor.request.receiveParameters
+import io.ktor.request.*
 import io.ktor.response.respond
 import io.ktor.response.respondText
 import io.ktor.routing.*

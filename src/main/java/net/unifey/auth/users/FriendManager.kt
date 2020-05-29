@@ -41,17 +41,24 @@ object FriendManager {
     fun getFriends(uid: Long): ArrayList<Long>? {
         if (!hasFriends(uid))
             return null
-        var stmt = DatabaseHandler.getConnection().prepareStatement("SELECT * FROM friends WHERE uid = ?")
+        val stmt = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT * FROM friends WHERE uid = ?")
+
         stmt.setLong(1, uid)
-        stmt.execute()
-        var friends = stmt.resultSet.getString("friends")
-        return ObjectMapper().readValue<ArrayList<Long>>(friends)
+        val rs = stmt.executeQuery()
+
+        return if (rs.next())
+            ObjectMapper().readValue<ArrayList<Long>>(rs.getString("friends"))
+        else throw Exception("No next RS")
     }
 
     private fun hasFriends(uid: Long): Boolean {
-        var stmt = DatabaseHandler.getConnection().prepareStatement("SELECT COUNT(*) FROM friends WHERE uid = ?")
+        val stmt = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT * FROM friends WHERE uid = ?")
+
         stmt.setLong(1, uid)
-        stmt.execute()
-        return stmt.resultSet.getInt("COUNT(*)") > 0
+        val rs = stmt.executeQuery()
+
+        return rs.next()
     }
 }
