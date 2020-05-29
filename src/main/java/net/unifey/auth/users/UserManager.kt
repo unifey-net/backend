@@ -45,6 +45,22 @@ object UserManager {
             user
         } else null
     }
+
+    /**
+     * Changes a users name in the database & cache
+     */
+    fun updateName(id: Long, name: String) {
+        if (getUser(id) != null) {
+            val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET username = ? WHERE uid = ?")
+            stmt.setString(1, name)
+            stmt.setLong(2, id)
+            stmt.executeQuery()
+            userCache[id]?.username = name
+        } else {
+            //TODO: do something here maybe? idfk
+        }
+    }
+
     /**
      * Get a user by their [id]. Prefers [userCache] over database.
      */

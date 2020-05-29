@@ -28,6 +28,7 @@ import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.users.FriendManager
+import net.unifey.auth.users.UserManager
 import net.unifey.auth.users.userPages
 import net.unifey.feeds.FeedException
 import net.unifey.feeds.feedPages
@@ -134,6 +135,18 @@ fun main(args: Array<String>) {
                 val userUID = token.owner
 
                 call.respond(Response(FriendManager.getFriends(userUID) ?: ArrayList<Long>()))
+            }
+
+            post("/change_name") {
+                val token = call.isAuthenticated()
+
+                val params = call.receiveParameters()
+                val username = params["username"]
+
+                if (username != null)
+                    UserManager.updateName(token.owner, username)
+                else
+                    call.respond(Response("Gib username pls"))
             }
 
             post("/authenticate") {
