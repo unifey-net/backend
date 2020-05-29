@@ -62,6 +62,21 @@ object UserManager {
     }
 
     /**
+     * Changes a users email in the database & cache
+     */
+    fun updateEmail(id: Long, email: String) {
+        if (getUser(id) != null) {
+            val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET email = ? WHERE uid = ?")
+            stmt.setString(1, email)
+            stmt.setLong(2, id)
+            stmt.executeQuery()
+            userCache[id]?.email = email
+        } else {
+            //TODO: do something here maybe? idfk
+        }
+    }
+
+    /**
      * Get a user by their [id]. Prefers [userCache] over database.
      */
     fun getUser(id: Long): User? {

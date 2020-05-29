@@ -149,6 +149,18 @@ fun main(args: Array<String>) {
                     call.respond(Response("Gib username pls"))
             }
 
+            post("/change_email") {
+                val token = call.isAuthenticated()
+
+                val params = call.receiveParameters()
+                val email = params["email"]
+
+                if (email != null)
+                    UserManager.updateEmail(token.owner, email)
+                else
+                    call.respond(Response("Gib email pls"))
+            }
+
             post("/authenticate") {
                 val params = call.receiveParameters();
                 val username = params["username"];
