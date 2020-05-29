@@ -30,6 +30,8 @@ import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.users.FriendManager
+import net.unifey.feeds.FeedException
+import net.unifey.feeds.feedPages
 import net.unifey.response.Response
 import java.text.DateFormat
 
@@ -63,6 +65,10 @@ fun main(args: Array<String>) {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
             }
 
+            exception<FeedException> {
+                call.respond(HttpStatusCode.BadRequest, Response(it.message))
+            }
+
             exception<Throwable> {
                 it.printStackTrace()
 
@@ -79,6 +85,8 @@ fun main(args: Array<String>) {
         }
 
         routing {
+            feedPages()
+
             get("/") {
                 call.respond(Response("Unifey RESTful Backend"))
             }

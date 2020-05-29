@@ -3,6 +3,7 @@ package net.unifey.auth
 import net.unifey.DatabaseHandler
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.util.IdGenerator
 import org.apache.commons.codec.digest.DigestUtils
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -57,7 +58,7 @@ object Authenticator {
             val hash = chunks[1]
 
             if (DigestUtils.sha256Hex(password + salt) == hash) {
-                val token = generateToken()
+                val token = IdGenerator.generateToken()
 
                 return TokenManager
                         .createToken(token, rs.getLong("uid"), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
@@ -66,53 +67,6 @@ object Authenticator {
 
         return null
     }
-
-    /**
-     * Generate a token.
-     */
-    private fun generateToken(): String {
-        val token = DigestUtils.sha256Hex(generateRandomString(32))
-        if (tokenUsed(token))
-            return generateToken()
-        return token
-    }
-
-    private fun tokenUsed(token: String): Boolean {
-        return TokenManager.getToken(token) != null
-    }
-
-    /**
-     * Generate a random string [len].
-     */
-    fun generateRandomString(len: Long): String {
-        val source = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-
-        return java.util.Random().ints(len, 0, source.length)
-                .asSequence()
-                .map(source::get)
-                .joinToString("")
-    }
-
-    /**
-     * Generate an ID.
-     */
-    fun generateId(): Long {
-        val id = generateRandomLong(18)
-        if (uidTaken(id))
-            return generateId()
-        return id
-    }
-
-    /**
-     * Generate a random Long with the given [len].
-     */
-    private fun generateRandomLong(len: Int): Long {
-        var idStr = ""
-        for (i in 0 until len)
-            idStr += Random.nextInt(10).toString()
-        return idStr.toLong()
-    }
-
     /**
      * Check if the [uid] is in use.
      */
