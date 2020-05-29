@@ -29,6 +29,7 @@ import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.users.FriendManager
 import net.unifey.auth.users.UserManager
+import net.unifey.auth.users.UserNotFound
 import net.unifey.auth.users.userPages
 import net.unifey.feeds.FeedException
 import net.unifey.feeds.feedPages
@@ -63,6 +64,10 @@ fun main(args: Array<String>) {
         install(StatusPages) {
             exception<AuthenticationException> {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
+            }
+
+            exception<UserNotFound> {
+                call.respond(HttpStatusCode.BadRequest, Response(it.message))
             }
 
             exception<FeedException> {
@@ -100,10 +105,6 @@ fun main(args: Array<String>) {
                 call.respond(Response("Unifey RESTful Backend"))
             }
 
-            get("/posts") {
-                call.respondText("posts go here")
-            }
-
             put("/friends") {
                 val token = call.isAuthenticated()
                 val userUID = token.owner
@@ -114,7 +115,7 @@ fun main(args: Array<String>) {
                 if (friendUID != null)
                     FriendManager.addFriend(userUID, friendUID)
                 else
-                    call.respond(Response("Gib uid pls"))
+                    call.respond(HttpStatusCode.BadRequest, Response("No UID parameter"))
             }
 
             delete("/friends") {
@@ -127,7 +128,7 @@ fun main(args: Array<String>) {
                 if (friendUID != null)
                     FriendManager.removeFriend(userUID, friendUID)
                 else
-                    call.respond(Response("Gib uid pls"))
+                    call.respond(HttpStatusCode.BadRequest, Response("No UID parameter"))
             }
 
             get("/friends") {
@@ -137,42 +138,18 @@ fun main(args: Array<String>) {
                 call.respond(Response(FriendManager.getFriends(userUID) ?: ArrayList<Long>()))
             }
 
-            post("/change_name") {
-                val token = call.isAuthenticated()
-
-                val params = call.receiveParameters()
-                val username = params["username"]
-
-                if (username != null)
-                    UserManager.updateName(token.owner, username)
-                else
-                    call.respond(Response("Gib username pls"))
-            }
-
-            post("/change_email") {
-                val token = call.isAuthenticated()
-
-                val params = call.receiveParameters()
-                val email = params["email"]
-
-                if (email != null)
-                    UserManager.updateEmail(token.owner, email)
-                else
-                    call.respond(Response("Gib email pls"))
-            }
-
             post("/authenticate") {
                 val params = call.receiveParameters();
                 val username = params["username"];
                 val password = params["password"];
 
                 if (username == null || password == null)
-                    call.respond(HttpStatusCode.BadRequest, Response(payload = "Invalid arguments."))
+                    call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))
                 else {
                     val auth = Authenticator.generateIfCorrect(username, password)
 
                     if (auth == null)
-                        call.respond(HttpStatusCode.Unauthorized, Response(payload = "Invalid credentials."))
+                        call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
                     else {
                         call.respond(Response(auth))
                     }

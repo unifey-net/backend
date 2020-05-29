@@ -19,7 +19,7 @@ object UserManager {
     /**
      * Get a user by their [name]. Prefers [userCache] over database.
      */
-    fun getUser(name: String): User? {
+    fun getUser(name: String): User {
         val cacheUser = userCache.values
                 .singleOrNull { it.username.equals(name, true) }
 
@@ -43,43 +43,39 @@ object UserManager {
             userCache[rs.getLong("uid")] = user
 
             user
-        } else null
+        } else throw UserNotFound()
     }
 
     /**
      * Changes a users name in the database & cache
      */
     fun updateName(id: Long, name: String) {
-        if (getUser(id) != null) {
-            val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET username = ? WHERE uid = ?")
-            stmt.setString(1, name)
-            stmt.setLong(2, id)
-            stmt.executeQuery()
-            userCache[id]?.username = name
-        } else {
-            //TODO: do something here maybe? idfk
-        }
+        getUser(id) // to make sure user exists
+
+        val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET username = ? WHERE uid = ?")
+        stmt.setString(1, name)
+        stmt.setLong(2, id)
+        stmt.executeQuery()
+        userCache[id]?.username = name
     }
 
     /**
      * Changes a users email in the database & cache
      */
     fun updateEmail(id: Long, email: String) {
-        if (getUser(id) != null) {
-            val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET email = ? WHERE uid = ?")
-            stmt.setString(1, email)
-            stmt.setLong(2, id)
-            stmt.executeQuery()
-            userCache[id]?.email = email
-        } else {
-            //TODO: do something here maybe? idfk
-        }
+        getUser(id) // to make sure user exists
+
+        val stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE users SET email = ? WHERE uid = ?")
+        stmt.setString(1, email)
+        stmt.setLong(2, id)
+        stmt.executeQuery()
+        userCache[id]?.email = email
     }
 
     /**
      * Get a user by their [id]. Prefers [userCache] over database.
      */
-    fun getUser(id: Long): User? {
+    fun getUser(id: Long): User {
         if (userCache.containsKey(id))
             return userCache[id]!!
 
@@ -100,7 +96,7 @@ object UserManager {
             userCache[id] = user
 
             user
-        } else null
+        } else throw UserNotFound()
     }
 
     /**
