@@ -5,11 +5,9 @@ import dev.shog.lib.app.cfg.ConfigHandler
 import dev.shog.lib.util.logDiscord
 import io.ktor.application.call
 import io.ktor.application.install
-import io.ktor.features.AutoHeadResponse
-import io.ktor.features.ContentNegotiation
-import io.ktor.features.DefaultHeaders
-import io.ktor.features.StatusPages
+import io.ktor.features.*
 import io.ktor.http.ContentType
+import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.jackson.JacksonConverter
 import io.ktor.jackson.jackson
@@ -30,6 +28,7 @@ import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.users.FriendManager
+import net.unifey.auth.users.userPages
 import net.unifey.feeds.FeedException
 import net.unifey.feeds.feedPages
 import net.unifey.response.Response
@@ -84,8 +83,17 @@ fun main(args: Array<String>) {
             }
         }
 
+        install(CORS) {
+            anyHost()
+            method(HttpMethod.Options)
+            header("Authorization")
+            allowCredentials = true
+            allowNonSimpleContentTypes = true
+        }
+
         routing {
             feedPages()
+            userPages()
 
             get("/") {
                 call.respond(Response("Unifey RESTful Backend"))

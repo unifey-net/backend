@@ -17,6 +17,35 @@ object UserManager {
     private val userCache = ConcurrentHashMap<Long, User>()
 
     /**
+     * Get a user by their [name]. Prefers [userCache] over database.
+     */
+    fun getUser(name: String): User? {
+        val cacheUser = userCache.values
+                .singleOrNull { it.username.equals(name, true) }
+
+        if (cacheUser != null)
+            return cacheUser
+
+        val rs = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT created_at, username, email, uid, password, uid FROM users WHERE username = ?")
+                .apply { setString(1, name) }
+                .executeQuery()
+
+        return if (rs.next()) {
+            val user = User(
+                    rs.getString("username"),
+                    rs.getString("password"),
+                    rs.getString("email"),
+                    rs.getLong("uid"),
+                    rs.getLong("created_at")
+            )
+
+            userCache[rs.getLong("uid")] = user
+
+            user
+        } else null
+    }
+    /**
      * Get a user by their [id]. Prefers [userCache] over database.
      */
     fun getUser(id: Long): User? {
@@ -34,7 +63,7 @@ object UserManager {
                     rs.getString("password"),
                     rs.getString("email"),
                     rs.getLong("uid"),
-                    rs.getString("created_at")
+                    rs.getLong("created_at")
             )
 
             userCache[id] = user
