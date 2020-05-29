@@ -117,12 +117,7 @@ fun main(args: Array<String>) {
                 val token = call.isAuthenticated()
                 val userUID = token.owner
 
-                call.respond(Response(FriendManager.getFriends(userUID)))
-            }
-
-            post("/test_auth") {
-                val token = call.isAuthenticated()
-                call.respond(Response(token))
+                call.respond(Response(FriendManager.getFriends(userUID) ?: ArrayList<Long>()))
             }
 
             post("/authenticate") {

@@ -49,9 +49,9 @@ object FriendManager {
     }
 
     private fun hasFriends(uid: Long): Boolean {
-        var stmt = DatabaseHandler.getConnection().prepareStatement("SELECT * FROM friends WHERE uid = ?")
+        var stmt = DatabaseHandler.getConnection().prepareStatement("SELECT COUNT(*) FROM friends WHERE uid = ?")
         stmt.setLong(1, uid)
         stmt.execute()
-        return stmt.resultSet.fetchSize > 0
+        return stmt.resultSet.getInt("COUNT(*)") > 0
     }
 }
