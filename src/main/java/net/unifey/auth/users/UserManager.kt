@@ -129,7 +129,7 @@ object UserManager {
         stmt.setString(1, email)
         stmt.setLong(2, id)
         stmt.executeQuery()
-        userCache[id]?.email = email
+        userCache[id]?.setEmail(email)
     }
 
     /**
