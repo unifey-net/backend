@@ -2,6 +2,7 @@ package net.unifey.auth.users
 
 import net.unifey.DatabaseHandler
 import net.unifey.auth.Authenticator
+import net.unifey.auth.users.profile.Profile
 import net.unifey.feeds.Feed
 import net.unifey.feeds.FeedManager
 import net.unifey.util.IdGenerator
@@ -15,6 +16,65 @@ object UserManager {
      * Key: UID
      */
     private val userCache = ConcurrentHashMap<Long, User>()
+
+    /**
+     * Get a profile by [name]
+     */
+    fun getProfile(name: String): Profile =
+            getProfile(getUser(name))
+
+    /**
+     * Get a profile by [id]
+     */
+    fun getProfile(id: Long): Profile =
+            getProfile(getUser(id))
+
+    /**
+     * Update a user's profile and set [key] to be [new].
+     *
+     * [key] should be verified as proper before using this.
+     */
+    fun updateProfile(user: Long, key: String, new: String) {
+        DatabaseHandler.getConnection()
+                .prepareStatement("UPDATE PROFILES SET ? = ? WHERE id = ?")
+                .apply {
+                    setString(1, key)
+                    setString(2, new)
+                    setLong(3, user)
+                }
+                .executeUpdate()
+    }
+
+    /**
+     * Get a profile by [user]
+     */
+    fun getProfile(user: User): Profile {
+        val rs = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT * FROM profiles WHERE id = ?")
+                .apply { setLong(1, user.uid) }
+                .executeQuery()
+
+        if (rs.next()) {
+            return Profile(
+                    user.uid,
+                    rs.getString("description"),
+                    rs.getString("discord"),
+                    rs.getString("location")
+            )
+        } else throw UserNotFound() // should never happen
+    }
+
+    /**
+     * Create a profile
+     */
+    fun createProfile(id: Long): Profile {
+        DatabaseHandler.getConnection()
+                .prepareStatement("INSERT INTO profiles (id) VALUES (?)")
+                .apply { setLong(1, id) }
+                .executeUpdate()
+
+        return Profile(id, "A Unifey user.", "", "")
+    }
 
     /**
      * Get a user by their [name]. Prefers [userCache] over database.
@@ -153,6 +213,7 @@ object UserManager {
         stmt.execute()
 
         FeedManager.createFeedForUser(id)
+        createProfile(id)
 
         return true
     }

@@ -12,7 +12,7 @@ object PostManager {
      */
     fun createPost(post: Post): Post {
         DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO posts (id, created_at, author_uid, content, feed, hidden, title) VALUES (?, ?, ?, ?, ?, ?, ?)")
+                .prepareStatement("INSERT INTO posts (id, created_at, author_uid, content, feed, hidden, title, upvotes, downvotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 .apply {
                     setLong(1, post.id)
                     setLong(2, post.createdAt)
@@ -21,6 +21,8 @@ object PostManager {
                     setString(5, post.feed)
                     setInt(6, if (post.hidden) 1 else 0)
                     setString(7, post.title)
+                    setLong(8, post.upvotes)
+                    setLong(9, post.downvotes)
                 }
                 .executeUpdate()
 
@@ -41,7 +43,9 @@ object PostManager {
                 title,
                 content,
                 feed.id,
-                false
+                false,
+                0,
+                0
         )
 
         createPost(post)
@@ -58,17 +62,19 @@ object PostManager {
                 .apply { setLong(1, id) }
                 .executeQuery()
 
-        if (rs.next())
-            return Post(
+        return if (rs.next())
+            Post(
                     rs.getLong("id"),
                     rs.getLong("created_at"),
                     rs.getLong("author_uid"),
                     rs.getString("title"),
                     rs.getString("content"),
                     rs.getString("feed"),
-                    rs.getInt("hidden") == 1
+                    rs.getInt("hidden") == 1,
+                    rs.getLong("upvotes"),
+                    rs.getLong("downvotes")
             )
-        else return null
+        else null
     }
 
     /**
@@ -79,5 +85,21 @@ object PostManager {
                 .prepareStatement("DELETE FROM posts WHERE id = ?")
                 .apply { setLong(1, id) }
                 .executeUpdate()
+    }
+
+    fun getVote(post: Long, user: Long) {
+        val rs = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT * FROM votes WHERE id = ? AND post = ?")
+                .apply {
+                    setLong(1, user)
+                    setLong(2, post)
+                }
+                .executeQuery()
+
+        if (rs.next() && rs.getInt("upvote") == 1) {
+
+        }
+
+        return
     }
 }

@@ -15,6 +15,10 @@ repositories {
 }
 
 dependencies {
+    implementation platform('software.amazon.awssdk:bom:2.13.26')
+    implementation 'software.amazon.awssdk:s3'
+    implementation 'software.amazon.awssdk:rds'
+
     testCompile group: 'junit', name: 'junit', version: '4.12'
     implementation 'mysql:mysql-connector-java:8.0.20'
     implementation 'commons-codec:commons-codec:1.14'

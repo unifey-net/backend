@@ -24,16 +24,15 @@ import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonConfiguration
 import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
-import net.unifey.auth.users.FriendManager
-import net.unifey.auth.users.UserManager
-import net.unifey.auth.users.UserNotFound
-import net.unifey.auth.users.userPages
+import net.unifey.auth.users.*
 import net.unifey.feeds.FeedException
 import net.unifey.feeds.feedPages
 import net.unifey.response.Response
+import java.io.File
 import java.text.DateFormat
 
 val unifeyCfg = ConfigHandler.createConfig(ConfigHandler.ConfigType.YML, "unifey", Config::class.java)
@@ -42,14 +41,13 @@ fun main(args: Array<String>) {
     val server = embeddedServer(Netty, 8080) {
         install(ContentNegotiation) {
             jackson {
-                dateFormat = DateFormat.getDateInstance()
             }
 
             register(ContentType.Application.Json, JacksonConverter())
 
             serialization(
                     contentType = ContentType.Application.Json,
-                    json = Json(DefaultJsonConfiguration)
+                    json = Json(JsonConfiguration.Default)
             )
         }
 

@@ -12,12 +12,11 @@ import net.unifey.response.Response
 import kotlin.random.Random
 
 fun Routing.feedPages() {
-    route("/feeds") {
+    route("/feeds/{feed}") {
         get {
             val user = call.isAuthenticated()
 
-            val params = call.receiveParameters()
-            val feed = params["feed"]
+            val feed = call.parameters["feed"]
 
             if (feed == null)
                 call.respond(Response("No feed parameter"))
@@ -25,7 +24,7 @@ fun Routing.feedPages() {
                 val feedObj = FeedManager.getFeed(feed)
 
                 if (feedObj == null)
-                    call.respond(Response("Invalid feed object"))
+                    call.respond(HttpStatusCode.BadRequest, Response("Invalid feed object"))
                 else
                     call.respond(Response(
                             FeedManager.getFeedPosts(feedObj, user.owner)
@@ -33,25 +32,33 @@ fun Routing.feedPages() {
             }
         }
 
-        put {
+        post {
             val user = call.isAuthenticated()
 
             val params = call.receiveParameters()
-            val feed = params["feed"]
+            val feed = call.parameters["feed"]
             val content = params["content"]
             val title = params["title"]
 
-            if (feed == null || content == null || title == null)
-                call.respond(HttpStatusCode.BadRequest, Response("No feed, title or content parameter"))
-            else {
-                val feedObj = FeedManager.getFeed(feed)
+            val seq = sequenceOf(feed, content, title)
 
-                if (feedObj == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("Invalid feed object"))
-                else
-                    call.respond(Response(
-                            PostManager.createPost(feedObj, title, content, user.owner)
-                    ))
+            when {
+                seq.any { it == null } ->
+                    call.respond(HttpStatusCode.BadRequest, Response("No feed, title or content parameter"))
+
+                seq.any { it!!.isBlank() } ->
+                    call.respond(HttpStatusCode.BadRequest, Response("Feed, title or content may be empty"))
+
+                else -> {
+                    val feedObj = FeedManager.getFeed(feed!!)
+
+                    if (feedObj == null)
+                        call.respond(HttpStatusCode.BadRequest, Response("Invalid feed object"))
+                    else
+                        call.respond(Response(
+                                PostManager.createPost(feedObj, title!!, content!!, user.owner)
+                        ))
+                }
             }
         }
 

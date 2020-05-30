@@ -7,5 +7,7 @@ data class Post(
         val title: String,
         val content: String,
         val feed: String,
-        val hidden: Boolean
+        val hidden: Boolean,
+        val upvotes: Long,
+        val downvotes: Long
 )

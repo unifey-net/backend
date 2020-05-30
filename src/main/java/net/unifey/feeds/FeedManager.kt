@@ -25,7 +25,7 @@ object FeedManager {
                 .apply {
                     setString(1, "[]")
                     setString(2, "[${id}]")
-                    setLong(3, id)
+                    setString(3, "uf_${id}")
                 }
                 .executeUpdate()
     }
@@ -71,7 +71,7 @@ object FeedManager {
             throw CannotViewFeed()
 
         val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT id, created_at, author_uid, content, hidden, title FROM posts WHERE feed = ?")
+                .prepareStatement("SELECT * FROM posts WHERE feed = ?")
                 .apply { setString(1, feed.id) }
                 .executeQuery()
 
@@ -85,7 +85,9 @@ object FeedManager {
                     rs.getString("title"),
                     rs.getString("content"),
                     feed.id,
-                    rs.getInt("hidden") == 1
+                    rs.getInt("hidden") == 1,
+                    rs.getLong("upvotes"),
+                    rs.getLong("downvotes")
             ))
         }
 

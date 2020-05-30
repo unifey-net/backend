@@ -14,7 +14,7 @@ object IdGenerator {
     fun getId(seed: Long = Random.nextLong()): Long {
         val r = Random(System.currentTimeMillis() + seed)
 
-        return (0 until 18)
+        return (0 until 14)
                 .joinToString("") { r.nextInt(10).toString() }
                 .toLong()
     }
