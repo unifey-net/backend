@@ -36,18 +36,24 @@ object ProfilePictureManager {
                     .build()
 
     fun uploadPicture(user: Long, picture: ByteArray) {
-        getClient().putObject(
+        val client = getClient()
+
+        client.putObject(
                 PutObjectRequest.builder()
                         .bucket("unifey-cdn")
                         .key("${user}_pfp.jpg")
                         .build(),
                 RequestBody.fromBytes(picture)
         )
+
+        client.close()
     }
 
     fun getPicture(user: Long): ByteArray {
-        return try {
-            getClient().getObject(
+        val client = getClient()
+
+        val bytes = try {
+            client.getObject(
                     GetObjectRequest.builder()
                             .bucket("unifey-cdn")
                             .key("${user}_pfp.jpg")
@@ -55,13 +61,18 @@ object ProfilePictureManager {
                     ResponseTransformer.toBytes()
             ).asByteArray()
         } catch (ex: Exception) {
-            getClient().getObject(
+            client.getObject(
                     GetObjectRequest.builder()
                             .bucket("unifey-cdn")
                             .key("default.jpg")
                             .build(),
                     ResponseTransformer.toBytes()
             ).asByteArray()
+
         }
+
+        client.close()
+
+        return bytes
     }
 }
