@@ -1,7 +1,6 @@
-package net.unifey.auth.users
+package net.unifey.handle.users
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import net.unifey.DatabaseHandler
 

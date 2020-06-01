@@ -2,7 +2,6 @@ package net.unifey
 
 import dev.shog.lib.app.cfg.Config
 import dev.shog.lib.app.cfg.ConfigHandler
-import dev.shog.lib.util.logDiscord
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.features.*
@@ -12,28 +11,27 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.jackson.JacksonConverter
 import io.ktor.jackson.jackson
 import io.ktor.locations.Locations
-import io.ktor.locations.delete
-import io.ktor.locations.put
-import io.ktor.request.receive
 import io.ktor.request.*
+import io.ktor.response.header
 import io.ktor.response.respond
-import io.ktor.response.respondText
 import io.ktor.routing.*
-import io.ktor.serialization.DefaultJsonConfiguration
 import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import kong.unirest.Unirest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
+import net.unifey.auth.getTokenFromCall
 import net.unifey.auth.isAuthenticated
-import net.unifey.auth.users.*
-import net.unifey.feeds.FeedException
-import net.unifey.feeds.feedPages
+import net.unifey.handle.users.*
+import net.unifey.handle.feeds.FeedException
+import net.unifey.handle.feeds.feedPages
 import net.unifey.response.Response
-import java.io.File
-import java.text.DateFormat
+import net.unifey.util.RateLimitException
+import net.unifey.util.checkRateLimit
+import java.util.concurrent.TimeUnit
 
 val unifeyCfg = ConfigHandler.createConfig(ConfigHandler.ConfigType.YML, "unifey", Config::class.java)
 
@@ -62,6 +60,15 @@ fun main(args: Array<String>) {
         install(StatusPages) {
             exception<AuthenticationException> {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
+            }
+
+            exception<RateLimitException> {
+                call.response.header(
+                        "X-Rate-Limit-Retry-After-Seconds",
+                        TimeUnit.NANOSECONDS.toSeconds(it.refill)
+                )
+
+                call.respond(HttpStatusCode.TooManyRequests, Response("You are being rate limited!"))
             }
 
             exception<UserNotFound> {
@@ -100,6 +107,8 @@ fun main(args: Array<String>) {
             userPages()
 
             get("/") {
+                call.checkRateLimit(call.getTokenFromCall())
+
                 call.respond(Response("Unifey RESTful Backend"))
             }
 
@@ -149,7 +158,7 @@ fun main(args: Array<String>) {
                     if (auth == null)
                         call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
                     else {
-                        call.respond(Response(auth))
+                        call.respond(auth)
                     }
                 }
             }

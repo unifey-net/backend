@@ -1,20 +1,35 @@
-package net.unifey.feeds
+package net.unifey.handle.feeds
 
+import com.fasterxml.jackson.databind.ObjectMapper
+import javafx.geometry.Pos
 import net.unifey.DatabaseHandler
-import net.unifey.auth.users.User
-import net.unifey.feeds.posts.Post
-import net.unifey.util.IdGenerator
+import net.unifey.handle.users.User
+import net.unifey.handle.feeds.posts.Post
 import org.json.JSONArray
+import java.util.concurrent.ConcurrentHashMap
 
 object FeedManager {
-    fun getCommunityFeed(): Feed =
+    /**
+     * Feed cache
+     */
+    private val cache = ConcurrentHashMap<String, Feed>()
+
+    /**
+     * A feed and it's posts.
+     */
+    private val feedCache = ConcurrentHashMap<Feed, MutableList<Post>>()
+
+    /**
+     * A communities feed.
+     */
+    fun getCommunityFeed(): Feed? =
             TODO()
 
     /**
      * A user's feed's ID is "uf_(user ID)"
      */
     fun getUserFeed(user: User): Feed? =
-            getFeed("uf_${user.uid}")
+            getFeed("uf_${user.id}")
 
     /**
      * Create a feed for [id] user
@@ -34,13 +49,28 @@ object FeedManager {
      * Get a feed by it's ID.
      */
     fun getFeed(id: String): Feed? {
+        if (cache.containsKey(id))
+            return cache[id]!!
+
         val rs = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT banned, moderators FROM feeds WHERE id = ?")
                 .apply { setString(1, id) }
                 .executeQuery()
 
+        val mapper = ObjectMapper()
+
         return if (rs.next())
-            Feed(id, JSONArray(rs.getString("banned")), JSONArray(rs.getString("moderators")))
+            Feed(
+                    id,
+                    mapper.readValue(
+                            rs.getString("banned"),
+                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
+                    ),
+                    mapper.readValue(
+                            rs.getString("moderators"),
+                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
+                    )
+            )
         else null
     }
 
@@ -56,12 +86,8 @@ object FeedManager {
     /**
      * If [user] can post to [feed].
      */
-    fun canPostFeed(feed: Feed, user: Long): Boolean {
-        for (i in 0 until feed.banned.length())
-            if (feed.banned.getLong(i) == user) return false
-
-        return true
-    }
+    fun canPostFeed(feed: Feed, user: Long): Boolean =
+            feed.banned.contains(user)
 
     /**
      * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].
@@ -69,6 +95,9 @@ object FeedManager {
     fun getFeedPosts(feed: Feed, byUser: Long?): MutableList<Post> {
         if (byUser != null && !canViewFeed(feed, byUser))
             throw CannotViewFeed()
+
+        if (feedCache.containsKey(feed))
+            return feedCache[feed]!!
 
         val rs = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM posts WHERE feed = ?")
@@ -91,6 +120,8 @@ object FeedManager {
             ))
         }
 
-        return posts
+        feedCache[feed] = posts
+
+        return feedCache[feed]!!
     }
 }

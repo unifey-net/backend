@@ -1,4 +1,4 @@
-package net.unifey.feeds
+package net.unifey.handle.feeds
 
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
@@ -7,12 +7,20 @@ import io.ktor.response.respond
 import io.ktor.routing.*
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
-import net.unifey.feeds.posts.PostManager
+import net.unifey.handle.feeds.posts.PostManager
+import net.unifey.handle.feeds.responses.GetFeedResponse
+import net.unifey.handle.feeds.responses.GetPostResponse
+import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
-import kotlin.random.Random
 
+/**
+ * Pages for feeds.
+ */
 fun Routing.feedPages() {
     route("/feeds/{feed}") {
+        /**
+         * Get a feed and it's posts.
+         */
         get {
             val user = call.isAuthenticated()
 
@@ -26,12 +34,17 @@ fun Routing.feedPages() {
                 if (feedObj == null)
                     call.respond(HttpStatusCode.BadRequest, Response("Invalid feed object"))
                 else
-                    call.respond(Response(
+                    call.respond(GetFeedResponse(
+                            feedObj,
                             FeedManager.getFeedPosts(feedObj, user.owner)
+                                    .map { GetPostResponse(it, UserManager.getUser(it.authorId)) }
                     ))
             }
         }
 
+        /**
+         * Post to a feed.
+         */
         post {
             val user = call.isAuthenticated()
 
@@ -62,6 +75,9 @@ fun Routing.feedPages() {
             }
         }
 
+        /**
+         * Delete a post. Only deletes if authorization token is the owner.
+         */
         delete {
             val user = call.isAuthenticated()
 
@@ -77,7 +93,7 @@ fun Routing.feedPages() {
                     postObj == null ->
                         call.respond(HttpStatusCode.BadRequest, Response("Invalid post ID."))
 
-                    postObj.authorUid != user.owner ->
+                    postObj.authorId != user.owner ->
                         throw AuthenticationException("You are not the owner of this post!")
 
                     else -> {

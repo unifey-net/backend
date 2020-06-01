@@ -1,22 +1,22 @@
-package net.unifey.auth.users
+package net.unifey.handle.users
 
 import net.unifey.config.Config
 import net.unifey.unifeyCfg
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.core.sync.ResponseTransformer
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.rds.RdsClient
 import software.amazon.awssdk.services.s3.S3Client
 import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
-import java.io.File
 
+/**
+ * Manage user's profile pictures.
+ */
 object ProfilePictureManager {
-    val AWS_ID: String
-    val AWS_SECRET: String
+    private val AWS_ID: String
+    private val AWS_SECRET: String
 
     init {
         val cfg = unifeyCfg.asObject<Config>()
@@ -25,7 +25,10 @@ object ProfilePictureManager {
         AWS_SECRET = cfg.awsSecret ?: ""
     }
 
-    fun getClient() =
+    /**
+     * Get the S3Client (S3 is where images are stored).
+     */
+    private fun getClient(): S3Client =
             S3Client.builder()
                     .credentialsProvider(
                             AwsCredentialsProviderChain.builder()
@@ -35,6 +38,9 @@ object ProfilePictureManager {
                     .region(Region.US_EAST_2)
                     .build()
 
+    /**
+     * Upload a user's profile picture. If a picture already exists, it's overridden.
+     */
     fun uploadPicture(user: Long, picture: ByteArray) {
         val client = getClient()
 
@@ -49,6 +55,9 @@ object ProfilePictureManager {
         client.close()
     }
 
+    /**
+     * Get a user's picture.
+     */
     fun getPicture(user: Long): ByteArray {
         val client = getClient()
 

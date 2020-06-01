@@ -1,4 +1,4 @@
-package net.unifey.auth.users
+package net.unifey.handle.users
 
 import io.ktor.application.call
 import io.ktor.http.ContentType
@@ -8,9 +8,8 @@ import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
-import net.unifey.auth.users.profile.Profile
+import net.unifey.handle.users.profile.Profile
 import net.unifey.response.Response
-import java.math.BigInteger
 
 fun Routing.userPages() {
     route("/user") {
@@ -21,54 +20,6 @@ fun Routing.userPages() {
             val token = call.isAuthenticated()
 
             call.respond(Response(UserManager.getUser(token.owner)))
-        }
-
-        /**
-         * Get your own user data as well as profile.
-         */
-        get("/full") {
-            val token = call.isAuthenticated()
-
-            call.respond(Response(
-                    listOf(
-                            UserManager.getUser(token.owner),
-                            UserManager.getProfile(token.owner)
-                    )
-            ))
-        }
-
-        /**
-         * Manage your own profile.
-         */
-        route("/profile") {
-            /**
-             * Get your own profile.
-             */
-            get {
-                val token = call.isAuthenticated()
-
-                call.respond(Response(UserManager.getProfile(token.owner)))
-            }
-
-            /**
-             * Modify your profile.
-             */
-            put {
-                val token = call.isAuthenticated()
-
-                val params = call.receiveParameters()
-                val type = params["type"]
-                val new = params["value"]
-
-                if (type.isNullOrBlank() || new == null || !Profile.CHANGEABLE_KEYS.contains(type.toLowerCase()))
-                    call.respond(HttpStatusCode.BadRequest, Response("No type (or invalid) or new parameter"))
-                else {
-                    UserManager.updateProfile(token.owner, type, new)
-
-                    // new profile
-                    call.respond(Response(UserManager.getProfile(token.owner)))
-                }
-            }
         }
 
         /**
@@ -83,6 +34,7 @@ fun Routing.userPages() {
             if (email == null)
                 call.respond(HttpStatusCode.BadRequest, Response("No email parameter"))
             else {
+                UserManager.getUser(token.owner).email = email
                 when {
                     email.length > 120 ->
                         call.respond(HttpStatusCode.BadRequest, Response("Email is too long! (must be <=120)"))
@@ -91,7 +43,6 @@ fun Routing.userPages() {
                         call.respond(HttpStatusCode.BadRequest, Response("Not a proper email!"))
 
                     else -> {
-                        UserManager.updateEmail(token.owner, email)
 
                         call.respond(HttpStatusCode.OK, Response("Changed email."))
                     }
@@ -119,7 +70,7 @@ fun Routing.userPages() {
                         call.respond(HttpStatusCode.BadRequest, Response("Username is too short! (must be >3)"))
 
                     else -> {
-                        UserManager.updateName(token.owner, username)
+                        UserManager.getUser(token.owner).username = username
 
                         call.respond(HttpStatusCode.OK, Response("Changed username."))
                     }
@@ -161,36 +112,7 @@ fun Routing.userPages() {
                 if (name == null)
                     call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
                 else
-                    call.respond(Response(UserManager.getUser(name)))
-            }
-
-            /**
-             * Get both user data and profile.
-             */
-            get("/full") {
-                val name = call.parameters["name"]
-
-                if (name == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
-                else
-                    call.respond(Response(
-                            listOf(
-                                    UserManager.getUser(name),
-                                    UserManager.getProfile(name)
-                            )
-                    ))
-            }
-
-            /**
-             * Get user profile.
-             */
-            get("/profile") {
-                val name = call.parameters["name"]
-
-                if (name == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
-                else
-                    call.respond(Response(UserManager.getProfile(name)))
+                    call.respond(Response(UserManager.getUser(15L))) // TODO
             }
 
             /**
@@ -202,9 +124,9 @@ fun Routing.userPages() {
                 if (name == null)
                     call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
                 else {
-                    val user = UserManager.getUser(name)
+                    val user = UserManager.getUser(15L) // TODO
 
-                    call.respondBytes(ProfilePictureManager.getPicture(user.uid), ContentType.Image.JPEG)
+                    call.respondBytes(ProfilePictureManager.getPicture(user.id), ContentType.Image.JPEG)
                 }
             }
         }
