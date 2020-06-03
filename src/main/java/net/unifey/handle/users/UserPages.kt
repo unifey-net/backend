@@ -34,7 +34,8 @@ fun Routing.userPages() {
             if (email == null)
                 call.respond(HttpStatusCode.BadRequest, Response("No email parameter"))
             else {
-                UserManager.getUser(token.owner).email = email
+                UserManager.getUser(token.owner).updateEmail(email)
+
                 when {
                     email.length > 120 ->
                         call.respond(HttpStatusCode.BadRequest, Response("Email is too long! (must be <=120)"))
@@ -52,6 +53,8 @@ fun Routing.userPages() {
 
         /**
          * Change your own name.
+         *
+         * TODO check username already exists
          */
         put("/name") {
             val token = call.isAuthenticated()
@@ -94,6 +97,7 @@ fun Routing.userPages() {
 
                     call.respond(Response("Uploaded picture successfully"))
                 }
+                return@put
             }
 
             call.respond(HttpStatusCode.PayloadTooLarge, Response("Image type is not JPEG!"))
@@ -112,7 +116,7 @@ fun Routing.userPages() {
                 if (name == null)
                     call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
                 else
-                    call.respond(Response(UserManager.getUser(15L))) // TODO
+                    call.respond(Response(UserManager.getId(name)))
             }
 
             /**
@@ -124,9 +128,7 @@ fun Routing.userPages() {
                 if (name == null)
                     call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
                 else {
-                    val user = UserManager.getUser(15L) // TODO
-
-                    call.respondBytes(ProfilePictureManager.getPicture(user.id), ContentType.Image.JPEG)
+                    call.respondBytes(ProfilePictureManager.getPicture(UserManager.getId(name)), ContentType.Image.JPEG)
                 }
             }
         }
@@ -135,14 +137,24 @@ fun Routing.userPages() {
          * Manage other users using IDs.
          */
         route("/id/{id}") {
-           get {
-               val id = call.parameters["id"]?.toLongOrNull()
+            get {
+                val id = call.parameters["id"]?.toLongOrNull()
 
-               if (id == null)
-                   call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
-               else
-                   call.respond(Response(UserManager.getUser(id)))
-           }
+                if (id == null)
+                    call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
+                else
+                    call.respond(Response(UserManager.getUser(id)))
+            }
+
+            get("/picture") {
+                val id = call.parameters["id"]?.toLongOrNull()
+
+                if (id == null)
+                    call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
+                else {
+                    call.respondBytes(ProfilePictureManager.getPicture(UserManager.getUser(id).id), ContentType.Image.JPEG)
+                }
+            }
         }
     }
 }

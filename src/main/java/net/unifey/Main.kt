@@ -105,44 +105,12 @@ fun main(args: Array<String>) {
         routing {
             feedPages()
             userPages()
+            friendsPages()
 
             get("/") {
                 call.checkRateLimit(call.getTokenFromCall())
 
                 call.respond(Response("Unifey RESTful Backend"))
-            }
-
-            put("/friends") {
-                val token = call.isAuthenticated()
-                val userUID = token.owner
-
-                val params = call.receiveParameters()
-                val friendUID = params["uid"]?.toLong()
-
-                if (friendUID != null)
-                    FriendManager.addFriend(userUID, friendUID)
-                else
-                    call.respond(HttpStatusCode.BadRequest, Response("No UID parameter"))
-            }
-
-            delete("/friends") {
-                val token = call.isAuthenticated()
-                val userUID = token.owner
-
-                val params = call.receiveParameters()
-                val friendUID = params["uid"]?.toLong()
-
-                if (friendUID != null)
-                    FriendManager.removeFriend(userUID, friendUID)
-                else
-                    call.respond(HttpStatusCode.BadRequest, Response("No UID parameter"))
-            }
-
-            get("/friends") {
-                val token = call.isAuthenticated()
-                val userUID = token.owner
-
-                call.respond(Response(FriendManager.getFriends(userUID) ?: ArrayList<Long>()))
             }
 
             post("/authenticate") {

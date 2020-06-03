@@ -90,9 +90,6 @@ fun Routing.feedPages() {
                 val postObj = PostManager.getPost(post)
 
                 when {
-                    postObj == null ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Invalid post ID."))
-
                     postObj.authorId != user.owner ->
                         throw AuthenticationException("You are not the owner of this post!")
 

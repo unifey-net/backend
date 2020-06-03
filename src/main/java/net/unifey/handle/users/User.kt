@@ -26,7 +26,23 @@ class User(
                     rs.getString("discord"),
                     rs.getString("location")
             )
-        } else throw Exception()
+        } else {
+            DatabaseHandler.getConnection()
+                    .prepareStatement("INSERT INTO profiles (id) VALUE (?)")
+                    .apply { setLong(1, id) }
+                    .executeUpdate()
+
+            Profile(
+                    id,
+                    "A Unifey user.",
+                    "",
+                    ""
+            )
+        }
+    }
+
+    fun updateEmail(email: String) {
+        this.email = email
     }
 
     /**
@@ -48,7 +64,7 @@ class User(
     /**
      * A user's email
      */
-    var email = email
+    private var email = email
         set(value) {
             when {
                 !UserManager.EMAIL_REGEX.matches(value) ->
@@ -72,7 +88,7 @@ class User(
     /**
      * A user's password
      */
-    var password = password
+    private var password = password
         set(value) {
             DatabaseHandler.getConnection()
                     .prepareStatement("UPDATE users SET password = ? WHERE id = ?")

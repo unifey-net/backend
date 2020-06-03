@@ -87,7 +87,7 @@ object FeedManager {
      * If [user] can post to [feed].
      */
     fun canPostFeed(feed: Feed, user: Long): Boolean =
-            feed.banned.contains(user)
+            !feed.banned.contains(user)
 
     /**
      * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].
@@ -110,10 +110,10 @@ object FeedManager {
             posts.add(Post(
                     rs.getLong("id"),
                     rs.getLong("created_at"),
-                    rs.getLong("author_uid"),
+                    rs.getLong("author_id"),
+                    feed.id,
                     rs.getString("title"),
                     rs.getString("content"),
-                    feed.id,
                     rs.getInt("hidden") == 1,
                     rs.getLong("upvotes"),
                     rs.getLong("downvotes")

@@ -91,7 +91,7 @@ object UserManager {
             return false
 
         val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO users (created_at, email, username, password, uid) VALUES (?, ?, ?, ?, ?)")
+                .prepareStatement("INSERT INTO users (created_at, email, username, password, id) VALUES (?, ?, ?, ?, ?)")
 
         stmt.setLong(1, System.currentTimeMillis())
         stmt.setString(2, email)
@@ -108,7 +108,6 @@ object UserManager {
         stmt.execute()
 
         FeedManager.createFeedForUser(id)
-//        createProfile(id) TODO
 
         return true
     }

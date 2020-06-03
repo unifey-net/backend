@@ -21,7 +21,7 @@ object PostManager {
         FeedManager.getFeedPosts(FeedManager.getFeed(post.feed)!!, null).add(post)
 
         DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO posts (id, created_at, author_uid, content, feed, hidden, title, upvotes, downvotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+                .prepareStatement("INSERT INTO posts (id, created_at, author_id, content, feed, hidden, title, upvotes, downvotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
                 .apply {
                     setLong(1, post.id)
                     setLong(2, post.createdAt)
@@ -49,9 +49,9 @@ object PostManager {
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
                 author,
+                feed.id,
                 title,
                 content,
-                feed.id,
                 false,
                 0,
                 0
@@ -78,10 +78,10 @@ object PostManager {
             val post = Post(
                     rs.getLong("id"),
                     rs.getLong("created_at"),
-                    rs.getLong("author_uid"),
+                    rs.getLong("author_id"),
+                    rs.getString("feed"),
                     rs.getString("title"),
                     rs.getString("content"),
-                    rs.getString("feed"),
                     rs.getInt("hidden") == 1,
                     rs.getLong("upvotes"),
                     rs.getLong("downvotes")
