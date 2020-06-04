@@ -25,6 +25,9 @@ import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.getTokenFromCall
 import net.unifey.auth.isAuthenticated
+import net.unifey.handle.AlreadyExists
+import net.unifey.handle.ApiException
+import net.unifey.handle.communities.communityPages
 import net.unifey.handle.users.*
 import net.unifey.handle.feeds.FeedException
 import net.unifey.handle.feeds.feedPages
@@ -60,6 +63,10 @@ fun main(args: Array<String>) {
         install(StatusPages) {
             exception<AuthenticationException> {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
+            }
+
+            exception<ApiException> {
+                call.respond(HttpStatusCode.BadRequest, Response(it.message))
             }
 
             exception<RateLimitException> {
@@ -106,6 +113,7 @@ fun main(args: Array<String>) {
             feedPages()
             userPages()
             friendsPages()
+            communityPages()
 
             get("/") {
                 call.checkRateLimit(call.getTokenFromCall())

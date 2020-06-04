@@ -3,6 +3,9 @@ package net.unifey.handle.feeds
 import com.fasterxml.jackson.databind.ObjectMapper
 import javafx.geometry.Pos
 import net.unifey.DatabaseHandler
+import net.unifey.handle.communities.Community
+import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.users.User
 import net.unifey.handle.feeds.posts.Post
 import org.json.JSONArray
@@ -22,14 +25,28 @@ object FeedManager {
     /**
      * A communities feed.
      */
-    fun getCommunityFeed(): Feed? =
-            TODO()
+    fun getCommunityFeed(community: Community): Feed? =
+            getFeed("cf_${community.id}")
 
     /**
      * A user's feed's ID is "uf_(user ID)"
      */
     fun getUserFeed(user: User): Feed? =
             getFeed("uf_${user.id}")
+
+    /**
+     * Create a feed for [id] community. [owner] is the creator.
+     */
+    fun createFeedForCommunity(id: Long, owner: Long) {
+        DatabaseHandler.getConnection()
+                .prepareStatement("INSERT INTO feeds (banned, moderators, id) VALUES (?, ?, ?)")
+                .apply {
+                    setString(1, "[]")
+                    setString(2, "[${owner}]")
+                    setString(3, "cf_${id}")
+                }
+                .executeUpdate()
+    }
 
     /**
      * Create a feed for [id] user
@@ -86,8 +103,14 @@ object FeedManager {
     /**
      * If [user] can post to [feed].
      */
-    fun canPostFeed(feed: Feed, user: Long): Boolean =
-            !feed.banned.contains(user)
+    fun canPostFeed(feed: Feed, user: Long): Boolean {
+        return if (feed.id.startsWith("cf")) {
+            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_").toLong())
+
+            community.getRole(user) ?: CommunityRoles.DEFAULT >= community.postRole
+                    && !feed.banned.contains(user)
+        } else !feed.banned.contains(user)
+    }
 
     /**
      * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].

@@ -1,6 +1,8 @@
 package net.unifey.handle.users
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import net.unifey.DatabaseHandler
+import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
 
 class User(
@@ -38,6 +40,39 @@ class User(
                     "",
                     ""
             )
+        }
+    }
+
+
+    /**
+     * A user's memberships.
+     */
+    val member by lazy {
+        val rs = DatabaseHandler.getConnection()
+                .prepareStatement("SELECT * FROM members WHERE id = ?")
+                .apply { setLong(1, id) }
+                .executeQuery()
+
+        if (rs.next()) {
+            val mapper = ObjectMapper()
+
+            Member(
+                    id,
+                    mapper.readValue(
+                            rs.getString("member"),
+                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
+                    )
+            )
+        } else {
+            DatabaseHandler.getConnection()
+                    .prepareStatement("INSERT INTO members (id, member) VALUE (?, ?)")
+                    .apply {
+                        setLong(1, id)
+                        setString(2, "[]")
+                    }
+                    .executeUpdate()
+
+            Member(id, mutableListOf())
         }
     }
 
