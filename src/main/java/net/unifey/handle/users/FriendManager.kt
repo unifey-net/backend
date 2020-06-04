@@ -1,21 +1,20 @@
-package net.unifey.auth.users
+package net.unifey.handle.users
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.readValue
 import net.unifey.DatabaseHandler
 
 object FriendManager {
     fun addFriend(uid: Long, friend: Long) {
         val hasFriends = hasFriends(uid)
-        println("FriendManager#addFriend hasFriends = $hasFriends")
+
         if (!hasFriends) {
-            var stmt = DatabaseHandler.getConnection().prepareStatement("INSERT INTO friends (uid, friends) VALUES (?, ?)")
+            var stmt = DatabaseHandler.getConnection().prepareStatement("INSERT INTO friends (id, friends) VALUES (?, ?)")
             stmt.setLong(1, uid)
             var friendsList = ArrayList<Long>()
             friendsList.add(friend)
             stmt.setString(2, ObjectMapper().writeValueAsString(friendsList))
-            stmt.executeQuery()
+            stmt.executeUpdate()
         } else {
             val friends = getFriends(uid) ?: return
             friends.add(friend)
@@ -24,10 +23,10 @@ object FriendManager {
     }
 
     private fun updateFriends(uid: Long, friends: ArrayList<Long>) {
-        var stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE friends SET friends = ? WHERE uid = ?")
+        var stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE friends SET friends = ? WHERE id = ?")
         stmt.setString(1, ObjectMapper().writeValueAsString(friends))
         stmt.setLong(2, uid)
-        stmt.executeQuery()
+        stmt.executeUpdate()
     }
 
     fun removeFriend(uid: Long, friend: Long) {
@@ -42,7 +41,7 @@ object FriendManager {
         if (!hasFriends(uid))
             return null
         val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM friends WHERE uid = ?")
+                .prepareStatement("SELECT * FROM friends WHERE id = ?")
 
         stmt.setLong(1, uid)
         val rs = stmt.executeQuery()
@@ -54,7 +53,7 @@ object FriendManager {
 
     private fun hasFriends(uid: Long): Boolean {
         val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM friends WHERE uid = ?")
+                .prepareStatement("SELECT * FROM friends WHERE id = ?")
 
         stmt.setLong(1, uid)
         val rs = stmt.executeQuery()

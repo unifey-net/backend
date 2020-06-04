@@ -61,7 +61,7 @@ object Authenticator {
                 val token = IdGenerator.generateToken()
 
                 return TokenManager
-                        .createToken(token, rs.getLong("uid"), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                        .createToken(token, rs.getLong("id"), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
             }
         }
 
