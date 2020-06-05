@@ -5,5 +5,6 @@ data class Config(
         val url: String? = null,
         val password: String? = null,
         val awsId: String? = null,
-        val awsSecret: String? = null
+        val awsSecret: String? = null,
+        val webhook: String? = null
 )

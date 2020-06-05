@@ -15,7 +15,7 @@ object DatabaseHandler {
     private var connection: Connection
 
     init {
-        val obj = unifeyCfg.asObject<Config>()
+        val obj = unifey.getConfigObject<Config>()
 
         url = obj.url ?: ""
         password = obj.password ?: ""

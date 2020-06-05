@@ -1,10 +1,10 @@
 package net.unifey.handle.feeds.posts
 
 import net.unifey.DatabaseHandler
-import net.unifey.handle.feeds.CannotPostFeed
+import net.unifey.handle.NoPermission
+import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
-import net.unifey.handle.feeds.PostDoesntExist
 import net.unifey.util.IdGenerator
 import java.util.concurrent.ConcurrentHashMap
 
@@ -43,7 +43,7 @@ object PostManager {
      */
     fun createPost(feed: Feed, title: String, content: String, author: Long): Post {
         if (!FeedManager.canPostFeed(feed, author))
-            throw CannotPostFeed()
+            throw NoPermission()
 
         val post = Post(
                 IdGenerator.getId(),
@@ -90,7 +90,7 @@ object PostManager {
             posts[id] = post
 
             return posts[id]!!
-        } else throw PostDoesntExist()
+        } else throw NotFound("post")
     }
 
     /**

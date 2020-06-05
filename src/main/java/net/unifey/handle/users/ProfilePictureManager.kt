@@ -1,7 +1,7 @@
 package net.unifey.handle.users
 
 import net.unifey.config.Config
-import net.unifey.unifeyCfg
+import net.unifey.unifey
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain
 import software.amazon.awssdk.core.sync.RequestBody
@@ -19,7 +19,7 @@ object ProfilePictureManager {
     private val AWS_SECRET: String
 
     init {
-        val cfg = unifeyCfg.asObject<Config>()
+        val cfg = unifey.getConfigObject<Config>()
 
         AWS_ID = cfg.awsId ?: ""
         AWS_SECRET = cfg.awsSecret ?: ""

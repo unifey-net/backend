@@ -2,6 +2,8 @@ package net.unifey.handle.users
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import net.unifey.DatabaseHandler
+import net.unifey.handle.ArgumentTooLarge
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
 
@@ -120,10 +122,10 @@ class User(
         set(value) {
             when {
                 !UserManager.EMAIL_REGEX.matches(value) ->
-                    throw InvalidInput("Invalid email!")
+                    throw InvalidArguments("email")
 
                 value.length > 60 ->
-                    throw InvalidInput("Your email must be under 60 characters.")
+                    throw ArgumentTooLarge("email", 60)
             }
 
             DatabaseHandler.getConnection()

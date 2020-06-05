@@ -2,6 +2,7 @@ package net.unifey.handle.users
 
 import net.unifey.DatabaseHandler
 import net.unifey.auth.Authenticator
+import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.util.IdGenerator
 import org.apache.commons.codec.digest.DigestUtils
@@ -24,7 +25,7 @@ object UserManager {
 
         if (rs.next())
             return rs.getLong("id")
-        else throw UserNotFound()
+        else throw NotFound("user")
     }
 
     /**
@@ -52,7 +53,7 @@ object UserManager {
             cache[id] = user
 
             user
-        } else throw UserNotFound()
+        } else throw NotFound("user")
     }
 
     /**

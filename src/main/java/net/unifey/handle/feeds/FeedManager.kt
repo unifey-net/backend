@@ -3,6 +3,7 @@ package net.unifey.handle.feeds
 import com.fasterxml.jackson.databind.ObjectMapper
 import javafx.geometry.Pos
 import net.unifey.DatabaseHandler
+import net.unifey.handle.NoPermission
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
@@ -117,7 +118,7 @@ object FeedManager {
      */
     fun getFeedPosts(feed: Feed, byUser: Long?): MutableList<Post> {
         if (byUser != null && !canViewFeed(feed, byUser))
-            throw CannotViewFeed()
+            throw NoPermission()
 
         if (feedCache.containsKey(feed))
             return feedCache[feed]!!
