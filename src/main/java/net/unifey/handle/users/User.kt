@@ -10,6 +10,7 @@ class User(
         username: String,
         password: String,
         email: String,
+        role: Int,
         val createdAt: Long
 ) {
     /**
@@ -79,6 +80,22 @@ class User(
     fun updateEmail(email: String) {
         this.email = email
     }
+
+    /**
+     * A user's global role.
+     */
+    var role = role
+        set(value) {
+            DatabaseHandler.getConnection()
+                    .prepareStatement("UPDATE users SET role = ? WHERE id = ?")
+                    .apply {
+                        setInt(1, value)
+                        setLong(2, id)
+                    }
+                    .executeUpdate()
+
+            field = value
+        }
 
     /**
      * A user's unique username. This is also their URL.

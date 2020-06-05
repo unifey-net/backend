@@ -18,6 +18,7 @@ import io.ktor.routing.*
 import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
+import io.netty.handler.logging.LogLevel
 import kong.unirest.Unirest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
@@ -34,6 +35,7 @@ import net.unifey.handle.feeds.feedPages
 import net.unifey.response.Response
 import net.unifey.util.RateLimitException
 import net.unifey.util.checkRateLimit
+import org.slf4j.event.Level
 import java.util.concurrent.TimeUnit
 
 val unifeyCfg = ConfigHandler.createConfig(ConfigHandler.ConfigType.YML, "unifey", Config::class.java)
@@ -53,6 +55,10 @@ fun main(args: Array<String>) {
         }
 
         install(Locations)
+
+        install(CallLogging) {
+            level = Level.INFO
+        }
 
         install(DefaultHeaders) {
             header("Server", "Unifey")

@@ -35,7 +35,7 @@ object UserManager {
             return cache[id]!!
 
         val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT created_at, email, username, password, id FROM users WHERE id = ?")
+                .prepareStatement("SELECT * FROM users WHERE id = ?")
                 .apply { setLong(1, id) }
                 .executeQuery()
 
@@ -45,6 +45,7 @@ object UserManager {
                     rs.getString("username"),
                     rs.getString("password"),
                     rs.getString("email"),
+                    rs.getInt("role"),
                     rs.getLong("created_at")
             )
 
