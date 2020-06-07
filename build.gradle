@@ -36,6 +36,7 @@ dependencies {
     implementation 'com.konghq:unirest-java:3.1.02'
     implementation 'com.github.Shoganeko:lib:09bed25913'
     implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:4.10.0'
+    implementation 'com.sun.mail:javax.mail:1.6.2'
 }
 compileKotlin {
     kotlinOptions {
