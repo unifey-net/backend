@@ -118,7 +118,7 @@ class User(
     /**
      * A user's email
      */
-    private var email = email
+    var email = email
         set(value) {
             when {
                 !UserManager.EMAIL_REGEX.matches(value) ->
