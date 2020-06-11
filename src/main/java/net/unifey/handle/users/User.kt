@@ -13,6 +13,7 @@ class User(
         password: String,
         email: String,
         role: Int,
+        verified: Int,
         val createdAt: Long
 ) {
     /**
@@ -84,6 +85,27 @@ class User(
     }
 
     /**
+     * This is so when the class is sent, email and password aren't exposed.
+     */
+    fun getEmail() = email
+
+    /**
+     * If the user's email is verified
+     */
+    var verified = verified == 1
+        set(value) {
+            DatabaseHandler.getConnection()
+                    .prepareStatement("UPDATE users SET verified = ? WHERE id = ?")
+                    .apply {
+                        setInt(1, if (value) 1 else 0)
+                        setLong(2, id)
+                    }
+                    .executeUpdate()
+
+            field = value
+        }
+
+    /**
      * A user's global role.
      */
     var role = role
@@ -118,7 +140,7 @@ class User(
     /**
      * A user's email
      */
-    var email = email
+    private var email = email
         set(value) {
             when {
                 !UserManager.EMAIL_REGEX.matches(value) ->

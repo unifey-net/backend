@@ -1,12 +1,15 @@
 package net.unifey.handle.communities
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import dev.shog.lib.util.getAge
 import net.unifey.DatabaseHandler
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import java.sql.ResultSet
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 import kotlin.system.measureTimeMillis
 
 /**
@@ -95,10 +98,14 @@ object CommunityManager {
     }
 
     /**
-     * TODO If [user] can create a community.
+     * If [id] can create a community
+     *
+     * They must be verified and have their account for over 14 days.
      */
-    fun canCreate(user: Long): Boolean {
-        return true
+    fun canCreate(id: Long): Boolean {
+        val user = UserManager.getUser(id)
+
+        return user.verified && user.createdAt.getAge() >= TimeUnit.DAYS.toMillis(14)
     }
 
     /**

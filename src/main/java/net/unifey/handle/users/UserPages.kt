@@ -12,9 +12,11 @@ import io.ktor.routing.*
 import net.unifey.DatabaseHandler
 import net.unifey.auth.isAuthenticated
 import net.unifey.config.Config
-import net.unifey.handle.users.profile.Profile
+import net.unifey.handle.InvalidArguments
 import net.unifey.response.Response
+import net.unifey.unifey
 import net.unifey.util.IdGenerator
+import java.lang.Exception
 import java.util.*
 import javax.mail.Message
 import javax.mail.Session
@@ -61,56 +63,81 @@ fun Routing.userPages() {
             }
         }
 
-        put("/verify") {
-            val token = call.isAuthenticated();
-            val email = UserManager.getUser(token.owner).email;
-            val vkey = IdGenerator.generateRandomString(32);
+        /**
+         * Verify emails
+         */
+        get("/verify") {
+            val params = call.request.queryParameters
+            val id = params["id"]?.toLongOrNull()
+            val verify = params["verify"]
 
-            val rs = DatabaseHandler.getConnection().prepareStatement("INSERT INTO verification (email, vkey) VALUES (?, ?)");
-            rs.setString(1, email);
-            rs.setString(2, vkey);
-            rs.executeQuery();
+            if (id == null || verify == null)
+                throw InvalidArguments("id", "verify")
 
-            val cfg = ConfigHandler.getConfig(ConfigHandler.ConfigType.YML, "unifey").asObject<Config>();
-            val prop: Properties = System.getProperties();
-            prop.put("mail.smtp.host", cfg.smtpHost);
-            prop.put("mail.smtp.auth", "true");
-            prop.put("mail.smtp.port", "25");
-            val session: Session = Session.getInstance(prop, null);
-            val msg: Message = MimeMessage(session);
-            msg.setFrom(InternetAddress("noreply@unifey.net"));
-            msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email, false));
-            msg.subject = "Account verification";
-            msg.setText("Please verify your account using the link below:\n\nhttps://unifey.net/verify?email=${email}&vkey=${vkey}");
-            msg.sentDate = Date();
-            val t = session.getTransport("smtp") as SMTPTransport;
-            t.connect(cfg.smtpHost, cfg.smtpUsername, cfg.smtpPassword);
-            t.sendMessage(msg, msg.allRecipients);
-            t.close();
+            val rs = DatabaseHandler.getConnection()
+                    .prepareStatement("SELECT * FROM verify WHERE id = ? AND verify = ?")
+                    .apply {
+                        setLong(1, id)
+                        setString(2, verify)
+                    }
+                    .executeQuery()
+
+            if (rs.next()) {
+                UserManager.getUser(id).verified = true
+
+                DatabaseHandler.getConnection()
+                        .prepareStatement("DELETE FROM verify WHERE id = ?")
+                        .apply { setLong(1, id) }
+                        .executeUpdate()
+
+                call.respond(HttpStatusCode.OK, Response("Email verified"))
+            } else throw InvalidArguments("verify", "id")
         }
 
-        get("/verify") {
-            val params = call.receiveParameters();
-            val email = params.get("email");
-            val vkey = params.get("vkey");
+        /**
+         * Get instead of post to allow for users to do it through browser.
+         *
+         * Unsubscribe and disallow an email from being used.
+         *
+         * TODO Add something that lets the user who got their email revoked know that their email did get revoked.
+         */
+        get("/unsubscribe") {
+            val params = call.request.queryParameters
+            val email = params["email"]
+            val verify = params["verify"]
 
-            if (email == null || vkey == null)
-                call.respond(HttpStatusCode.BadRequest, Response("Missing parameters"));
-            else {
-                val rs = DatabaseHandler.getConnection().prepareStatement("SELECT * FROM verification WHERE email = ?");
-                rs.setString(1, email);
-                val res = rs.executeQuery();
-                val dbvkey = res.getString("vkey");
-                if (!vkey.equals(vkey)) {
-                    call.respond(HttpStatusCode.BadRequest, Response("Data mismatch"))
-                } else {
-                    val rs2 = DatabaseHandler.getConnection().prepareStatement("DELETE FROM verification WHERE vkey = ?");
-                    rs2.setString(1, vkey);
-                    rs2.executeQuery();
+            if (email == null || verify == null)
+                throw InvalidArguments("email", "verify")
 
-                    call.respond(HttpStatusCode.OK, Response("Email verified"));
+            val rs = DatabaseHandler.getConnection()
+                    .prepareStatement("SELECT id FROM verify WHERE verify = ?")
+                    .apply { setString(1, verify) }
+                    .executeQuery()
+
+            if (rs.next()) {
+                val id = rs.getLong("id")
+                val user = UserManager.getUser(id)
+
+                if (user.getEmail() == email) {
+                    user.verified = false
+                    user.updateEmail("") // TODO
+
+                    DatabaseHandler.getConnection()
+                            .prepareStatement("DELETE FROM verify WHERE id = ?")
+                            .apply { setLong(1, id) }
+                            .executeUpdate()
+
+                    DatabaseHandler.getConnection()
+                            .prepareStatement("INSERT INTO unsubscribed (email) VALUES (?)")
+                            .apply { setString(1, email) }
+                            .executeUpdate()
+
+                    call.respond(HttpStatusCode.OK, Response("Email successfully unsubscribed. Your email will no longer be able to be used to register an account with."))
+                    return@get
                 }
             }
+
+            throw InvalidArguments("verify", "email")
         }
 
         /**

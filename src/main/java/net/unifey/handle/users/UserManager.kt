@@ -1,12 +1,22 @@
 package net.unifey.handle.users
 
+import com.sun.mail.smtp.SMTPTransport
+import io.ktor.application.call
 import net.unifey.DatabaseHandler
 import net.unifey.auth.Authenticator
+import net.unifey.auth.isAuthenticated
+import net.unifey.config.Config
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.unifey
 import net.unifey.util.IdGenerator
 import org.apache.commons.codec.digest.DigestUtils
+import java.util.*
 import java.util.concurrent.ConcurrentHashMap
+import javax.mail.Message
+import javax.mail.Session
+import javax.mail.internet.InternetAddress
+import javax.mail.internet.MimeMessage
 
 /**
  * Manage [User]s.
@@ -47,6 +57,7 @@ object UserManager {
                     rs.getString("password"),
                     rs.getString("email"),
                     rs.getInt("role"),
+                    rs.getInt("verified"),
                     rs.getLong("created_at")
             )
 
@@ -111,6 +122,54 @@ object UserManager {
 
         FeedManager.createFeedForUser(id)
 
+        sendVerifyEmail(id)
+
         return true
+    }
+
+    /**
+     * Send the verify to [id].
+     */
+    private fun sendVerifyEmail(id: Long) {
+        val email = getUser(id).getEmail()
+        val verify = IdGenerator.generateRandomString(32)
+
+        DatabaseHandler.getConnection()
+                .prepareStatement("INSERT INTO verify (id, verify) VALUES (?, ?)")
+                .apply {
+                    setLong(1, id)
+                    setString(2, verify)
+                }
+                .executeUpdate()
+
+        val cfg = unifey.getConfigObject<Config>()
+        val prop = System.getProperties()
+
+        prop["mail.smtp.host"] = cfg.smtpHost
+        prop["mail.smtp.auth"] = "true"
+        prop["mail.smtp.port"] = "25"
+
+        val session = Session.getInstance(prop, null)
+        val msg = MimeMessage(session)
+
+        msg.setFrom(InternetAddress("noreply@unifey.net"))
+
+        msg.setRecipients(Message.RecipientType.TO, InternetAddress.parse(email, false));
+
+        msg.subject = "Unifey Account Verification";
+        msg.setText(
+                "Please verify your account using the link below:" +
+                        "\n\nhttps://api.unifey.net/user/verify?id=${id}&verify=${verify}" +
+                        "\n\nIf this was not you, please unsubscribe using:" +
+                        "\n\nhttps://api.unifey.net/user/unsubscribe?email=${email}&verify=${verify}"
+        )
+
+        msg.sentDate = Date()
+        val t = session.getTransport("smtp") as SMTPTransport
+
+        t.connect(cfg.smtpHost, cfg.smtpUsername, cfg.smtpPassword)
+        t.sendMessage(msg, msg.allRecipients)
+
+        t.close()
     }
 }
