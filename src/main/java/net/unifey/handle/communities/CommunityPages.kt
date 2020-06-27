@@ -1,9 +1,11 @@
 package net.unifey.handle.communities
 
 import io.ktor.application.call
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
+import io.ktor.response.respondBytes
 import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.*
@@ -11,6 +13,7 @@ import net.unifey.handle.communities.responses.GetCommunityResponse
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.responses.GetFeedResponse
 import net.unifey.handle.feeds.responses.GetPostResponse
+import net.unifey.handle.users.ProfilePictureManager
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import kotlin.text.get
@@ -71,6 +74,13 @@ fun Routing.communityPages() {
                 CommunityManager.deleteCommunity(id)
 
                 call.respond(Response())
+            }
+
+            /**
+             * Get a communities' profile picture. TODO
+             */
+            get("/picture") {
+                call.respondBytes(ProfilePictureManager.getPicture(15), ContentType.Image.JPEG)
             }
 
             /**

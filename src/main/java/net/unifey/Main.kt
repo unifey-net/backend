@@ -1,11 +1,10 @@
 package net.unifey
 
-import dev.shog.lib.app.AppBuilder
-import dev.shog.lib.app.cfg.Config
+import dev.shog.lib.app.Application
 import dev.shog.lib.app.cfg.ConfigHandler
-import dev.shog.lib.hook.DiscordWebhook
-import dev.shog.lib.util.defaultFormat
-import dev.shog.lib.util.fancyDate
+import dev.shog.lib.app.cfg.ConfigType
+import dev.shog.lib.discord.DiscordWebhook
+import dev.shog.lib.discord.WebhookUser
 import dev.shog.lib.util.logDiscord
 import io.ktor.application.call
 import io.ktor.application.install
@@ -13,6 +12,7 @@ import io.ktor.features.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.cio.websocket.timeout
 import io.ktor.jackson.JacksonConverter
 import io.ktor.jackson.jackson
 import io.ktor.locations.Locations
@@ -23,7 +23,7 @@ import io.ktor.routing.*
 import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
-import kotlinx.coroutines.future.asDeferred
+import io.ktor.websocket.WebSockets
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import net.unifey.auth.Authenticator
@@ -39,25 +39,16 @@ import net.unifey.handle.feeds.feedPages
 import net.unifey.response.Response
 import net.unifey.util.RateLimitException
 import net.unifey.util.checkRateLimit
-import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
+import java.time.Duration
 import java.util.concurrent.TimeUnit
-import kotlin.system.exitProcess
 
-val unifey = AppBuilder("Unifey", 0.3F)
-        .usingConfig(ConfigHandler.createConfig(ConfigHandler.ConfigType.YML, "unifey", Config::class.java))
-        .configureConfig { cfg ->
-            val cfgObj = cfg.asObject<net.unifey.config.Config>()
+val unifey = Application("unifey", "0.3.0", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
+    DiscordWebhook(cfg.asObject<net.unifey.config.Config>().webhook ?: "", WebhookUser("Unifey", "https://unifey.net/favicon.png"))
+}
 
-            this.logger = LoggerFactory.getLogger("Unifey")
-            this.webhook = DiscordWebhook(cfgObj.webhook ?: exitProcess(-1))
-        }
-        .build()
-
-fun main(args: Array<String>) {
-    unifey.sendMessage("Unifey backend has started at ${System.currentTimeMillis().defaultFormat()}")
-
-    val server = embeddedServer(Netty, 8080) {
+fun main() {
+    val server = embeddedServer(Netty, 8077) {
         install(ContentNegotiation) {
             jackson {
             }
@@ -70,6 +61,10 @@ fun main(args: Array<String>) {
             )
         }
 
+        install(WebSockets) {
+            timeout = Duration.ofSeconds(15)
+        }
+
         install(Locations)
 
         install(CallLogging) {
@@ -77,7 +72,7 @@ fun main(args: Array<String>) {
         }
 
         install(DefaultHeaders) {
-            header("Server", "Unifey/${unifey.getVersion()}")
+            header("Server", "Unifey/${unifey.version}")
         }
 
         install(AutoHeadResponse)

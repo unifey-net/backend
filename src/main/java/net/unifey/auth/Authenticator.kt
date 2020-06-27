@@ -8,6 +8,7 @@ import org.apache.commons.codec.digest.DigestUtils
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 import kotlin.streams.asSequence
+import org.mindrot.jbcrypt.BCrypt
 
 /**
  * Manages user authentication.
@@ -16,48 +17,36 @@ object Authenticator {
     /**
      * If [username] has been previously used.
      */
-    fun usernameTaken(username: String): Boolean {
-        val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM users WHERE username = ?")
-
-        stmt.setString(1, username)
-        stmt.execute()
-
-        return stmt.resultSet.fetchSize > 0
-    }
+    fun usernameTaken(username: String): Boolean =
+            DatabaseHandler.getConnection()
+                    .prepareStatement("SELECT * FROM users WHERE username = ?")
+                    .apply { setString(1, username) }
+                    .executeQuery()
+                    .next()
 
     /**
      * If [email] has been previously used.
      */
-    fun emailInUse(email: String): Boolean {
-        val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM users WHERE email = ?")
-
-        stmt.setString(1, email)
-        stmt.execute()
-
-        return stmt.resultSet.fetchSize > 0
-    }
+    fun emailInUse(email: String): Boolean =
+            DatabaseHandler.getConnection()
+                    .prepareStatement("SELECT * FROM users WHERE email = ?")
+                    .apply { setString(1, email) }
+                    .executeQuery()
+                    .next()
 
     /**
      * Generate a token if [username] and [password] are correct. If not, return null.
      */
     fun generateIfCorrect(username: String, password: String): Token? {
-        val stmt = DatabaseHandler.getConnection()
+        val rs = DatabaseHandler.getConnection()
                 .prepareStatement("SELECT * FROM users WHERE username = ?")
-
-        stmt.setString(1, username)
-
-        val rs = stmt.executeQuery()
+                .apply { setString(1, username) }
+                .executeQuery()
 
         if (rs.next()) {
-            val databasePassword = rs.getString("password")
-            val chunks = databasePassword.split(":");
+            val dbPassword = rs.getString("password")
 
-            val salt = chunks[0]
-            val hash = chunks[1]
-
-            if (DigestUtils.sha256Hex(password + salt) == hash) {
+            if (BCrypt.checkpw(password, dbPassword)) {
                 val token = IdGenerator.generateToken()
 
                 return TokenManager
@@ -66,17 +55,5 @@ object Authenticator {
         }
 
         return null
-    }
-    /**
-     * Check if the [uid] is in use.
-     */
-    private fun uidTaken(uid: Long): Boolean {
-        val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM users WHERE uid = ?")
-
-        stmt.setLong(1, uid)
-        stmt.execute()
-
-        return stmt.resultSet.fetchSize > 0
     }
 }
