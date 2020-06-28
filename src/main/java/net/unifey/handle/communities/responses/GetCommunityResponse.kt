@@ -5,5 +5,6 @@ import net.unifey.handle.feeds.responses.GetFeedResponse
 
 data class GetCommunityResponse(
         val community: Community,
-        val feed: GetFeedResponse
+        val selfRole: Int?,
+        val feed: GetFeedResponse?
 )

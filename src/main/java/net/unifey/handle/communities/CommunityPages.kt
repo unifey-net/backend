@@ -1,5 +1,6 @@
 package net.unifey.handle.communities
 
+import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -7,6 +8,7 @@ import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
+import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.*
 import net.unifey.handle.communities.responses.GetCommunityResponse
@@ -18,12 +20,40 @@ import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import kotlin.text.get
 
+suspend fun ApplicationCall.respondCommunity(community: Community) {
+    if (community.viewRole != CommunityRoles.DEFAULT) {
+        val user = try {
+            isAuthenticated()
+        } catch (authEx: AuthenticationException) {
+            null
+        }
+
+        if (user == null || community.getRole(user.owner) != community.viewRole) {
+            respond(GetCommunityResponse(
+                    community,
+                    community.getRole(user?.owner ?: -1),
+                    null
+            ))
+
+            return
+        }
+    }
+
+    respond(GetCommunityResponse(
+            community,
+            null,
+            GetFeedResponse(
+                    community.getFeed(),
+                    FeedManager.getFeedPosts(community.getFeed(), null)
+                            .map { GetPostResponse(it, UserManager.getUser(it.authorId)) }
+            )
+    ))
+}
+
 fun Routing.communityPages() {
     route("/community") {
         /**
          * Get a community by it's name.
-         *
-         * TODO add more support for just names
          */
         get("/name/{name}") {
             val name = call.parameters["name"]
@@ -31,14 +61,7 @@ fun Routing.communityPages() {
 
             val community = CommunityManager.getCommunity(name)
 
-            call.respond(GetCommunityResponse(
-                    community,
-                    GetFeedResponse(
-                            community.getFeed(),
-                            FeedManager.getFeedPosts(community.getFeed(), null)
-                                    .map { GetPostResponse(it, UserManager.getUser(it.authorId)) }
-                    )
-            ))
+            call.respondCommunity(community)
         }
 
         route("/{id}") {
@@ -48,14 +71,7 @@ fun Routing.communityPages() {
 
                 val community = CommunityManager.getCommunity(id)
 
-                call.respond(GetCommunityResponse(
-                        community,
-                        GetFeedResponse(
-                                community.getFeed(),
-                                FeedManager.getFeedPosts(community.getFeed(), null)
-                                        .map { GetPostResponse(it, UserManager.getUser(it.authorId)) }
-                        )
-                ))
+                call.respondCommunity(community)
             }
 
             /**

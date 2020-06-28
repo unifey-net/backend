@@ -9,6 +9,7 @@ class Community(
         val id: Long,
         val createdAt: Long,
         postRole: Int,
+        viewRole: Int,
         name: String,
         description: String,
         private val roles: HashMap<Long, Int>
@@ -20,6 +21,22 @@ class Community(
         set(value) {
             DatabaseHandler.getConnection()
                     .prepareStatement("UPDATE communities SET post_role = ? WHERE id = ?")
+                    .apply {
+                        setInt(1, value)
+                        setLong(2, id)
+                    }
+                    .executeUpdate()
+
+            field = value
+        }
+
+    /**
+     * The whole where users are allowed to view the communities' feed.
+     */
+    var viewRole = viewRole
+        set(value) {
+            DatabaseHandler.getConnection()
+                    .prepareStatement("UPDATE communities SET view_role = ? WHERE id = ?")
                     .apply {
                         setInt(1, value)
                         setLong(2, id)

@@ -1,5 +1,6 @@
 package net.unifey.handle.users
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.ObjectMapper
 import net.unifey.DatabaseHandler
 import net.unifey.handle.ArgumentTooLarge
@@ -80,15 +81,6 @@ class User(
         }
     }
 
-    fun updateEmail(email: String) {
-        this.email = email
-    }
-
-    /**
-     * This is so when the class is sent, email and password aren't exposed.
-     */
-    fun getEmail() = email
-
     /**
      * If the user's email is verified
      */
@@ -140,7 +132,8 @@ class User(
     /**
      * A user's email
      */
-    private var email = email
+    @JsonIgnore
+    var email = email
         set(value) {
             when {
                 !UserManager.EMAIL_REGEX.matches(value) ->

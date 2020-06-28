@@ -66,6 +66,7 @@ object CommunityManager {
                 rs.getLong("id"),
                 rs.getLong("created_at"),
                 rs.getInt("post_role"),
+                rs.getInt("view_role"),
                 rs.getString("name"),
                 rs.getString("description"),
                 mapper.readValue(rs.getString("roles"), mapper.typeFactory.constructMapType(
@@ -118,13 +119,14 @@ object CommunityManager {
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
                 CommunityRoles.MEMBER,
+                CommunityRoles.DEFAULT,
                 name,
                 desc,
                 roles
         )
 
         DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO communities (name, created_at, description, id, roles, post_role) VALUES (?, ?, ?, ?, ?, ?)")
+                .prepareStatement("INSERT INTO communities (name, created_at, description, id, roles, post_role, view_role) VALUES (?, ?, ?, ?, ?, ?, ?)")
                 .apply {
                     setString(1, community.name)
                     setLong(2, community.createdAt)
@@ -132,6 +134,7 @@ object CommunityManager {
                     setLong(4, community.id)
                     setString(5, ObjectMapper().writeValueAsString(roles))
                     setInt(6, community.postRole)
+                    setInt(7, community.viewRole)
                 }
                 .executeUpdate()
 

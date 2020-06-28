@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import javafx.geometry.Pos
 import net.unifey.DatabaseHandler
 import net.unifey.handle.NoPermission
+import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
@@ -66,7 +67,7 @@ object FeedManager {
     /**
      * Get a feed by it's ID.
      */
-    fun getFeed(id: String): Feed? {
+    fun getFeed(id: String): Feed {
         if (cache.containsKey(id))
             return cache[id]!!
 
@@ -89,14 +90,18 @@ object FeedManager {
                             mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
                     )
             )
-        else null
+        else throw NotFound("feed")
     }
 
     /**
      * If [user] can view [feed].
      */
     fun canViewFeed(feed: Feed, user: Long): Boolean {
-        // TODO In the future, check if a user can view a community.
+        if (feed.id.startsWith("cf_")) {
+            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_"))
+
+            return community.viewRole > community.getRole(user) ?: CommunityRoles.DEFAULT
+        }
 
         return true
     }

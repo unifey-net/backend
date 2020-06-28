@@ -1,9 +1,11 @@
 package net.unifey.handle.users.member
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.fasterxml.jackson.databind.ObjectMapper
 import net.unifey.DatabaseHandler
 
 class Member(
+        @JsonIgnore
         val id: Long,
         private val member: MutableList<Long>
 ) {

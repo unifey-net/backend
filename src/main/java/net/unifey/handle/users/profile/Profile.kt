@@ -1,11 +1,13 @@
 package net.unifey.handle.users.profile
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import net.unifey.DatabaseHandler
 
 /**
  * A user's profile.
  */
 class Profile(
+        @JsonIgnore
         val id: Long,
         description: String,
         discord: String,

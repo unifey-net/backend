@@ -46,7 +46,7 @@ fun Routing.userPages() {
             if (email == null)
                 call.respond(HttpStatusCode.BadRequest, Response("No email parameter"))
             else {
-                UserManager.getUser(token.owner).updateEmail(email)
+                UserManager.getUser(token.owner).email = email
 
                 when {
                     email.length > 120 ->
@@ -118,9 +118,9 @@ fun Routing.userPages() {
                 val id = rs.getLong("id")
                 val user = UserManager.getUser(id)
 
-                if (user.getEmail() == email) {
+                if (user.email == email) {
                     user.verified = false
-                    user.updateEmail("") // TODO
+//                    user.updateEmail("") // TODO
 
                     DatabaseHandler.getConnection()
                             .prepareStatement("DELETE FROM verify WHERE id = ?")

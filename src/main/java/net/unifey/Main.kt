@@ -33,6 +33,7 @@ import net.unifey.handle.AlreadyExists
 import net.unifey.handle.ArgumentTooLarge
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.communityPages
 import net.unifey.handle.users.*
 import net.unifey.handle.feeds.feedPages
