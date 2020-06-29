@@ -165,24 +165,6 @@ fun main() {
 
                 call.respond(Response("Unifey RESTful Backend"))
             }
-
-            post("/authenticate") {
-                val params = call.receiveParameters();
-                val username = params["username"];
-                val password = params["password"];
-
-                if (username == null || password == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))
-                else {
-                    val auth = Authenticator.generateIfCorrect(username, password)
-
-                    if (auth == null)
-                        call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
-                    else {
-                        call.respond(auth)
-                    }
-                }
-            }
         }
     }
 

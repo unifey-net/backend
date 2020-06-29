@@ -10,9 +10,11 @@ import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
 import net.unifey.DatabaseHandler
+import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
 import net.unifey.config.Config
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.response.Response
 import net.unifey.unifey
 import net.unifey.util.IdGenerator
@@ -243,6 +245,24 @@ fun Routing.userPages() {
                 else {
                     call.respondBytes(ProfilePictureManager.getPicture(UserManager.getUser(id).id), ContentType.Image.JPEG)
                 }
+            }
+        }
+    }
+
+    post("/authenticate") {
+        val params = call.receiveParameters();
+        val username = params["username"];
+        val password = params["password"];
+
+        if (username == null || password == null)
+            call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))
+        else {
+            val auth = Authenticator.generateIfCorrect(username, password)
+
+            if (auth == null)
+                call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
+            else {
+                call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
             }
         }
     }

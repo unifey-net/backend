@@ -8,6 +8,7 @@ import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
+import io.ktor.util.toMap
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.*
@@ -21,13 +22,13 @@ import net.unifey.response.Response
 import kotlin.text.get
 
 suspend fun ApplicationCall.respondCommunity(community: Community) {
-    if (community.viewRole != CommunityRoles.DEFAULT) {
-        val user = try {
-            isAuthenticated()
-        } catch (authEx: AuthenticationException) {
-            null
-        }
+    val user = try {
+        isAuthenticated()
+    } catch (authEx: AuthenticationException) {
+        null
+    }
 
+    if (community.viewRole != CommunityRoles.DEFAULT) {
         if (user == null || community.getRole(user.owner) != community.viewRole) {
             respond(GetCommunityResponse(
                     community,
@@ -41,7 +42,7 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
 
     respond(GetCommunityResponse(
             community,
-            null,
+            community.getRole(user?.owner ?: -1L),
             GetFeedResponse(
                     community.getFeed(),
                     FeedManager.getFeedPosts(community.getFeed(), null)

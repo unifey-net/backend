@@ -3,6 +3,7 @@ package net.unifey.handle.feeds
 import com.fasterxml.jackson.databind.ObjectMapper
 import javafx.geometry.Pos
 import net.unifey.DatabaseHandler
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
@@ -98,9 +99,9 @@ object FeedManager {
      */
     fun canViewFeed(feed: Feed, user: Long): Boolean {
         if (feed.id.startsWith("cf_")) {
-            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_"))
+            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
 
-            return community.viewRole > community.getRole(user) ?: CommunityRoles.DEFAULT
+            return community.getRole(user) ?: CommunityRoles.DEFAULT >= community.viewRole
         }
 
         return true
