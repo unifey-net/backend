@@ -161,8 +161,6 @@ fun main() {
             communityPages()
 
             get("/") {
-                call.checkRateLimit(call.getTokenFromCall())
-
                 call.respond(Response("Unifey RESTful Backend"))
             }
         }

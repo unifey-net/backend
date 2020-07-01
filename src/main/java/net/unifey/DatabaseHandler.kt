@@ -24,8 +24,16 @@ object DatabaseHandler {
         connection = createConnection()
     }
 
-    fun getConnection(): Connection =
-            connection
+    /**
+     * Get [connection], and make sure it's existing
+     */
+    fun getConnection(): Connection {
+        if (!connection.isValid(5)) {
+            connection = createConnection()
+        }
+
+        return connection
+    }
 
     /**
      * Create a connection to AWS.
