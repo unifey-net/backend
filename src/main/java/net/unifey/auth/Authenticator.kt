@@ -1,13 +1,12 @@
 package net.unifey.auth
 
-import net.unifey.DatabaseHandler
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.handle.InvalidArguments
+import net.unifey.handle.NotFound
+import net.unifey.handle.mongo.Mongo
 import net.unifey.util.IdGenerator
-import org.apache.commons.codec.digest.DigestUtils
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
-import kotlin.streams.asSequence
 import org.mindrot.jbcrypt.BCrypt
 
 /**
@@ -18,42 +17,47 @@ object Authenticator {
      * If [username] has been previously used.
      */
     fun usernameTaken(username: String): Boolean =
-            DatabaseHandler.getConnection()
-                    .prepareStatement("SELECT * FROM users WHERE username = ?")
-                    .apply { setString(1, username) }
-                    .executeQuery()
-                    .next()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .find()
+                    .any { doc -> doc.getString("username").equals(username, true) }
 
     /**
      * If [email] has been previously used.
      */
     fun emailInUse(email: String): Boolean =
-            DatabaseHandler.getConnection()
-                    .prepareStatement("SELECT * FROM users WHERE email = ?")
-                    .apply { setString(1, email) }
-                    .executeQuery()
-                    .next()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .find()
+                    .any { doc -> doc.getString("email").equals(email, true) }
 
     /**
      * Generate a token if [username] and [password] are correct. If not, return null.
      */
+    @Throws(InvalidArguments::class)
     fun generateIfCorrect(username: String, password: String): Token? {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM users WHERE username = ?")
-                .apply { setString(1, username) }
-                .executeQuery()
+        val user = Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("users")
+                .find()
+                .firstOrNull { doc -> doc.getString("username").equals(username, true) }
 
-        if (rs.next()) {
-            val dbPassword = rs.getString("password")
+        if (user != null) {
+            val dbPassword = user.getString("password")
 
             if (BCrypt.checkpw(password, dbPassword)) {
                 val token = IdGenerator.generateToken()
 
-                return TokenManager
-                        .createToken(token, rs.getLong("id"), System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1))
+                return TokenManager.createToken(
+                        token,
+                        user.getLong("id"),
+                        System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1)
+                )
             }
         }
 
-        return null
+        throw InvalidArguments("username", "password")
     }
 }

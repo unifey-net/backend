@@ -6,6 +6,7 @@ import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.ex.TokenExpiredException
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.util.checkRateLimit
 
 /**
  * Check if an [ApplicationCall] is authenticated.
@@ -15,6 +16,8 @@ fun ApplicationCall.isAuthenticated(): Token {
 
     if (TokenManager.isTokenExpired(token))
         throw TokenExpiredException()
+
+    checkRateLimit(token)
 
     return token
 }

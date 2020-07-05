@@ -1,5 +1,7 @@
 package net.unifey
 
+import ch.qos.logback.classic.Level.OFF
+import ch.qos.logback.classic.LoggerContext
 import dev.shog.lib.app.Application
 import dev.shog.lib.app.cfg.ConfigHandler
 import dev.shog.lib.app.cfg.ConfigType
@@ -16,39 +18,48 @@ import io.ktor.http.cio.websocket.timeout
 import io.ktor.jackson.JacksonConverter
 import io.ktor.jackson.jackson
 import io.ktor.locations.Locations
-import io.ktor.request.*
 import io.ktor.response.header
 import io.ktor.response.respond
-import io.ktor.routing.*
+import io.ktor.routing.get
+import io.ktor.routing.routing
 import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.websocket.WebSockets
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
-import net.unifey.auth.Authenticator
 import net.unifey.auth.ex.AuthenticationException
-import net.unifey.auth.getTokenFromCall
-import net.unifey.handle.AlreadyExists
-import net.unifey.handle.ArgumentTooLarge
-import net.unifey.handle.InvalidArguments
-import net.unifey.handle.NotFound
+import net.unifey.handle.*
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.communityPages
-import net.unifey.handle.users.*
 import net.unifey.handle.feeds.feedPages
+import net.unifey.handle.feeds.posts.PostManager
+import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.email.emailPages
+import net.unifey.handle.users.email.registerEmailExceptions
+import net.unifey.handle.users.friendsPages
+import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.util.RateLimitException
-import net.unifey.util.checkRateLimit
+import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level.OFF
 
-val unifey = Application("unifey", "0.3.0", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
+
+val unifey = Application("unifey", "0.3.1", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
     DiscordWebhook(cfg.asObject<net.unifey.config.Config>().webhook ?: "", WebhookUser("Unifey", "https://unifey.net/favicon.png"))
 }
 
 fun main() {
+    val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
+    val rootLogger = loggerContext.getLogger("org.mongodb.driver")
+    rootLogger.level = ch.qos.logback.classic.Level.OFF
+
     val server = embeddedServer(Netty, 8077) {
         install(ContentNegotiation) {
             jackson {
@@ -79,6 +90,8 @@ fun main() {
         install(AutoHeadResponse)
 
         install(StatusPages) {
+            registerEmailExceptions()
+
             exception<AuthenticationException> {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
             }
@@ -110,6 +123,13 @@ fun main() {
              */
             exception<AlreadyExists> {
                 call.respond(HttpStatusCode.BadRequest, Response("A ${it.type} with that ${it.arg} already exists!"))
+            }
+
+            exception<InvalidVariableInput> {
+                call.respond(HttpStatusCode.BadRequest, object {
+                    val type = it.type
+                    val issue = it.issue
+                })
             }
 
             /**
@@ -155,6 +175,7 @@ fun main() {
         }
 
         routing {
+            emailPages()
             feedPages()
             userPages()
             friendsPages()

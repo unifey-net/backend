@@ -1,17 +1,17 @@
 package net.unifey.handle.feeds
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import javafx.geometry.Pos
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Sorts
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
-import net.unifey.handle.users.User
 import net.unifey.handle.feeds.posts.Post
-import org.json.JSONArray
+import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
+import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
 
 object FeedManager {
@@ -19,11 +19,6 @@ object FeedManager {
      * Feed cache
      */
     private val cache = ConcurrentHashMap<String, Feed>()
-
-    /**
-     * A feed and it's posts.
-     */
-    private val feedCache = ConcurrentHashMap<Feed, MutableList<Post>>()
 
     /**
      * A communities feed.
@@ -41,28 +36,32 @@ object FeedManager {
      * Create a feed for [id] community. [owner] is the creator.
      */
     fun createFeedForCommunity(id: Long, owner: Long) {
-        DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO feeds (banned, moderators, id) VALUES (?, ?, ?)")
-                .apply {
-                    setString(1, "[]")
-                    setString(2, "[${owner}]")
-                    setString(3, "cf_${id}")
-                }
-                .executeUpdate()
+        val feedDocument = Document(mapOf(
+                "banned" to arrayListOf<Long>(),
+                "moderators" to arrayListOf(owner),
+                "id" to "cf_${id}"
+        ))
+
+        Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("feeds")
+                .insertOne(feedDocument)
     }
 
     /**
      * Create a feed for [id] user
      */
     fun createFeedForUser(id: Long) {
-        DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO feeds (banned, moderators, id) VALUES (?, ?, ?)")
-                .apply {
-                    setString(1, "[]")
-                    setString(2, "[${id}]")
-                    setString(3, "uf_${id}")
-                }
-                .executeUpdate()
+        val feedDocument = Document(mapOf(
+                "banned" to mutableListOf<Long>(),
+                "moderators" to mutableListOf(id),
+                "id" to "uf_${id}"
+        ))
+
+        Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("feeds")
+                .insertOne(feedDocument)
     }
 
     /**
@@ -72,26 +71,29 @@ object FeedManager {
         if (cache.containsKey(id))
             return cache[id]!!
 
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT banned, moderators FROM feeds WHERE id = ?")
-                .apply { setString(1, id) }
-                .executeQuery()
+        val document = Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("feeds")
+                .find(eq("id", id))
+                .firstOrNull()
+                ?: throw NotFound("feed")
 
-        val mapper = ObjectMapper()
+        return Feed(
+                document.getString("id"),
+                document["banned"] as MutableList<Long>,
+                document["moderators"] as MutableList<Long>,
+                getPostCount(document.getString("id"))
+        )
+    }
 
-        return if (rs.next())
-            Feed(
-                    id,
-                    mapper.readValue(
-                            rs.getString("banned"),
-                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
-                    ),
-                    mapper.readValue(
-                            rs.getString("moderators"),
-                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
-                    )
-            )
-        else throw NotFound("feed")
+    /**
+     * Get the amount of posts in a [feed].
+     */
+    private fun getPostCount(feed: String): Long {
+        return Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .countDocuments(eq("feed", feed))
     }
 
     /**
@@ -120,38 +122,75 @@ object FeedManager {
     }
 
     /**
-     * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].
+     * Get the trending page.
      */
-    fun getFeedPosts(feed: Feed, byUser: Long?): MutableList<Post> {
-        if (byUser != null && !canViewFeed(feed, byUser))
-            throw NoPermission()
+    fun getTrendingFeedPosts(page: Int): MutableList<Post> {
+        return TODO()
+    }
 
-        if (feedCache.containsKey(feed))
-            return feedCache[feed]!!
+    /**
+     * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].
+     * Each [page] has up to [POSTS_PAGE_SIZE] posts.
+     */
+    @Throws(NoPermission::class, InvalidArguments::class)
+    fun getFeedPosts(feed: Feed, byUser: Long?, page: Int, method: String): MutableList<Post> {
+        when {
+            byUser != null && !canViewFeed(feed, byUser) ->
+                throw NoPermission()
 
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM posts WHERE feed = ?")
-                .apply { setString(1, feed.id) }
-                .executeQuery()
-
-        val posts = mutableListOf<Post>()
-
-        while (rs.next()) {
-            posts.add(Post(
-                    rs.getLong("id"),
-                    rs.getLong("created_at"),
-                    rs.getLong("author_id"),
-                    feed.id,
-                    rs.getString("title"),
-                    rs.getString("content"),
-                    rs.getInt("hidden") == 1,
-                    rs.getLong("upvotes"),
-                    rs.getLong("downvotes")
-            ))
+            page > feed.pageCount || 0 >= page ->
+                throw InvalidArguments("page")
         }
 
-        feedCache[feed] = posts
+        val parsedMethod = SortingMethod.values()
+                .firstOrNull { sort -> sort.toString().equals(method, true) }
+                ?: throw InvalidArguments("sort")
 
-        return feedCache[feed]!!
+        return getFeedPage(feed, page, parsedMethod)
+    }
+
+    const val POSTS_PAGE_SIZE = 50
+
+    /**
+     * Get a page from a feed.
+     */
+    private fun  getFeedPage(feed: Feed, page: Int, sortMethod: SortingMethod): MutableList<Post> {
+        val startAt = ((page - 1) * POSTS_PAGE_SIZE)
+
+        val posts = Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .find(eq("feed", feed.id))
+
+        val sorted = when (sortMethod) {
+            SortingMethod.NEW ->
+                posts.sort(Sorts.descending("created_at"))
+
+            SortingMethod.TOP ->
+                posts.sort(Sorts.descending("vote.upvotes"))
+
+            SortingMethod.OLD ->
+                posts.sort(Sorts.ascending("created_at"))
+        }
+
+        return sorted
+                .skip(startAt)
+                .take(POSTS_PAGE_SIZE)
+                .map { doc ->
+                    val vote = doc.get("vote", Document::class.java)
+
+                    Post(
+                            doc.getLong("id"),
+                            doc.getLong("created_at"),
+                            doc.getLong("author_id"),
+                            feed.id,
+                            doc.getString("title"),
+                            doc.getString("content"),
+                            doc.getBoolean("hidden"),
+                            vote.getLong("upvotes"),
+                            vote.getLong("downvotes")
+                    )
+                }
+                .toMutableList()
     }
 }

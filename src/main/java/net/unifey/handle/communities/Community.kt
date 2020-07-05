@@ -1,9 +1,10 @@
 package net.unifey.handle.communities
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
 class Community(
         val id: Long,
@@ -12,20 +13,21 @@ class Community(
         viewRole: Int,
         name: String,
         description: String,
-        private val roles: HashMap<Long, Int>
+        private val roles: MutableMap<Long, Int>
 ) {
     /**
      * The whole where users are allowed to post.
      */
     var postRole = postRole
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET post_role = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "permissions" to Document(mapOf(
+                                    "post_role" to value
+                            ))
+                    )))
 
             field = value
         }
@@ -35,13 +37,14 @@ class Community(
      */
     var viewRole = viewRole
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET view_role = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "permissions" to Document(mapOf(
+                                    "view_role" to value
+                            ))
+                    )))
 
             field = value
         }
@@ -51,13 +54,12 @@ class Community(
      */
     var name = name
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET name = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "name" to value
+                    )))
 
             field = value
         }
@@ -67,13 +69,12 @@ class Community(
      */
     var description = description
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET description = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "description" to value
+                    )))
 
             field = value
         }
@@ -84,13 +85,14 @@ class Community(
     fun setRole(user: Long, role: Int) {
         roles[user] = role
 
-        DatabaseHandler.getConnection()
-                .prepareStatement("UPDATE communities SET roles = ? WHERE id = ?")
-                .apply {
-                    setString(1, ObjectMapper().writeValueAsString(roles))
-                    setLong(2, id)
-                }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", id), Document(mapOf(
+                        "roles" to Document(mapOf(
+                                "$user" to role
+                        ))
+                )))
     }
 
     /**

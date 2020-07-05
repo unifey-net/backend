@@ -30,11 +30,6 @@ object ProfilePictureManager {
      */
     private fun getClient(): S3Client =
             S3Client.builder()
-                    .credentialsProvider(
-                            AwsCredentialsProviderChain.builder()
-                                    .addCredentialsProvider { AwsBasicCredentials.create(AWS_ID, AWS_SECRET) }
-                                    .build()
-                    )
                     .region(Region.US_EAST_2)
                     .build()
 

@@ -43,11 +43,7 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
     respond(GetCommunityResponse(
             community,
             community.getRole(user?.owner ?: -1L),
-            GetFeedResponse(
-                    community.getFeed(),
-                    FeedManager.getFeedPosts(community.getFeed(), null)
-                            .map { GetPostResponse(it, UserManager.getUser(it.authorId)) }
-            )
+            community.getFeed()
     ))
 }
 
@@ -154,13 +150,9 @@ fun Routing.communityPages() {
         get {
             val params = call.request.queryParameters
 
-            val limit = params["limit"]?.toIntOrNull() ?: 100
-            val start = params["start"]?.toIntOrNull() ?: 0
+            val page = params["page"]?.toIntOrNull() ?: 1
 
-            if (limit > 100)
-                throw ArgumentTooLarge("limit", 100)
-
-            call.respond(CommunityManager.getCommunities(limit, start))
+            call.respond(CommunityManager.getCommunities(page))
         }
     }
 }

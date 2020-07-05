@@ -26,3 +26,8 @@ class AlreadyExists(val type: String, val arg: String): Throwable()
  * User doesn't have permission.
  */
 class NoPermission: Exception("You don't have permission for this!")
+
+/**
+ * An invalid input for an input the user decides.
+ */
+class InvalidVariableInput(val type: String, val issue: String): Throwable()

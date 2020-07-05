@@ -1,8 +1,9 @@
 package net.unifey.auth.tokens
 
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
-import javax.xml.crypto.Data
 
 object TokenManager {
     /**
@@ -19,17 +20,18 @@ object TokenManager {
         if (tokenCache.containsKey(tokenStr))
             return tokenCache[tokenStr]!!
 
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT token, expires, permissions, owner FROM tokens WHERE token = ?")
-                .apply { setString(1, tokenStr) }
-                .executeQuery()
+        val doc = Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("tokens")
+                .find(Filters.eq("token", tokenStr))
+                .singleOrNull()
 
-        return if (rs.next()) {
+        return if (doc != null) {
             val token = Token(
-                    rs.getLong("owner"),
-                    rs.getString("token"),
-                    rs.getString("permissions"),
-                    rs.getLong("expires")
+                    doc.getLong("owner"),
+                    doc.getString("token"),
+                    doc.getList("permissions", String::class.java),
+                    doc.getLong("expires")
             )
 
             tokenCache[tokenStr] = token
@@ -48,17 +50,17 @@ object TokenManager {
      * Create a token with [tokenStr], [owner] and [expire].
      */
     fun createToken(tokenStr: String, owner: Long, expire: Long): Token {
-        val token = Token(owner, tokenStr, "", expire)
+        val token = Token(owner, tokenStr, mutableListOf(), expire)
 
-        DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO tokens (token, expires, permissions, owner) VALUES (?, ?, ?, ?)")
-                .apply {
-                    setString(1, token.token)
-                    setLong(2, token.expires)
-                    setString(3, token.permissions)
-                    setLong(4, token.owner)
-                }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("tokens")
+                .insertOne(Document(mapOf(
+                        "token" to token.token,
+                        "expires" to token.expires,
+                        "permissions" to token.permissions,
+                        "owner" to token.owner
+                )))
 
         tokenCache[tokenStr] = token
 

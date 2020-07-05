@@ -1,7 +1,18 @@
 package net.unifey.handle.feeds.posts
 
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
+/**
+ * A post.
+ *
+ * @param id The ID of the post.
+ * @param createdAt When the post was created.
+ * @param authorId The ID of the user who created the post.
+ * @param feed The ID of the feed the post was created in.
+ */
 class Post(
         val id: Long,
         val createdAt: Long,
@@ -18,13 +29,12 @@ class Post(
      */
     var title = title
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE posts SET title = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("posts")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "title" to value
+                    )))
 
             field = value
         }
@@ -34,13 +44,12 @@ class Post(
      */
     var content = content
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE posts SET content = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("posts")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "content" to value
+                    )))
 
             field = value
         }
@@ -50,13 +59,12 @@ class Post(
      */
     var hidden = hidden
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE posts SET hidden = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, if (value) 1 else 0)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("posts")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "hidden" to value
+                    )))
 
             field = value
         }
@@ -66,13 +74,10 @@ class Post(
      */
     var upvotes = upvotes
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE posts SET upvotes = ? WHERE id = ?")
-                    .apply {
-                        setLong(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("posts")
+                    .updateOne(Filters.eq("id", id), Updates.inc("vote.upvotes", value))
 
             field = value
         }
@@ -82,13 +87,10 @@ class Post(
      */
     var downvotes = downvotes
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE posts SET downvotes = ? WHERE id = ?")
-                    .apply {
-                        setLong(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("posts")
+                    .updateOne(Filters.eq("id", id), Updates.set("vote.downvotes", value))
 
             field = value
         }

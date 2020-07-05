@@ -1,8 +1,9 @@
 package net.unifey.handle.users.member
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
 class Member(
         @JsonIgnore
@@ -47,12 +48,11 @@ class Member(
      * Update [member] in the database.
      */
     private fun update() {
-        DatabaseHandler.getConnection()
-                .prepareStatement("UPDATE members SET member = ? WHERE id = ?")
-                .apply {
-                    setString(1, ObjectMapper().writeValueAsString(member))
-                    setLong(2, id)
-                }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("members")
+                .updateOne(Filters.eq("id", id), Document(mapOf(
+                        "member" to member
+                )))
     }
 }

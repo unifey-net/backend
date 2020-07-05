@@ -1,7 +1,9 @@
 package net.unifey.handle.users.profile
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters.eq
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
 /**
  * A user's profile.
@@ -20,13 +22,12 @@ class Profile(
      */
     var discord = discord
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET discord = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Document(mapOf(
+                            "discord" to value
+                    )))
 
             field = value
         }
@@ -36,13 +37,12 @@ class Profile(
      */
     var description = description
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET description = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Document(mapOf(
+                            "description" to value
+                    )))
 
             field = value
         }
@@ -52,13 +52,12 @@ class Profile(
      */
     var location = location
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET location = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Document(mapOf(
+                            "location" to value
+                    )))
 
             field = value
         }

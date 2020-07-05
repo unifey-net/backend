@@ -1,29 +1,24 @@
 package net.unifey.handle.users
 
-import com.sun.mail.smtp.SMTPTransport
-import dev.shog.lib.app.cfg.ConfigHandler
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.*
+import io.ktor.request.header
+import io.ktor.request.receiveParameters
+import io.ktor.request.receiveStream
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
+import io.ktor.response.respondRedirect
 import io.ktor.routing.*
-import net.unifey.DatabaseHandler
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
-import net.unifey.config.Config
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.response.Response
-import net.unifey.unifey
-import net.unifey.util.IdGenerator
-import java.lang.Exception
-import java.util.*
-import javax.mail.Message
-import javax.mail.Session
-import javax.mail.internet.InternetAddress
-import javax.mail.internet.MimeMessage
+import java.io.ByteArrayInputStream
+import javax.imageio.ImageIO
+
+private val JPEG_HEADER = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
 
 fun Routing.userPages() {
     route("/user") {
@@ -43,133 +38,45 @@ fun Routing.userPages() {
             val token = call.isAuthenticated()
 
             val params = call.receiveParameters()
-            val email = params["email"]
+            val email = params["email"] ?: throw InvalidArguments("email")
 
-            if (email == null)
-                call.respond(HttpStatusCode.BadRequest, Response("No email parameter"))
-            else {
-                UserManager.getUser(token.owner).email = email
+            InputRequirements.emailMeets("email")
 
-                when {
-                    email.length > 120 ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Email is too long! (must be <=120)"))
+            UserManager.getUser(token.owner).email = email
 
-                    !UserManager.EMAIL_REGEX.matches(email) ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Not a proper email!"))
-
-                    else -> {
-
-                        call.respond(HttpStatusCode.OK, Response("Changed email."))
-                    }
-                }
-            }
+            call.respond(HttpStatusCode.OK, Response("Changed email."))
         }
 
         /**
-         * Verify emails
+         * Change your own password.
          */
-        get("/verify") {
-            val params = call.request.queryParameters
-            val id = params["id"]?.toLongOrNull()
-            val verify = params["verify"]
+        put("/password") {
+            val token = call.isAuthenticated()
 
-            if (id == null || verify == null)
-                throw InvalidArguments("id", "verify")
+            val params = call.receiveParameters()
+            val password = params["password"] ?: throw InvalidArguments("password")
 
-            val rs = DatabaseHandler.getConnection()
-                    .prepareStatement("SELECT * FROM verify WHERE id = ? AND verify = ?")
-                    .apply {
-                        setLong(1, id)
-                        setString(2, verify)
-                    }
-                    .executeQuery()
+            InputRequirements.passwordMeets(password)
 
-            if (rs.next()) {
-                UserManager.getUser(id).verified = true
+            UserManager.getUser(token.owner).password = password
 
-                DatabaseHandler.getConnection()
-                        .prepareStatement("DELETE FROM verify WHERE id = ?")
-                        .apply { setLong(1, id) }
-                        .executeUpdate()
-
-                call.respond(HttpStatusCode.OK, Response("Email verified"))
-            } else throw InvalidArguments("verify", "id")
-        }
-
-        /**
-         * Get instead of post to allow for users to do it through browser.
-         *
-         * Unsubscribe and disallow an email from being used.
-         *
-         * TODO Add something that lets the user who got their email revoked know that their email did get revoked.
-         */
-        get("/unsubscribe") {
-            val params = call.request.queryParameters
-            val email = params["email"]
-            val verify = params["verify"]
-
-            if (email == null || verify == null)
-                throw InvalidArguments("email", "verify")
-
-            val rs = DatabaseHandler.getConnection()
-                    .prepareStatement("SELECT id FROM verify WHERE verify = ?")
-                    .apply { setString(1, verify) }
-                    .executeQuery()
-
-            if (rs.next()) {
-                val id = rs.getLong("id")
-                val user = UserManager.getUser(id)
-
-                if (user.email == email) {
-                    user.verified = false
-//                    user.updateEmail("") // TODO
-
-                    DatabaseHandler.getConnection()
-                            .prepareStatement("DELETE FROM verify WHERE id = ?")
-                            .apply { setLong(1, id) }
-                            .executeUpdate()
-
-                    DatabaseHandler.getConnection()
-                            .prepareStatement("INSERT INTO unsubscribed (email) VALUES (?)")
-                            .apply { setString(1, email) }
-                            .executeUpdate()
-
-                    call.respond(HttpStatusCode.OK, Response("Email successfully unsubscribed. Your email will no longer be able to be used to register an account with."))
-                    return@get
-                }
-            }
-
-            throw InvalidArguments("verify", "email")
+            call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }
 
         /**
          * Change your own name.
-         *
-         * TODO check username already exists
          */
         put("/name") {
             val token = call.isAuthenticated()
 
             val params = call.receiveParameters()
-            val username = params["username"]
+            val username = params["username"] ?: throw InvalidArguments("username")
 
-            if (username == null)
-                call.respond(HttpStatusCode.BadRequest, Response("No username parameter"))
-            else {
-                when {
-                    username.length > 16 ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Username is too long! (must be <=16)"))
+            InputRequirements.usernameMeets(username)
 
-                    3 > username.length ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Username is too short! (must be >3)"))
+            UserManager.getUser(token.owner).username = username
 
-                    else -> {
-                        UserManager.getUser(token.owner).username = username
-
-                        call.respond(HttpStatusCode.OK, Response("Changed username."))
-                    }
-                }
-            }
+            call.respond(HttpStatusCode.OK, Response("Username has been updated."))
         }
 
         /**
@@ -180,6 +87,20 @@ fun Routing.userPages() {
 
             if (call.request.header("Content-Type") == ContentType.Image.JPEG.toString()) {
                 val bytes = call.receiveStream().readBytes()
+
+                val header = bytes.take(3).toByteArray()
+
+                if (!header.contentEquals(JPEG_HEADER)) {
+                    call.respond(HttpStatusCode.BadRequest, Response("Invalid image."))
+                    return@put
+                }
+
+                try {
+                    ImageIO.read(ByteArrayInputStream(bytes))
+                } catch (ex: Exception) {
+                    call.respond(HttpStatusCode.BadRequest, Response("Invalid image."))
+                    return@put
+                }
 
                 if (bytes.size > 4000000) {
                     call.respond(HttpStatusCode.PayloadTooLarge, Response("That picture is too big!"))
@@ -250,9 +171,9 @@ fun Routing.userPages() {
     }
 
     post("/authenticate") {
-        val params = call.receiveParameters();
-        val username = params["username"];
-        val password = params["password"];
+        val params = call.receiveParameters()
+        val username = params["username"]
+        val password = params["password"]
 
         if (username == null || password == null)
             call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))

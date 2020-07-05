@@ -1,11 +1,14 @@
 package net.unifey.handle.feeds.posts
 
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.mongo.Mongo
 import net.unifey.util.IdGenerator
+import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
 
 object PostManager {
@@ -18,22 +21,22 @@ object PostManager {
      * Add a post to the database.
      */
     fun createPost(post: Post): Post {
-        FeedManager.getFeedPosts(FeedManager.getFeed(post.feed)!!, null).add(post)
-
-        DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO posts (id, created_at, author_id, content, feed, hidden, title, upvotes, downvotes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
-                .apply {
-                    setLong(1, post.id)
-                    setLong(2, post.createdAt)
-                    setLong(3, post.authorId)
-                    setString(4, post.content)
-                    setString(5, post.feed)
-                    setInt(6, if (post.hidden) 1 else 0)
-                    setString(7, post.title)
-                    setLong(8, post.upvotes)
-                    setLong(9, post.downvotes)
-                }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .insertOne(Document(mapOf(
+                        "id" to post.id,
+                        "created_at" to post.createdAt,
+                        "author_id" to post.authorId,
+                        "content" to post.content,
+                        "feed" to post.feed,
+                        "hidden" to post.hidden,
+                        "title" to post.title,
+                        "vote" to Document(mapOf(
+                                "downvotes" to post.downvotes,
+                                "upvotes" to post.upvotes
+                        ))
+                )))
 
         return post
     }
@@ -62,29 +65,31 @@ object PostManager {
 
     /**
      * Get a post by it's [id].
-     *
-     * @throws PostDoesntExist If the post doesn't exist.
      */
+    @Throws(NotFound::class)
     fun getPost(id: Long): Post {
         if (posts.containsKey(id))
             return posts[id]!!
 
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM posts WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeQuery()
+        val doc = Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .find(Filters.eq("id", id))
+                .singleOrNull()
 
-        if (rs.next()) {
+        if (doc != null) {
+            val vote = doc.get("vote", Document::class.java)
+
             val post = Post(
-                    rs.getLong("id"),
-                    rs.getLong("created_at"),
-                    rs.getLong("author_id"),
-                    rs.getString("feed"),
-                    rs.getString("title"),
-                    rs.getString("content"),
-                    rs.getInt("hidden") == 1,
-                    rs.getLong("upvotes"),
-                    rs.getLong("downvotes")
+                    doc.getLong("id"),
+                    doc.getLong("created_at"),
+                    doc.getLong("author_id"),
+                    doc.getString("feed"),
+                    doc.getString("title"),
+                    doc.getString("content"),
+                    doc.getBoolean("hidden"),
+                    vote.getLong("upvotes"),
+                    vote.getLong("downvotes")
             )
 
             posts[id] = post
@@ -97,10 +102,10 @@ object PostManager {
      * Delete a post by it's [id].
      */
     fun deletePost(id: Long) {
-        DatabaseHandler.getConnection()
-                .prepareStatement("DELETE FROM posts WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .deleteOne(Filters.eq("id", id))
 
         posts.remove(id)
     }

@@ -5,12 +5,12 @@ package net.unifey.auth.tokens
  *
  * @param owner The user owner's UID
  * @param token The token string.
- * @param permissions The JSONArray of permissions. (open to change)
+ * @param permissions
  * @param expires When the token expires in millis.
  */
 data class Token(
         val owner: Long,
         val token: String,
-        val permissions: String,
+        val permissions: MutableList<String>,
         val expires: Long
 )

@@ -1,12 +1,11 @@
 package net.unifey.handle.users
 
 import com.fasterxml.jackson.annotation.JsonIgnore
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
-import net.unifey.handle.ArgumentTooLarge
-import net.unifey.handle.InvalidArguments
+import com.mongodb.client.model.Filters
+import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
+import org.bson.Document
 
 class User(
         val id: Long,
@@ -14,37 +13,38 @@ class User(
         password: String,
         email: String,
         role: Int,
-        verified: Int,
+        verified: Boolean,
         val createdAt: Long
 ) {
     /**
      * A user's profile. This contains profile details such as Discord.
      */
     val profile by lazy {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM profiles WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeQuery()
+        val doc = Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("profiles")
+                .find(Filters.eq("id", id))
+                .singleOrNull()
 
-        if (rs.next()) {
+        if (doc != null) {
             Profile(
                     id,
-                    rs.getString("description"),
-                    rs.getString("discord"),
-                    rs.getString("location")
+                    doc.getString("description"),
+                    doc.getString("discord"),
+                    doc.getString("location")
             )
         } else {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("INSERT INTO profiles (id) VALUE (?)")
-                    .apply { setLong(1, id) }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .insertOne(Document(mapOf(
+                            "id" to id,
+                            "discord" to "",
+                            "location" to "",
+                            "description" to "A Unifey user."
+                    )))
 
-            Profile(
-                    id,
-                    "A Unifey user.",
-                    "",
-                    ""
-            )
+            Profile(id, "A Unifey user.", "", "")
         }
     }
 
@@ -53,29 +53,25 @@ class User(
      * A user's memberships.
      */
     val member by lazy {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM members WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeQuery()
+        val doc = Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("members")
+                .find(Filters.eq("id", id))
+                .singleOrNull()
 
-        if (rs.next()) {
-            val mapper = ObjectMapper()
-
+        if (doc != null) {
             Member(
                     id,
-                    mapper.readValue(
-                            rs.getString("member"),
-                            mapper.typeFactory.constructCollectionType(MutableList::class.java, Long::class.java)
-                    )
+                    doc.getList("member", Long::class.java)
             )
         } else {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("INSERT INTO members (id, member) VALUE (?, ?)")
-                    .apply {
-                        setLong(1, id)
-                        setString(2, "[]")
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("members")
+                    .insertOne(Document(mapOf(
+                            "id" to id,
+                            "member" to listOf<Long>()
+                    )))
 
             Member(id, mutableListOf())
         }
@@ -84,15 +80,14 @@ class User(
     /**
      * If the user's email is verified
      */
-    var verified = verified == 1
+    var verified = verified
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE users SET verified = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, if (value) 1 else 0)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "verified" to value
+                    )))
 
             field = value
         }
@@ -102,13 +97,12 @@ class User(
      */
     var role = role
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE users SET role = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "role" to value
+                    )))
 
             field = value
         }
@@ -118,13 +112,12 @@ class User(
      */
     var username = username
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE users SET username = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "username" to value
+                    )))
 
             field = value
         }
@@ -135,21 +128,18 @@ class User(
     @JsonIgnore
     var email = email
         set(value) {
-            when {
-                !UserManager.EMAIL_REGEX.matches(value) ->
-                    throw InvalidArguments("email")
+            // delete all current email requests (password resets etc)
+            Mongo.getClient()
+                    .getDatabase("email")
+                    .getCollection("verify")
+                    .deleteMany(Filters.eq("id", id))
 
-                value.length > 60 ->
-                    throw ArgumentTooLarge("email", 60)
-            }
-
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE users SET email = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "email" to value
+                    )))
 
             field = value
         }
@@ -157,15 +147,15 @@ class User(
     /**
      * A user's password
      */
-    private var password = password
+    @JsonIgnore
+    var password = password
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE users SET password = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("users")
+                    .updateOne(Filters.eq("id", id), Document(mapOf(
+                            "password" to value
+                    )))
 
             field = value
         }
