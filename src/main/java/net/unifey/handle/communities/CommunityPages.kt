@@ -3,23 +3,17 @@ package net.unifey.handle.communities
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
-import io.ktor.util.toMap
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.*
 import net.unifey.handle.communities.responses.GetCommunityResponse
-import net.unifey.handle.feeds.FeedManager
-import net.unifey.handle.feeds.responses.GetFeedResponse
-import net.unifey.handle.feeds.responses.GetPostResponse
-import net.unifey.handle.users.ProfilePictureManager
-import net.unifey.handle.users.UserManager
+import net.unifey.handle.S3ImageHandler
+import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.response.Response
-import kotlin.text.get
 
 suspend fun ApplicationCall.respondCommunity(community: Community) {
     val user = try {
@@ -33,6 +27,7 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
             respond(GetCommunityResponse(
                     community,
                     community.getRole(user?.owner ?: -1),
+                    null,
                     null
             ))
 
@@ -43,6 +38,7 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
     respond(GetCommunityResponse(
             community,
             community.getRole(user?.owner ?: -1L),
+            EmoteHandler.getCommunityEmotes(community),
             community.getFeed()
     ))
 }
@@ -56,7 +52,7 @@ fun Routing.communityPages() {
             val name = call.parameters["name"]
                     ?: throw InvalidArguments("p_name")
 
-            val community = CommunityManager.getCommunity(name)
+            val community = CommunityManager.getCommunityByName(name)
 
             call.respondCommunity(community)
         }
@@ -66,7 +62,7 @@ fun Routing.communityPages() {
                 val id = call.parameters["id"]?.toLongOrNull()
                         ?: throw InvalidArguments("p_id")
 
-                val community = CommunityManager.getCommunity(id)
+                val community = CommunityManager.getCommunityById(id)
 
                 call.respondCommunity(community)
             }
@@ -79,7 +75,7 @@ fun Routing.communityPages() {
                 val id = call.parameters["id"]?.toLongOrNull()
                         ?: throw InvalidArguments("p_id")
 
-                val community = CommunityManager.getCommunity(id)
+                val community = CommunityManager.getCommunityById(id)
 
                 if (community.getRole(token.owner) != CommunityRoles.OWNER)
                     throw NoPermission()
@@ -93,7 +89,6 @@ fun Routing.communityPages() {
              * Get a communities' profile picture. TODO
              */
             get("/picture") {
-                call.respondBytes(ProfilePictureManager.getPicture(15), ContentType.Image.JPEG)
             }
 
             /**
@@ -136,7 +131,7 @@ fun Routing.communityPages() {
             }
 
             try {
-                CommunityManager.getCommunity(name!!)
+                CommunityManager.getCommunityByName(name!!)
             } catch (ex: NotFound) {
                 throw AlreadyExists("community", "name")
             }

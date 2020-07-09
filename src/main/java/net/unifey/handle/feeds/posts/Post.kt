@@ -77,7 +77,7 @@ class Post(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Updates.inc("vote.upvotes", value))
+                    .updateOne(Filters.eq("id", id), Updates.set("vote.upvotes", value))
 
             field = value
         }

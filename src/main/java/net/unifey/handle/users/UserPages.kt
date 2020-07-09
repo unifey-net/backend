@@ -3,20 +3,17 @@ package net.unifey.handle.users
 import io.ktor.application.call
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.header
 import io.ktor.request.receiveParameters
-import io.ktor.request.receiveStream
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
-import io.ktor.response.respondRedirect
 import io.ktor.routing.*
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.S3ImageHandler
+import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.response.Response
-import java.io.ByteArrayInputStream
-import javax.imageio.ImageIO
 
 private val JPEG_HEADER = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
 
@@ -85,32 +82,9 @@ fun Routing.userPages() {
         put("/picture") {
             val token = call.isAuthenticated()
 
-            if (call.request.header("Content-Type") == ContentType.Image.JPEG.toString()) {
-                val bytes = call.receiveStream().readBytes()
+            val bytes = call.ensureProperImageBody()
 
-                val header = bytes.take(3).toByteArray()
-
-                if (!header.contentEquals(JPEG_HEADER)) {
-                    call.respond(HttpStatusCode.BadRequest, Response("Invalid image."))
-                    return@put
-                }
-
-                try {
-                    ImageIO.read(ByteArrayInputStream(bytes))
-                } catch (ex: Exception) {
-                    call.respond(HttpStatusCode.BadRequest, Response("Invalid image."))
-                    return@put
-                }
-
-                if (bytes.size > 4000000) {
-                    call.respond(HttpStatusCode.PayloadTooLarge, Response("That picture is too big!"))
-                } else {
-                    ProfilePictureManager.uploadPicture(token.owner, bytes)
-
-                    call.respond(Response("Uploaded picture successfully"))
-                }
-                return@put
-            }
+            S3ImageHandler.upload("pfp/${token.owner}.jpg", bytes)
 
             call.respond(HttpStatusCode.PayloadTooLarge, Response("Image type is not JPEG!"))
         }
@@ -136,12 +110,9 @@ fun Routing.userPages() {
              */
             get("/picture") {
                 val name = call.parameters["name"]
+                        ?: throw InvalidArguments("name")
 
-                if (name == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
-                else {
-                    call.respondBytes(ProfilePictureManager.getPicture(UserManager.getId(name)), ContentType.Image.JPEG)
-                }
+                call.respondBytes(S3ImageHandler.getPicture("pfp/${UserManager.getId(name)}.jpg", "pfp/default.jpg"), ContentType.Image.JPEG)
             }
         }
 
@@ -151,27 +122,42 @@ fun Routing.userPages() {
         route("/id/{id}") {
             get {
                 val id = call.parameters["id"]?.toLongOrNull()
+                        ?: throw InvalidArguments("id")
 
-                if (id == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
-                else
-                    call.respond(Response(UserManager.getUser(id)))
+                call.respond(UserManager.getUser(id))
             }
 
             get("/picture") {
                 val id = call.parameters["id"]?.toLongOrNull()
+                        ?: throw InvalidArguments("id")
 
-                if (id == null)
-                    call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
-                else {
-                    call.respondBytes(ProfilePictureManager.getPicture(UserManager.getUser(id).id), ContentType.Image.JPEG)
-                }
+                call.respondBytes(S3ImageHandler.getPicture("pfp/${UserManager.getUser(id).id}.jpg", "pfp/default.jpg"), ContentType.Image.JPEG)
             }
+        }
+
+        /**
+         * Register an account
+         */
+        put("/register") {
+            val params = call.receiveParameters()
+
+            val username = params["username"]
+            val password = params["password"]
+            val email = params["email"]
+
+            if (username == null || password == null || email == null)
+                throw InvalidArguments("username", "password", "email")
+
+            call.respond(UserManager.createUser(email, username, password))
         }
     }
 
+    /**
+     * Authenticate. Input a username and password in return for a token
+     */
     post("/authenticate") {
         val params = call.receiveParameters()
+
         val username = params["username"]
         val password = params["password"]
 

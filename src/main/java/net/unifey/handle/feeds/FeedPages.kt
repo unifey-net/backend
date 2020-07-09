@@ -2,26 +2,23 @@ package net.unifey.handle.feeds
 
 import io.ktor.application.call
 import io.ktor.http.HttpStatusCode
-import io.ktor.request.receive
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.*
-import kotlinx.coroutines.delay
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NoPermission
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
-import net.unifey.handle.communities.responses.GetCommunityResponse
-import net.unifey.handle.feeds.posts.Post
+import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.feeds.responses.GetFeedResponse
 import net.unifey.handle.feeds.responses.GetPostResponse
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
-import org.omg.CORBA.DynAnyPackage.Invalid
 
 /**
  * Pages for feeds.
@@ -95,7 +92,7 @@ fun Routing.feedPages() {
                 val feedObj = FeedManager.getFeed(feed)
 
                 if (feedObj.id.startsWith("cf_")) {
-                    val community = CommunityManager.getCommunity(feedObj.id.removePrefix("cf_").toLongOrNull() ?: -1)
+                    val community = CommunityManager.getCommunityById(feedObj.id.removePrefix("cf_").toLongOrNull() ?: -1)
 
                     if (community.viewRole != CommunityRoles.DEFAULT) {
                         if (token == null)
@@ -142,30 +139,20 @@ fun Routing.feedPages() {
                 val user = call.isAuthenticated()
 
                 val params = call.receiveParameters()
+
                 val feed = call.parameters["feed"]
                 val content = params["content"]
                 val title = params["title"]
 
-                val seq = sequenceOf(feed, content, title)
+                if (feed == null || content == null || title == null)
+                    throw InvalidArguments("feed", "content", "title")
 
-                when {
-                    seq.any { it == null } ->
-                        call.respond(HttpStatusCode.BadRequest, Response("No feed, title or content parameter"))
+                if (sequenceOf(feed, content, title).any(String::isBlank))
+                    throw InvalidArguments("feed", "content", "title")
 
-                    seq.any { it!!.isBlank() } ->
-                        call.respond(HttpStatusCode.BadRequest, Response("Feed, title or content may be empty"))
+                val feedObj = FeedManager.getFeed(feed)
 
-                    else -> {
-                        val feedObj = FeedManager.getFeed(feed!!)
-
-                        if (feedObj == null)
-                            call.respond(HttpStatusCode.BadRequest, Response("Invalid feed object"))
-                        else
-                            call.respond(Response(
-                                    PostManager.createPost(feedObj, title!!, content!!, user.owner)
-                            ))
-                    }
-                }
+                call.respond(PostManager.createPost(feedObj, title, content, user.owner))
             }
 
             /**

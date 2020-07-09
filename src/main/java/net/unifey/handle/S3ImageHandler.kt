@@ -1,9 +1,7 @@
-package net.unifey.handle.users
+package net.unifey.handle
 
 import net.unifey.config.Config
 import net.unifey.unifey
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.core.sync.ResponseTransformer
 import software.amazon.awssdk.regions.Region
@@ -12,19 +10,9 @@ import software.amazon.awssdk.services.s3.model.GetObjectRequest
 import software.amazon.awssdk.services.s3.model.PutObjectRequest
 
 /**
- * Manage user's profile pictures.
+ * Manages images with the s3 bucket
  */
-object ProfilePictureManager {
-    private val AWS_ID: String
-    private val AWS_SECRET: String
-
-    init {
-        val cfg = unifey.getConfigObject<Config>()
-
-        AWS_ID = cfg.awsId ?: ""
-        AWS_SECRET = cfg.awsSecret ?: ""
-    }
-
+object S3ImageHandler {
     /**
      * Get the S3Client (S3 is where images are stored).
      */
@@ -34,15 +22,15 @@ object ProfilePictureManager {
                     .build()
 
     /**
-     * Upload a user's profile picture. If a picture already exists, it's overridden.
+     * Upload an image
      */
-    fun uploadPicture(user: Long, picture: ByteArray) {
+    fun upload(key: String, picture: ByteArray) {
         val client = getClient()
 
         client.putObject(
                 PutObjectRequest.builder()
                         .bucket("unifey-cdn")
-                        .key("${user}_pfp.jpg")
+                        .key(key)
                         .build(),
                 RequestBody.fromBytes(picture)
         )
@@ -51,16 +39,19 @@ object ProfilePictureManager {
     }
 
     /**
-     * Get a user's picture.
+     * Get an image
+     *
+     * @param key The key to get.
+     * @param defaultKey The key to get if [key] doesn't exist.
      */
-    fun getPicture(user: Long): ByteArray {
+    fun getPicture(key: String, defaultKey: String): ByteArray {
         val client = getClient()
 
         val bytes = try {
             client.getObject(
                     GetObjectRequest.builder()
                             .bucket("unifey-cdn")
-                            .key("${user}_pfp.jpg")
+                            .key(key)
                             .build(),
                     ResponseTransformer.toBytes()
             ).asByteArray()
@@ -68,11 +59,10 @@ object ProfilePictureManager {
             client.getObject(
                     GetObjectRequest.builder()
                             .bucket("unifey-cdn")
-                            .key("default.jpg")
+                            .key(defaultKey)
                             .build(),
                     ResponseTransformer.toBytes()
             ).asByteArray()
-
         }
 
         client.close()

@@ -8,6 +8,7 @@ import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.util.IdGenerator
+import net.unifey.util.cleanInput
 import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
 
@@ -44,17 +45,24 @@ object PostManager {
     /**
      * Add a post to the database.
      */
+    @Throws(InvalidArguments::class)
     fun createPost(feed: Feed, title: String, content: String, author: Long): Post {
         if (!FeedManager.canPostFeed(feed, author))
             throw NoPermission()
+
+        val parsedTitle = cleanInput(title)
+        val parsedContent = cleanInput(content)
+
+        if (parsedContent.isBlank() || parsedTitle.isBlank())
+            throw InvalidArguments("title", "content")
 
         val post = Post(
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
                 author,
                 feed.id,
-                title,
-                content,
+                parsedTitle,
+                parsedContent,
                 false,
                 0,
                 0

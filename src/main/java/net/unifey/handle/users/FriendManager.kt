@@ -1,8 +1,9 @@
 package net.unifey.handle.users
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
+import net.unifey.handle.AlreadyExists
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
@@ -11,6 +12,7 @@ object FriendManager {
     /**
      * Add [friend] to [id]'s friends.
      */
+    @Throws(InvalidArguments::class)
     fun addFriend(id: Long, friend: Long) {
         val hasFriends = hasFriends(id)
 
@@ -25,6 +27,12 @@ object FriendManager {
         } else {
             val friends = getFriends(id)
 
+            if (friends.contains(friend))
+                throw InvalidArguments("friend")
+
+            // ensure the friend is real :(
+            UserManager.getUser(friend)
+
             friends.add(friend)
 
             updateFriends(id, friends)
@@ -32,15 +40,13 @@ object FriendManager {
     }
 
     /**
-     * Update [id]'s friends to [friends]
+     * Update [id]'s [friends].
      */
-    private fun updateFriends(id: Long, friends: MutableList<Long>) {
+    private fun updateFriends(id: Long, friends: List<Long>) {
         Mongo.getClient()
                 .getDatabase("users")
                 .getCollection("friends")
-                .updateOne(Filters.eq("id", id), Document(mapOf(
-                        "friends" to friends
-                )))
+                .updateOne(Filters.eq("id", id), Updates.set("friends", friends))
     }
 
     /**
@@ -52,7 +58,12 @@ object FriendManager {
             return
 
         val friends = getFriends(id)
+
+        if (!friends.contains(friend))
+            throw NotFound("friend")
+
         friends.remove(friend)
+
         updateFriends(id, friends)
     }
 
@@ -71,7 +82,7 @@ object FriendManager {
                 .singleOrNull()
 
         if (doc != null)
-            return doc.getList("friends", Long::class.java).toMutableList()
+            return doc["friends"] as MutableList<Long>
         else
             throw NotFound("friends")
     }

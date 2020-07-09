@@ -44,7 +44,7 @@ object VoteManager {
      */
     @Throws(InvalidArguments::class)
     fun setVote(post: Long, user: Long, type: Int) {
-        if (type != UP_VOTE && type != DOWN_VOTE)
+        if (type != UP_VOTE && type != DOWN_VOTE && type != NO_VOTE)
             throw InvalidArguments("type")
 
         val postObj = PostManager.getPost(post)
@@ -64,24 +64,26 @@ object VoteManager {
                     .deleteOne(Filters.and(Filters.eq("post", post), Filters.eq("user", user)))
         }
 
-        voteCache.add(UserVote(
-                type,
-                post,
-                user
-        ))
+        if (type != NO_VOTE) {
+            voteCache.add(UserVote(
+                    type,
+                    post,
+                    user
+            ))
 
-        Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection("votes")
-                .insertOne(Document(mapOf(
-                        "post" to post,
-                        "user" to user,
-                        "vote" to type
-                )))
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("votes")
+                    .insertOne(Document(mapOf(
+                            "post" to post,
+                            "user" to user,
+                            "vote" to type
+                    )))
 
-        when (type) {
-            UP_VOTE -> postObj.upvotes++
-            DOWN_VOTE -> postObj.downvotes++
+            when (type) {
+                UP_VOTE -> postObj.upvotes++
+                DOWN_VOTE -> postObj.downvotes++
+            }
         }
     }
 }

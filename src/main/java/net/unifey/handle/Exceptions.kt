@@ -31,3 +31,18 @@ class NoPermission: Exception("You don't have permission for this!")
  * An invalid input for an input the user decides.
  */
 class InvalidVariableInput(val type: String, val issue: String): Throwable()
+
+/**
+ * An invalid type
+ */
+class InvalidType: Throwable()
+
+/**
+ * The body is too large.
+ */
+class BodyTooLarge: Throwable()
+
+/**
+ * The limit of something has been reached.
+ */
+class LimitReached: Throwable()

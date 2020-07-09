@@ -2,6 +2,7 @@ package net.unifey
 
 import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException
 import dev.shog.lib.app.Application
 import dev.shog.lib.app.cfg.ConfigHandler
 import dev.shog.lib.app.cfg.ConfigType
@@ -35,6 +36,7 @@ import net.unifey.auth.ex.AuthenticationException
 import net.unifey.handle.*
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.communityPages
+import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.users.UserManager
@@ -44,6 +46,7 @@ import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.util.RateLimitException
+import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.time.Duration
@@ -96,6 +99,18 @@ fun main() {
                 call.respond(HttpStatusCode.Unauthorized, Response(it.message))
             }
 
+            exception<NoPermission> {
+                call.respond(HttpStatusCode.Unauthorized, Response("You don't have permission for this!"))
+            }
+
+            exception<InvalidDefinitionException> {
+                call.respond(HttpStatusCode.BadRequest, Response("Invalid body."))
+            }
+
+            exception<LimitReached> {
+                call.respond(HttpStatusCode.BadRequest, Response("Limit has been reached"))
+            }
+
             exception<NotFound> {
                 call.respond(HttpStatusCode.BadRequest, Response(if (it.obj == "")
                     "That could not be found!"
@@ -130,6 +145,14 @@ fun main() {
                     val type = it.type
                     val issue = it.issue
                 })
+            }
+
+            exception<InvalidType> {
+                call.respond(HttpStatusCode.UnsupportedMediaType, Response("Invalid type!"))
+            }
+
+            exception<BodyTooLarge> {
+                call.respond(HttpStatusCode.PayloadTooLarge, Response("Body is too large!"))
             }
 
             /**
@@ -175,6 +198,7 @@ fun main() {
         }
 
         routing {
+            emotePages()
             emailPages()
             feedPages()
             userPages()

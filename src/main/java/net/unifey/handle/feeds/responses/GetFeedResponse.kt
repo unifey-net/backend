@@ -1,5 +1,6 @@
 package net.unifey.handle.feeds.responses
 
+import net.unifey.handle.emotes.Emote
 import net.unifey.handle.feeds.Feed
 import net.unifey.response.Response
 

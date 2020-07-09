@@ -17,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap
 object UserManager {
     private val cache = ConcurrentHashMap<Long, User>()
 
-
     /**
      * Get a [User] object from the [bson] document.
      */
@@ -63,6 +62,7 @@ object UserManager {
     /**
      * Get a user by their [id]. Prefers [cache] over database.
      */
+    @Throws(NotFound::class)
     fun getUser(id: Long): User {
         if (cache.containsKey(id))
             return cache[id]!!
@@ -82,7 +82,7 @@ object UserManager {
      * Create an account with [email], [username] and [password].
      */
     @Throws(InvalidVariableInput::class)
-    fun createUser(email: String, username: String, password: String): Boolean {
+    fun createUser(email: String, username: String, password: String): User {
         InputRequirements.allMeets(username, password, email)
 
         val id = IdGenerator.getId()
@@ -106,6 +106,6 @@ object UserManager {
 
         UserEmailManager.sendVerify(id, email)
 
-        return true
+        return getUser(id)
     }
 }

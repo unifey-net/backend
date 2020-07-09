@@ -43,6 +43,7 @@ dependencies {
     implementation 'com.sun.mail:javax.mail:1.6.2'
     implementation 'org.mindrot:jbcrypt:0.4'
     implementation 'org.mongodb:mongodb-driver-sync:4.1.0-beta2'
+    implementation 'org.jsoup:jsoup:1.13.1'
 }
 compileKotlin {
     kotlinOptions {

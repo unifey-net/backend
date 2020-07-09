@@ -101,7 +101,7 @@ object FeedManager {
      */
     fun canViewFeed(feed: Feed, user: Long): Boolean {
         if (feed.id.startsWith("cf_")) {
-            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
+            val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
 
             return community.getRole(user) ?: CommunityRoles.DEFAULT >= community.viewRole
         }
@@ -114,7 +114,7 @@ object FeedManager {
      */
     fun canPostFeed(feed: Feed, user: Long): Boolean {
         return if (feed.id.startsWith("cf")) {
-            val community = CommunityManager.getCommunity(feed.id.removePrefix("cf_").toLong())
+            val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLong())
 
             community.getRole(user) ?: CommunityRoles.DEFAULT >= community.postRole
                     && !feed.banned.contains(user)

@@ -2,6 +2,7 @@ package net.unifey.handle.users
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
@@ -85,9 +86,7 @@ class User(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("users")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "verified" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("verified", value))
 
             field = value
         }
@@ -100,9 +99,7 @@ class User(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("users")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "role" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("role", value))
 
             field = value
         }
@@ -115,9 +112,7 @@ class User(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("users")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "username" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("username", value))
 
             field = value
         }
@@ -137,9 +132,7 @@ class User(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("users")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "email" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("email", value))
 
             field = value
         }
@@ -153,9 +146,7 @@ class User(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("users")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "password" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("password", value))
 
             field = value
         }

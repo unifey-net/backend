@@ -1,5 +1,6 @@
 package net.unifey.handle.communities
 
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
 import net.unifey.handle.InvalidArguments
@@ -31,7 +32,7 @@ object CommunityManager {
     /**
      * Get a [Community] by [name].
      */
-    fun getCommunity(name: String): Community {
+    fun getCommunityByName(name: String): Community {
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -45,7 +46,7 @@ object CommunityManager {
     /**
      * Get a [Community] by [id].
      */
-    fun getCommunity(id: Long): Community {
+    fun getCommunityById(id: Long): Community {
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -121,7 +122,20 @@ object CommunityManager {
     fun canCreate(id: Long): Boolean {
         val user = UserManager.getUser(id)
 
-        return user.verified && user.createdAt.getAge() >= TimeUnit.DAYS.toMillis(14)
+        return user.verified
+                && user.createdAt.getAge() >= TimeUnit.DAYS.toMillis(14)
+                && !hasCreatedCommunityBefore(id)
+    }
+
+    /**
+     * if [id] has made a community before
+     */
+    fun hasCreatedCommunityBefore(id: Long): Boolean {
+        return Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find(eq("roles.${id}", 4))
+                .singleOrNull() != null
     }
 
     /**
