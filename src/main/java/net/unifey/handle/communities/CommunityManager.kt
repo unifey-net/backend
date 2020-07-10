@@ -130,7 +130,7 @@ object CommunityManager {
     /**
      * if [id] has made a community before
      */
-    fun hasCreatedCommunityBefore(id: Long): Boolean {
+    private fun hasCreatedCommunityBefore(id: Long): Boolean {
         return Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -176,5 +176,16 @@ object CommunityManager {
         FeedManager.createFeedForCommunity(community.id, owner)
 
         return community
+    }
+
+    /**
+     * If another community has already taken [name].
+     */
+    fun nameTaken(name: String): Boolean {
+        return Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find(eq("name", name))
+                .any()
     }
 }

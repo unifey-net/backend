@@ -12,7 +12,7 @@ object InputRequirements {
     /**
      * To see if usernames are proper.
      */
-    private val USERNAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
+    val USERNAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
 
     private val PASSWORD_REGEX = Regex("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-_+=()!]).{8,128}$")
 

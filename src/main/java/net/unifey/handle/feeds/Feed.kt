@@ -1,10 +1,9 @@
 package net.unifey.handle.feeds
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
 import net.unifey.handle.feeds.FeedManager.POSTS_PAGE_SIZE
 import net.unifey.handle.mongo.Mongo
-import org.bson.Document
 import kotlin.math.ceil
 
 class Feed(
@@ -21,9 +20,6 @@ class Feed(
         Mongo.getClient()
                 .getDatabase("feeds")
                 .getCollection("feeds")
-                .updateOne(Filters.eq("id", id), Document(mapOf(
-                        "banned" to banned,
-                        "moderators" to moderators
-                )))
+                .updateOne(Filters.eq("id", id), Updates.combine(Updates.set("banned", banned), Updates.set("moderators", moderators)))
     }
 }

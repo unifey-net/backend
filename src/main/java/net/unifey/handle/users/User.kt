@@ -66,7 +66,7 @@ class User(
         if (doc != null) {
             Member(
                     id,
-                    doc.getList("member", Long::class.java)
+                    doc["member"] as MutableList<Long>
             )
         } else {
             Mongo.getClient()

@@ -128,7 +128,7 @@ fun Routing.userPages() {
                     0 -> {
                         val badge = call.ensureProperImageBody()
 
-                        S3ImageHandler.upload("badge/${type}.${id}.jpg", badge)
+                        S3ImageHandler.upload("cosmetics/${type}.${id}.jpg", badge)
                     }
                 }
 
@@ -145,7 +145,7 @@ fun Routing.userPages() {
 
                 when (type) {
                     0 -> {
-                        S3ImageHandler.delete("badge/${type}.${id}.jpg")
+                        S3ImageHandler.delete("cosmetics/${type}.${id}.jpg")
                     }
                 }
 

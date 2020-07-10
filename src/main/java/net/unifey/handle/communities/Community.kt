@@ -1,10 +1,10 @@
 package net.unifey.handle.communities
 
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
-import org.bson.Document
 
 class Community(
         val id: Long,
@@ -13,7 +13,7 @@ class Community(
         viewRole: Int,
         name: String,
         description: String,
-        private val roles: MutableMap<Long, Int>
+        val roles: MutableMap<Long, Int>
 ) {
     /**
      * The whole where users are allowed to post.
@@ -23,11 +23,7 @@ class Community(
             Mongo.getClient()
                     .getDatabase("communities")
                     .getCollection("communities")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "permissions" to Document(mapOf(
-                                    "post_role" to value
-                            ))
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.post_role", value))
 
             field = value
         }
@@ -40,11 +36,7 @@ class Community(
             Mongo.getClient()
                     .getDatabase("communities")
                     .getCollection("communities")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "permissions" to Document(mapOf(
-                                    "view_role" to value
-                            ))
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.view_role", value))
 
             field = value
         }
@@ -57,9 +49,7 @@ class Community(
             Mongo.getClient()
                     .getDatabase("communities")
                     .getCollection("communities")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "name" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("name", value))
 
             field = value
         }
@@ -72,9 +62,7 @@ class Community(
             Mongo.getClient()
                     .getDatabase("communities")
                     .getCollection("communities")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "description" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("description", value))
 
             field = value
         }
@@ -85,14 +73,50 @@ class Community(
     fun setRole(user: Long, role: Int) {
         roles[user] = role
 
+        when {
+            role >= CommunityRoles.MODERATOR -> {
+                val feed = getFeed()
+
+                if (!feed.moderators.contains(user)) {
+                    feed.moderators.add(user)
+                    feed.update()
+                }
+            }
+
+            CommunityRoles.MODERATOR > role -> {
+                val feed = getFeed()
+
+                if (feed.moderators.contains(user)) {
+                    feed.moderators.remove(user)
+                    feed.update()
+                }
+            }
+        }
+
+
         Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
-                .updateOne(Filters.eq("id", id), Document(mapOf(
-                        "roles" to Document(mapOf(
-                                "$user" to role
-                        ))
-                )))
+                .updateOne(Filters.eq("id", id), Updates.set("roles.$user", role))
+    }
+
+    /**
+     * Remove [user]'s role.
+     */
+    fun removeRole(user: Long) {
+        roles.remove(user)
+
+        val feed = getFeed()
+
+        if (feed.moderators.contains(user)) {
+            feed.moderators.remove(user)
+            feed.update()
+        }
+
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", id), Updates.unset("roles.$user"))
     }
 
     /**
