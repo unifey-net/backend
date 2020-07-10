@@ -2,7 +2,9 @@ package net.unifey.handle.users.profile
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Updates
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.bson.Document
 
 /**
@@ -13,7 +15,8 @@ class Profile(
         val id: Long,
         description: String,
         discord: String,
-        location: String
+        location: String,
+        cosmetics: List<Cosmetics.Cosmetic>
 ) {
     /**
      * A user's Discord.
@@ -25,9 +28,7 @@ class Profile(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("profiles")
-                    .updateOne(eq("id", id), Document(mapOf(
-                            "discord" to value
-                    )))
+                    .updateOne(eq("id", id), Updates.set("discord", value))
 
             field = value
         }
@@ -40,9 +41,7 @@ class Profile(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("profiles")
-                    .updateOne(eq("id", id), Document(mapOf(
-                            "description" to value
-                    )))
+                    .updateOne(eq("id", id), Updates.set("description", value))
 
             field = value
         }
@@ -55,9 +54,20 @@ class Profile(
             Mongo.getClient()
                     .getDatabase("users")
                     .getCollection("profiles")
-                    .updateOne(eq("id", id), Document(mapOf(
-                            "location" to value
-                    )))
+                    .updateOne(eq("id", id), Updates.set("location", value))
+
+            field = value
+        }
+
+    /**
+     * A user's cosmetics
+     */
+    var cosmetics = cosmetics
+        set(value) {
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Updates.set("cosmetics", value.map { it.toDocument() }))
 
             field = value
         }

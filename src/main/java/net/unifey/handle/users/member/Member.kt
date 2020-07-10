@@ -2,6 +2,7 @@ package net.unifey.handle.users.member
 
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
 
@@ -51,8 +52,6 @@ class Member(
         Mongo.getClient()
                 .getDatabase("users")
                 .getCollection("members")
-                .updateOne(Filters.eq("id", id), Document(mapOf(
-                        "member" to member
-                )))
+                .updateOne(Filters.eq("id", id), Updates.set("member", member))
     }
 }

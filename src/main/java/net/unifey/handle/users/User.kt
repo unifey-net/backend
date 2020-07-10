@@ -6,6 +6,7 @@ import com.mongodb.client.model.Updates
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
+import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.bson.Document
 
 class User(
@@ -32,7 +33,8 @@ class User(
                     id,
                     doc.getString("description"),
                     doc.getString("discord"),
-                    doc.getString("location")
+                    doc.getString("location"),
+                    Cosmetics.getCosmetics(id)
             )
         } else {
             Mongo.getClient()
@@ -42,10 +44,11 @@ class User(
                             "id" to id,
                             "discord" to "",
                             "location" to "",
-                            "description" to "A Unifey user."
+                            "description" to "A Unifey user.",
+                            "cosmetics" to listOf<Document>()
                     )))
 
-            Profile(id, "A Unifey user.", "", "")
+            Profile(id, "A Unifey user.", "", "", listOf())
         }
     }
 
