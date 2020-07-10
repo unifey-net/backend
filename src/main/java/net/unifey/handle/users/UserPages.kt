@@ -2,6 +2,7 @@ package net.unifey.handle.users
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.client.engine.callContext
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
@@ -15,6 +16,7 @@ import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
@@ -221,6 +223,63 @@ fun Routing.userPages() {
             S3ImageHandler.upload("pfp/${token.owner}.jpg", bytes)
 
             call.respond(HttpStatusCode.PayloadTooLarge, Response("Image type is not JPEG!"))
+        }
+
+        /**
+         * Manage your profile
+         */
+        route("/profile") {
+            /**
+             * Get [paramName] for a profile action.
+             */
+            @Throws(InvalidArguments::class)
+            suspend fun ApplicationCall.profileInput(paramName: String, maxLength: Int): Pair<User, String> {
+                val token = isAuthenticated()
+
+                val params = receiveParameters()
+
+                val param = params[paramName] ?: throw InvalidArguments(paramName)
+
+                val properParam = cleanInput(param)
+
+                if (properParam.length > maxLength || properParam.isBlank())
+                    throw InvalidArguments(paramName)
+
+                return UserManager.getUser(token.owner) to param
+            }
+
+            /**
+             * Change the description
+             */
+            put("/description") {
+                val (user, desc) = call.profileInput("description", Profile.MAX_DESC_LEN)
+
+                user.profile.description = desc
+
+                call.respond(Response())
+            }
+
+            /**
+             * Change the location
+             */
+            put("/location") {
+                val (user, loc) = call.profileInput("location", Profile.MAX_LOC_LEN)
+
+                user.profile.location = loc
+
+                call.respond(Response())
+            }
+
+            /**
+             * Change the discord
+             */
+            put("/discord") {
+                val (user, disc) = call.profileInput("discord", Profile.MAX_DISC_LEN)
+
+                user.profile.discord = disc
+
+                call.respond(Response())
+            }
         }
 
         /**

@@ -18,6 +18,12 @@ class Profile(
         location: String,
         cosmetics: List<Cosmetics.Cosmetic>
 ) {
+    companion object {
+        const val MAX_DESC_LEN = 256
+        const val MAX_LOC_LEN = 32
+        const val MAX_DISC_LEN = 64
+    }
+
     /**
      * A user's Discord.
      *
