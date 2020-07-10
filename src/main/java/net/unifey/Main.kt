@@ -47,7 +47,7 @@ import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 
-val unifey = Application("unifey", "0.3.1", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
+val unifey = Application("unifey", "0.3.2", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
     DiscordWebhook(cfg.asObject<net.unifey.config.Config>().webhook ?: "", WebhookUser("Unifey", "https://unifey.net/favicon.png"))
 }
 
