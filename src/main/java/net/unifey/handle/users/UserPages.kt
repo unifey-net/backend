@@ -16,6 +16,8 @@ import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.email.Unverified
+import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import net.unifey.util.ensureProperImageBody
@@ -30,7 +32,7 @@ fun Routing.userPages() {
              * Helper function for cosmetic management calls.
              * Returns the type to the ID.
              */
-            fun ApplicationCall.manageCosmetic(): Pair<Int, String> {
+            fun ApplicationCall.manageCosmetic(): Triple<Int, String, String?> {
                 val token = isAuthenticated()
 
                 if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)
@@ -44,7 +46,7 @@ fun Routing.userPages() {
                 if (id == null || type == null)
                     throw InvalidArguments("type", "id")
 
-                return type to cleanInput(id)
+                return Triple(type, cleanInput(id), params["desc"])
             }
 
             /**
@@ -103,7 +105,7 @@ fun Routing.userPages() {
                 val userObj = UserManager.getUser(user)
 
                 val retrieved = Cosmetics.getAll()
-                        .singleOrNull { cosmetic -> cosmetic.type == type && cosmetic.id.equals(id, true) }
+                        .firstOrNull { cosmetic -> cosmetic.type == type && cosmetic.id.equals(id, true) }
                         ?: throw NotFound("cosmetic")
 
                 val newCosmetics = userObj.profile.cosmetics.toMutableList()
@@ -122,7 +124,10 @@ fun Routing.userPages() {
              * Create a cosmetic
              */
             put {
-                val (type, id) = call.manageCosmetic()
+                val (type, id, desc) = call.manageCosmetic()
+
+                if (desc == null)
+                    throw InvalidArguments("desc")
 
                 when (type) {
                     0 -> {
@@ -132,7 +137,7 @@ fun Routing.userPages() {
                     }
                 }
 
-                Cosmetics.uploadCosmetic(type, id)
+                Cosmetics.uploadCosmetic(type, id, desc)
 
                 call.respond(Response())
             }
@@ -165,17 +170,34 @@ fun Routing.userPages() {
         }
 
         /**
+         * Change a user using [param]
+         */
+        @Throws(Unverified::class, InvalidArguments::class)
+        suspend fun ApplicationCall.changeUser(param: String): Pair<User, String> {
+            val token = isAuthenticated()
+            val user = UserManager.getUser(token.owner)
+
+            if (!user.verified)
+                throw Unverified()
+
+            val params = receiveParameters()
+            val par = params[param] ?: throw InvalidArguments(param)
+
+            return user to par
+        }
+
+        /**
          * Change your own email
          */
         put("/email") {
-            val token = call.isAuthenticated()
+            val (user, email) = call.changeUser("email")
 
-            val params = call.receiveParameters()
-            val email = params["email"] ?: throw InvalidArguments("email")
+            InputRequirements.emailMeets(email)
 
-            InputRequirements.emailMeets("email")
+            user.email = email
+            user.verified = false
 
-            UserManager.getUser(token.owner).email = email
+            UserEmailManager.sendVerify(user.id, email)
 
             call.respond(HttpStatusCode.OK, Response("Changed email."))
         }
@@ -184,14 +206,11 @@ fun Routing.userPages() {
          * Change your own password.
          */
         put("/password") {
-            val token = call.isAuthenticated()
-
-            val params = call.receiveParameters()
-            val password = params["password"] ?: throw InvalidArguments("password")
+            val (user, password) = call.changeUser("password")
 
             InputRequirements.passwordMeets(password)
 
-            UserManager.getUser(token.owner).password = password
+            user.password = password
 
             call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }
@@ -200,14 +219,11 @@ fun Routing.userPages() {
          * Change your own name.
          */
         put("/name") {
-            val token = call.isAuthenticated()
-
-            val params = call.receiveParameters()
-            val username = params["username"] ?: throw InvalidArguments("username")
+            val (user, username) = call.changeUser("username")
 
             InputRequirements.usernameMeets(username)
 
-            UserManager.getUser(token.owner).username = username
+            user.username = username
 
             call.respond(HttpStatusCode.OK, Response("Username has been updated."))
         }

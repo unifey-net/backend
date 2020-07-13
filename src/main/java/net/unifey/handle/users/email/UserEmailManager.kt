@@ -7,6 +7,8 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.currentTimeMillis
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.NoPermission
+import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
@@ -14,6 +16,7 @@ import net.unifey.unifey
 import net.unifey.util.IdGenerator
 import org.bson.Document
 import org.json.JSONObject
+import org.mindrot.jbcrypt.BCrypt
 import java.lang.Exception
 
 object UserEmailManager {
@@ -29,6 +32,16 @@ object UserEmailManager {
                     UserEmailRequest(doc.getLong("id"), doc.getString("email"), doc.getString("verify"), doc.getInteger("type"), doc.getInteger("attempts"))
                 }
                 .toMutableList()
+    }
+
+    /**
+     * Get an email request.
+     */
+    @Throws(NotFound::class)
+    fun getRequest(id: Long, type: Int): UserEmailRequest {
+        return verifyRequests
+                .firstOrNull { request -> request.id == id && request.type == type }
+                ?: throw NotFound("emailRequest")
     }
 
     /**
@@ -63,6 +76,68 @@ object UserEmailManager {
                 .deleteOne(Filters.and(eq("id", id), eq("verify", verify)))
 
         UserManager.getUser(id).verified = true
+    }
+
+    /**
+     * Reset a password.
+     */
+    fun passwordReset(id: Long, verify: String, newPassword: String) {
+        verifyRequests.singleOrNull { request ->
+            request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
+                    && request.id == id
+                    && request.verify.equals(verify, true)
+        }
+                ?: throw InvalidArguments("verify")
+
+        verifyRequests.removeIf { request -> request.verify.equals(verify, true) }
+
+        Mongo.getClient()
+                .getDatabase("email")
+                .getCollection("verify")
+                .deleteOne(Filters.and(eq("id", id), eq("verify", verify)))
+
+        UserManager.getUser(id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+    }
+
+    /**
+     * Send a password reset email for [id] to [email]
+     */
+    @Throws(AlreadyVerified::class, Unverified::class)
+    fun sendPasswordReset(id: Long) {
+        val user = UserManager.getUser(id)
+
+        if (!user.verified)
+            throw Unverified()
+
+        val verify = IdGenerator.generateRandomString(32)
+
+        val exists = verifyRequests.singleOrNull { request ->
+            request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
+                    && request.id == id
+        }
+
+        // If there's already an ongoing email request, you can't change it until you've confirmed your first.
+        if (exists != null)
+            throw NoPermission()
+
+        val doc = Document(mapOf(
+                "id" to id,
+                "verify" to verify,
+                "type" to EmailTypes.VERIFY_PASSWORD_RESET.id,
+                "attempts" to 1,
+                "email" to user.email
+        ))
+
+        Mongo.getClient()
+                .getDatabase("email")
+                .getCollection("verify")
+                .insertOne(doc)
+
+        val request = UserEmailRequest(id, user.email, verify, EmailTypes.VERIFY_PASSWORD_RESET.id, 1)
+
+        verifyRequests.add(request)
+
+        sendEmail(request, EmailTypes.VERIFY_PASSWORD_RESET.default)
     }
 
     /**

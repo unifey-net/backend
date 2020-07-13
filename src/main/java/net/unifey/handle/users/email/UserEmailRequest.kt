@@ -2,8 +2,8 @@ package net.unifey.handle.users.email
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Updates
 import net.unifey.handle.mongo.Mongo
-import org.bson.Document
 
 /**
  * An email request.
@@ -25,9 +25,7 @@ class UserEmailRequest(
             Mongo.getClient()
                     .getDatabase("email")
                     .getCollection("verify")
-                    .updateOne(Filters.and(eq("id", id), eq("verify", verify)), Document(mapOf(
-                            "attempts" to value
-                    )))
+                    .updateOne(Filters.and(eq("id", id), eq("verify", verify)), Updates.set("attempts", value))
 
             field = value
         }

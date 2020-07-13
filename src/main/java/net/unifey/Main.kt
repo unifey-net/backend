@@ -53,6 +53,8 @@ val unifey = Application("unifey", "0.3.2", ConfigHandler.useConfig(ConfigType.Y
 
 var prod = true
 
+var url = "https://api.unifey.net"
+
 fun main(args: Array<String>) {
     val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
     val rootLogger = loggerContext.getLogger("org.mongodb.driver")
@@ -62,6 +64,7 @@ fun main(args: Array<String>) {
 
     argH.hook("--dev") {
         prod = false
+        url = "http://localhost:8077"
     }
 
     argH.initWith(args)
@@ -195,6 +198,7 @@ fun main(args: Array<String>) {
         install(CORS) {
             anyHost()
             method(HttpMethod.Options)
+            method(HttpMethod.Put)
             header("Authorization")
             allowCredentials = true
             allowNonSimpleContentTypes = true

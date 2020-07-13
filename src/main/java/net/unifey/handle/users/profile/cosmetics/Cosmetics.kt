@@ -3,24 +3,27 @@ package net.unifey.handle.users.profile.cosmetics
 import com.mongodb.client.model.Filters
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
+import net.unifey.url
 import org.bson.Document
 
 object Cosmetics {
     sealed class Cosmetic {
         abstract val type: Int
         abstract val id: String
+        abstract val desc: String
 
         fun toDocument(): Document {
             return Document(mapOf(
                     "type" to type,
-                    "id" to id
+                    "id" to id,
+                    "desc" to desc
             ))
         }
 
-        class Badge(override val id: String) : Cosmetic() {
+        class Badge(override val id: String, override val desc: String) : Cosmetic() {
             override val type: Int = 0
 
-            val image = "http://localhost:8077/user/cosmetic/viewer?type=${type}&id=${id}"
+            val image = "${url}/user/cosmetic/viewer?type=${type}&id=${id}"
         }
     }
 
@@ -59,7 +62,7 @@ object Cosmetics {
      */
     private fun parseCosmetic(document: Document): Cosmetic =
             when (document.getInteger("type")) {
-                0 -> Cosmetic.Badge(document.getString("id"))
+                0 -> Cosmetic.Badge(document.getString("id"), document.getString("desc"))
 
                 else -> throw NotFound("cosmetic")
             }
@@ -67,13 +70,14 @@ object Cosmetics {
     /**
      * Upload a cosmetic.
      */
-    fun uploadCosmetic(type: Int, id: String) {
+    fun uploadCosmetic(type: Int, id: String, desc: String) {
         Mongo.getClient()
                 .getDatabase("global")
                 .getCollection("cosmetics")
                 .insertOne(Document(mapOf(
                         "type" to type,
-                        "id" to id
+                        "id" to id,
+                        "desc" to desc
                 )))
     }
 

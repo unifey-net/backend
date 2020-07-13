@@ -6,17 +6,25 @@ import io.ktor.request.receiveParameters
 import io.ktor.request.receiveText
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
-import io.ktor.routing.Routing
-import io.ktor.routing.get
-import io.ktor.routing.post
-import io.ktor.routing.route
+import io.ktor.routing.*
+import kong.unirest.Unirest
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.InputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 
 fun Routing.emailPages() {
     route("/email") {
+        get {
+            val token = call.isAuthenticated()
+
+            call.respond(Response(UserManager.getUser(token.owner).email))
+        }
+
         /**
          * Resend an email
          */
@@ -34,10 +42,55 @@ fun Routing.emailPages() {
         }
 
         /**
+         * Get your email status.
+         */
+        get("/status") {
+            val token = call.isAuthenticated()
+
+            val type = call.request.queryParameters["type"]?.toIntOrNull()
+                    ?: throw InvalidArguments("type")
+
+            call.respond(Response(UserEmailManager.getRequest(token.owner, type).attempts))
+        }
+
+        /**
+         * Forgot password.
+         */
+        put("/forgot") {
+            val params = call.receiveParameters()
+
+            val id = params["id"]?.toLongOrNull()
+                    ?: throw InvalidArguments("id")
+
+            UserEmailManager.sendPasswordReset(id)
+
+            call.respond(Response())
+        }
+
+        /**
+         * Change password using forgot token.
+         */
+        post("/forgot") {
+            val params = call.receiveParameters()
+            val id = params["id"]?.toLongOrNull()
+            val verify = params["verify"]
+            val password = params["password"]
+
+            if (id == null || verify == null || password == null)
+                throw InvalidArguments("id", "verify", "password")
+
+            InputRequirements.passwordMeets(password)
+
+            UserEmailManager.passwordReset(id, verify, password)
+
+            call.respond(Response())
+        }
+
+        /**
          * Verify email
          */
-        get("/verify") {
-            val params = call.request.queryParameters
+        post("/verify") {
+            val params = call.receiveParameters()
             val id = params["id"]?.toLongOrNull()
             val verify = params["verify"]
 

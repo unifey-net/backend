@@ -1,6 +1,5 @@
 package net.unifey.handle.emotes
 
-import io.ktor.utils.io.errors.TODO_ERROR
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.LimitReached
@@ -8,6 +7,7 @@ import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.url
 import net.unifey.util.IdGenerator
 import net.unifey.util.cleanInput
 import org.bson.Document
@@ -17,7 +17,7 @@ import org.bson.Document
  */
 object EmoteHandler {
     private val EMOTE_NAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
-    private const val EMOTE_URL = "http://localhost:8077/emote/viewer/%s/%s"
+    private val EMOTE_URL = "${url}/emote/viewer/%s/%s"
 
     private const val MAX_EMOTE_PER_COMMUNITY = 50
 
