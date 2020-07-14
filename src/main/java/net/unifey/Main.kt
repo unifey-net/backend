@@ -199,6 +199,7 @@ fun main(args: Array<String>) {
             anyHost()
             method(HttpMethod.Options)
             method(HttpMethod.Put)
+            method(HttpMethod.Delete)
             header("Authorization")
             allowCredentials = true
             allowNonSimpleContentTypes = true
