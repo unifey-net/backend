@@ -1,63 +1,99 @@
 package net.unifey.handle.users
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.module.kotlin.readValue
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
+import net.unifey.handle.AlreadyExists
+import net.unifey.handle.InvalidArguments
+import net.unifey.handle.NotFound
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
 object FriendManager {
-    fun addFriend(uid: Long, friend: Long) {
-        val hasFriends = hasFriends(uid)
+    /**
+     * Add [friend] to [id]'s friends.
+     */
+    @Throws(InvalidArguments::class)
+    fun addFriend(id: Long, friend: Long) {
+        val hasFriends = hasFriends(id)
 
         if (!hasFriends) {
-            var stmt = DatabaseHandler.getConnection().prepareStatement("INSERT INTO friends (id, friends) VALUES (?, ?)")
-            stmt.setLong(1, uid)
-            var friendsList = ArrayList<Long>()
-            friendsList.add(friend)
-            stmt.setString(2, ObjectMapper().writeValueAsString(friendsList))
-            stmt.executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("friends")
+                    .insertOne(Document(mapOf(
+                            "id" to id,
+                            "friends" to listOf(friend)
+                    )))
         } else {
-            val friends = getFriends(uid) ?: return
+            val friends = getFriends(id)
+
+            if (friends.contains(friend))
+                throw InvalidArguments("friend")
+
+            // ensure the friend is real :(
+            UserManager.getUser(friend)
+
             friends.add(friend)
-            updateFriends(uid, friends)
+
+            updateFriends(id, friends)
         }
     }
 
-    private fun updateFriends(uid: Long, friends: ArrayList<Long>) {
-        var stmt = DatabaseHandler.getConnection().prepareStatement("UPDATE friends SET friends = ? WHERE id = ?")
-        stmt.setString(1, ObjectMapper().writeValueAsString(friends))
-        stmt.setLong(2, uid)
-        stmt.executeUpdate()
+    /**
+     * Update [id]'s [friends].
+     */
+    private fun updateFriends(id: Long, friends: List<Long>) {
+        Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("friends")
+                .updateOne(Filters.eq("id", id), Updates.set("friends", friends))
     }
 
-    fun removeFriend(uid: Long, friend: Long) {
-        if (!hasFriends(uid))
+    /**
+     * Remove [friend] from [id]'s friends.
+     */
+    @Throws(NotFound::class)
+    fun removeFriend(id: Long, friend: Long) {
+        if (!hasFriends(id))
             return
-        var friends = getFriends(uid) ?: return
+
+        val friends = getFriends(id)
+
+        if (!friends.contains(friend))
+            throw NotFound("friend")
+
         friends.remove(friend)
-        updateFriends(uid, friends)
+
+        updateFriends(id, friends)
     }
 
-    fun getFriends(uid: Long): ArrayList<Long>? {
-        if (!hasFriends(uid))
-            return null
-        val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM friends WHERE id = ?")
+    /**
+     * Get [id]'s friends.
+     */
+    @Throws(NotFound::class)
+    fun getFriends(id: Long): MutableList<Long> {
+        if (!hasFriends(id))
+            return arrayListOf()
 
-        stmt.setLong(1, uid)
-        val rs = stmt.executeQuery()
+        val doc = Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("friends")
+                .find(Filters.eq("id", id))
+                .singleOrNull()
 
-        return if (rs.next())
-            ObjectMapper().readValue<ArrayList<Long>>(rs.getString("friends"))
-        else throw Exception("No next RS")
+        if (doc != null)
+            return doc["friends"] as MutableList<Long>
+        else
+            throw NotFound("friends")
     }
 
-    private fun hasFriends(uid: Long): Boolean {
-        val stmt = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM friends WHERE id = ?")
-
-        stmt.setLong(1, uid)
-        val rs = stmt.executeQuery()
-
-        return rs.next()
-    }
+    /**
+     * If [id] has friends.
+     */
+    private fun hasFriends(id: Long): Boolean =
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("friends")
+                    .find(Filters.eq("id", id))
+                    .singleOrNull() != null
 }

@@ -44,9 +44,8 @@ fun Routing.friendsPages() {
 
         get {
             val token = call.isAuthenticated()
-            val userId = token.owner
 
-            call.respond(Response(FriendManager.getFriends(userId) ?: ArrayList<Long>()))
+            call.respond(FriendManager.getFriends(token.owner))
         }
     }
 }

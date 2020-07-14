@@ -1,16 +1,29 @@
 package net.unifey.handle.users.profile
 
-import net.unifey.DatabaseHandler
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Updates
+import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.profile.cosmetics.Cosmetics
+import org.bson.Document
 
 /**
  * A user's profile.
  */
 class Profile(
+        @JsonIgnore
         val id: Long,
         description: String,
         discord: String,
-        location: String
+        location: String,
+        cosmetics: List<Cosmetics.Cosmetic>
 ) {
+    companion object {
+        const val MAX_DESC_LEN = 256
+        const val MAX_LOC_LEN = 32
+        const val MAX_DISC_LEN = 64
+    }
+
     /**
      * A user's Discord.
      *
@@ -18,13 +31,10 @@ class Profile(
      */
     var discord = discord
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET discord = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Updates.set("discord", value))
 
             field = value
         }
@@ -34,13 +44,10 @@ class Profile(
      */
     var description = description
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET description = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Updates.set("description", value))
 
             field = value
         }
@@ -50,13 +57,23 @@ class Profile(
      */
     var location = location
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE profiles SET location = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Updates.set("location", value))
+
+            field = value
+        }
+
+    /**
+     * A user's cosmetics
+     */
+    var cosmetics = cosmetics
+        set(value) {
+            Mongo.getClient()
+                    .getDatabase("users")
+                    .getCollection("profiles")
+                    .updateOne(eq("id", id), Updates.set("cosmetics", value.map { it.toDocument() }))
 
             field = value
         }

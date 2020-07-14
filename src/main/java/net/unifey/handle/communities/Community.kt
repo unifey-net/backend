@@ -1,30 +1,42 @@
 package net.unifey.handle.communities
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.mongo.Mongo
 
 class Community(
         val id: Long,
         val createdAt: Long,
         postRole: Int,
+        viewRole: Int,
         name: String,
         description: String,
-        private val roles: HashMap<Long, Int>
+        val roles: MutableMap<Long, Int>
 ) {
     /**
      * The whole where users are allowed to post.
      */
     var postRole = postRole
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET post_role = ? WHERE id = ?")
-                    .apply {
-                        setInt(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.post_role", value))
+
+            field = value
+        }
+
+    /**
+     * The whole where users are allowed to view the communities' feed.
+     */
+    var viewRole = viewRole
+        set(value) {
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.view_role", value))
 
             field = value
         }
@@ -34,13 +46,10 @@ class Community(
      */
     var name = name
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET name = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("name", value))
 
             field = value
         }
@@ -50,13 +59,10 @@ class Community(
      */
     var description = description
         set(value) {
-            DatabaseHandler.getConnection()
-                    .prepareStatement("UPDATE communities SET description = ? WHERE id = ?")
-                    .apply {
-                        setString(1, value)
-                        setLong(2, id)
-                    }
-                    .executeUpdate()
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("description", value))
 
             field = value
         }
@@ -67,13 +73,50 @@ class Community(
     fun setRole(user: Long, role: Int) {
         roles[user] = role
 
-        DatabaseHandler.getConnection()
-                .prepareStatement("UPDATE communities SET roles = ? WHERE id = ?")
-                .apply {
-                    setString(1, ObjectMapper().writeValueAsString(roles))
-                    setLong(2, id)
+        when {
+            role >= CommunityRoles.MODERATOR -> {
+                val feed = getFeed()
+
+                if (!feed.moderators.contains(user)) {
+                    feed.moderators.add(user)
+                    feed.update()
                 }
-                .executeUpdate()
+            }
+
+            CommunityRoles.MODERATOR > role -> {
+                val feed = getFeed()
+
+                if (feed.moderators.contains(user)) {
+                    feed.moderators.remove(user)
+                    feed.update()
+                }
+            }
+        }
+
+
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", id), Updates.set("roles.$user", role))
+    }
+
+    /**
+     * Remove [user]'s role.
+     */
+    fun removeRole(user: Long) {
+        roles.remove(user)
+
+        val feed = getFeed()
+
+        if (feed.moderators.contains(user)) {
+            feed.moderators.remove(user)
+            feed.update()
+        }
+
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", id), Updates.unset("roles.$user"))
     }
 
     /**

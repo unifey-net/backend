@@ -1,11 +1,17 @@
 package net.unifey.handle.communities
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Filters.eq
+import dev.shog.lib.util.getAge
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
-import java.sql.ResultSet
+import org.bson.Document
+import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
 
 /**
  * Manage [Community]s
@@ -17,86 +23,119 @@ object CommunityManager {
      * Delete a community by it's [id]
      */
     fun deleteCommunity(id: Long) {
-        DatabaseHandler.getConnection()
-                .prepareStatement("DELETE FROM communities WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .deleteOne(eq("id", id))
     }
 
     /**
      * Get a [Community] by [name].
      */
-    fun getCommunity(name: String): Community {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM communities WHERE name = ?")
-                .apply { setString(1, name) }
-                .executeQuery()
+    fun getCommunityByName(name: String): Community {
+        val obj = Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find()
+                .firstOrNull { doc -> doc.getString("name").equals(name, true) }
+                ?: throw NotFound("community")
 
-        if (rs.next())
-            return getCommunity(rs)
-        else throw NotFound("community")
+        return getCommunity(obj)
     }
 
     /**
      * Get a [Community] by [id].
      */
-    fun getCommunity(id: Long): Community {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM communities WHERE id = ?")
-                .apply { setLong(1, id) }
-                .executeQuery()
+    fun getCommunityById(id: Long): Community {
+        val obj = Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find(eq("id", id))
+                .firstOrNull()
+                ?: throw NotFound("community")
 
-        if (rs.next())
-            return getCommunity(rs)
-        else throw NotFound("community")
+        return getCommunity(obj)
     }
 
     /**
-     * Parse a [Community] from [rs]. Make sure you .next before this.
+     * Parse a [Community] from a bson [doc].
      */
-    private fun getCommunity(rs: ResultSet): Community {
-        val mapper = ObjectMapper()
+    private fun getCommunity(doc: Document): Community {
+        val permissions = doc.get("permissions", Document::class.java)
 
         return Community(
-                rs.getLong("id"),
-                rs.getLong("created_at"),
-                rs.getInt("post_role"),
-                rs.getString("name"),
-                rs.getString("description"),
-                mapper.readValue(rs.getString("roles"), mapper.typeFactory.constructMapType(
-                        HashMap::class.java,
-                        Long::class.java,
-                        Int::class.java
-                ))
+                doc.getLong("id"),
+                doc.getLong("created_at"),
+                permissions.getInteger("post_role"),
+                permissions.getInteger("view_role"),
+                doc.getString("name"),
+                doc.getString("description"),
+                doc.get("roles", Document::class.java)
+                        .mapKeys { it.key.toLong() }
+                        .mapValues { it.value as Int }
+                        .toMutableMap()
         )
     }
 
     /**
-     * Get communities
+     * Get a page of communities.
      */
-    fun getCommunities(limit: Int = 100, startAt: Int = 0): List<Community> {
-        val rs = DatabaseHandler.getConnection()
-                .prepareStatement("SELECT * FROM communities LIMIT ?, ?")
-                .apply {
-                    setInt(1, startAt)
-                    setInt(2, limit + startAt)
-                }
-                .executeQuery()
+    fun getCommunities(page: Int): List<Community> {
+        val size = getCommunitiesSize()
 
-        val communities = mutableListOf<Community>()
+        // there's 15 communities to a page.
+        val pageCount = ceil(size.toDouble() / 15.0).toInt()
 
-        while (rs.next()) {
-            communities.add(getCommunity(rs))
-        }
+        if (page > pageCount || 0 >= page)
+            throw InvalidArguments("page")
 
-        return communities
+        // the amount of documents to skip to get to the proper page.
+        val skip = if (page != 1)
+            (page - 1) * 15
+        else
+            0
+
+        return Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find()
+                .skip(skip)
+                .limit(15)
+                .map { doc -> getCommunity(doc) }
+                .toList()
     }
 
     /**
-     * TODO If [user] can create a community.
+     * Get the amount of communities
      */
-    fun canCreate(user: Long): Boolean {
-        return true
+    private fun getCommunitiesSize(): Long =
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .countDocuments()
+
+    /**
+     * If [id] can create a community
+     *
+     * They must be verified and have their account for over 14 days.
+     */
+    fun canCreate(id: Long): Boolean {
+        val user = UserManager.getUser(id)
+
+        return user.verified
+                && user.createdAt.getAge() >= TimeUnit.DAYS.toMillis(14)
+                && !hasCreatedCommunityBefore(id)
+    }
+
+    /**
+     * if [id] has made a community before
+     */
+    private fun hasCreatedCommunityBefore(id: Long): Boolean {
+        return Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find(eq("roles.${id}", 4))
+                .singleOrNull() != null
     }
 
     /**
@@ -109,25 +148,44 @@ object CommunityManager {
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
                 CommunityRoles.MEMBER,
+                CommunityRoles.DEFAULT,
                 name,
                 desc,
                 roles
         )
 
-        DatabaseHandler.getConnection()
-                .prepareStatement("INSERT INTO communities (name, created_at, description, id, roles, post_role) VALUES (?, ?, ?, ?, ?, ?)")
-                .apply {
-                    setString(1, community.name)
-                    setLong(2, community.createdAt)
-                    setString(3, community.description)
-                    setLong(4, community.id)
-                    setString(5, ObjectMapper().writeValueAsString(roles))
-                    setInt(6, community.postRole)
-                }
-                .executeUpdate()
+        val communityDoc = Document(mapOf(
+                "id" to community.id,
+                "name" to community.name,
+                "description" to community.description,
+                "created_at" to community.createdAt,
+                "permissions" to Document(mapOf(
+                        "post_role" to community.postRole,
+                        "view_role" to community.viewRole
+                )),
+                "roles" to Document(mapOf(
+                        "$owner" to CommunityRoles.OWNER
+                ))
+        ))
+
+        Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .insertOne(communityDoc)
 
         FeedManager.createFeedForCommunity(community.id, owner)
 
         return community
+    }
+
+    /**
+     * If another community has already taken [name].
+     */
+    fun nameTaken(name: String): Boolean {
+        return Mongo.getClient()
+                .getDatabase("communities")
+                .getCollection("communities")
+                .find(eq("name", name))
+                .any()
     }
 }

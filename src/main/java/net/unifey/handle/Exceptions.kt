@@ -1,15 +1,48 @@
 package net.unifey.handle
 
+import java.lang.Exception
 
-// TODO don't use this
-open class ApiException(message: String): Exception(message)
+/**
+ * [obj] was not found.
+ */
+class NotFound(val obj: String = ""): Throwable()
 
-class NotFound(obj: String): ApiException("That $obj could not be found!")
+/**
+ * Required [args] for making request.
+ */
+class InvalidArguments(vararg val args: String): Throwable()
 
-class InvalidArguments(vararg args: String): ApiException("Required arguments: ${args.joinToString(", ")}")
+/**
+ * [arg] is too large. (over [max])
+ */
+class ArgumentTooLarge(val arg: String, val max: Int): Throwable()
 
-class ArgumentTooLarge(arg: String, max: Int): ApiException("$arg must be under $max")
+/**
+ * [type] with [arg] already exists.
+ */
+class AlreadyExists(val type: String, val arg: String): Throwable()
 
-class AlreadyExists(type: String, arg: String): ApiException("A $type with that $arg already exists!")
+/**
+ * User doesn't have permission.
+ */
+class NoPermission: Exception("You don't have permission for this!")
 
-class NoPermission: ApiException("You don't have permission for this!")
+/**
+ * An invalid input for an input the user decides.
+ */
+class InvalidVariableInput(val type: String, val issue: String): Throwable()
+
+/**
+ * An invalid type
+ */
+class InvalidType: Throwable()
+
+/**
+ * The body is too large.
+ */
+class BodyTooLarge: Throwable()
+
+/**
+ * The limit of something has been reached.
+ */
+class LimitReached: Throwable()

@@ -1,9 +1,17 @@
 package net.unifey.handle.users.member
 
-import com.fasterxml.jackson.databind.ObjectMapper
-import net.unifey.DatabaseHandler
+import com.fasterxml.jackson.annotation.JsonIgnore
+import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Updates
+import net.unifey.handle.AlreadyExists
+import net.unifey.handle.NotFound
+import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.mongo.Mongo
+import org.bson.Document
 
 class Member(
+        @JsonIgnore
         val id: Long,
         private val member: MutableList<Long>
 ) {
@@ -21,10 +29,14 @@ class Member(
 
     /**
      * Join a [community]
-     *
-     * TODO check if already in
      */
     fun join(community: Long) {
+        if (member.contains(community))
+            throw AlreadyExists("community", community.toString())
+
+        CommunityManager.getCommunityById(community)
+                .setRole(id, CommunityRoles.MEMBER)
+
         member.add(community)
 
         update()
@@ -32,10 +44,14 @@ class Member(
 
     /**
      * Leave a [community]
-     *
-     * TODO check if in
      */
     fun leave(community: Long) {
+        if (!member.contains(community))
+            throw NotFound("community")
+
+        CommunityManager.getCommunityById(community)
+                .setRole(id, CommunityRoles.DEFAULT)
+
         member.remove(community)
 
         update()
@@ -45,12 +61,9 @@ class Member(
      * Update [member] in the database.
      */
     private fun update() {
-        DatabaseHandler.getConnection()
-                .prepareStatement("UPDATE members SET member = ? WHERE id = ?")
-                .apply {
-                    setString(1, ObjectMapper().writeValueAsString(member))
-                    setLong(2, id)
-                }
-                .executeUpdate()
+        Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("members")
+                .updateOne(Filters.eq("id", id), Updates.set("member", member))
     }
 }
