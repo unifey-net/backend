@@ -4,30 +4,21 @@ import io.ktor.application.call
 import io.ktor.features.StatusPages
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
+import net.unifey.handle.Error
 import net.unifey.response.Response
 
-fun StatusPages.Configuration.registerEmailExceptions() {
-    exception<TooManyAttempts> {
-        call.respond(HttpStatusCode.TooManyRequests, Response("Too many email attempts have been requested."))
-    }
+class AlreadyVerified: Error({
+    respond(HttpStatusCode.BadRequest, Response("This account has already been verified."))
+})
 
-    exception<Unsubscribed> {
-        call.respond(HttpStatusCode.BadRequest, Response("An email provided has unsubscribed from Unifey."))
-    }
+class Unsubscribed: Error({
+    respond(HttpStatusCode.BadRequest, Response("An email provided has been unsubscribed from Unifey."))
+})
 
-    exception<AlreadyVerified> {
-        call.respond(HttpStatusCode.BadRequest, Response("This account has already been verified."))
-    }
+class TooManyAttempts: Error({
+    respond(HttpStatusCode.TooManyRequests, Response("Too many email attempts have been requested."))
+})
 
-    exception<Unverified> {
-        call.respond(HttpStatusCode.BadRequest, Response("You cannot do this while unverified!"))
-    }
-}
-
-class AlreadyVerified: Throwable()
-
-class Unsubscribed: Throwable()
-
-class TooManyAttempts: Throwable()
-
-class Unverified: Throwable()
+class Unverified: Error({
+    respond(HttpStatusCode.BadRequest, Response("You must be verified for this!"))
+})

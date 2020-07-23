@@ -1,48 +1,80 @@
 package net.unifey.handle
 
+import dev.shog.lib.util.eitherOr
+import io.ktor.application.ApplicationCall
+import io.ktor.http.HttpStatusCode
+import io.ktor.response.respond
+import net.unifey.response.Response
 import java.lang.Exception
 
 /**
  * [obj] was not found.
  */
-class NotFound(val obj: String = ""): Throwable()
+class NotFound(private val obj: String = ""): Error({
+    respond(HttpStatusCode.BadRequest, Response((obj == "").eitherOr("That could not be found", "That $obj could not be found")))
+})
 
 /**
  * Required [args] for making request.
  */
-class InvalidArguments(vararg val args: String): Throwable()
+class InvalidArguments(private vararg val args: String): Error({
+    respond(HttpStatusCode.BadRequest, Response("Required arguments: ${args.joinToString(", ")}"))
+})
 
 /**
  * [arg] is too large. (over [max])
  */
-class ArgumentTooLarge(val arg: String, val max: Int): Throwable()
+class ArgumentTooLarge(private val arg: String, private val max: Int): Error({
+    respond(HttpStatusCode.BadRequest, Response("$arg must be under $max."))
+})
 
 /**
  * [type] with [arg] already exists.
  */
-class AlreadyExists(val type: String, val arg: String): Throwable()
+class AlreadyExists(val type: String, private val arg: String): Error({
+    respond(HttpStatusCode.BadRequest, Response("A $type with that $arg already exists!"))
+})
 
 /**
  * User doesn't have permission.
  */
-class NoPermission: Exception("You don't have permission for this!")
+class NoPermission: Error({
+    respond(HttpStatusCode.Unauthorized, Response("You don't have permission for this"))
+})
 
 /**
  * An invalid input for an input the user decides.
  */
-class InvalidVariableInput(val type: String, val issue: String): Throwable()
+class InvalidVariableInput(val type: String, val issue: String): Error({
+    respond(HttpStatusCode.BadRequest, Response("${type.capitalize()}: $issue"))
+})
 
 /**
  * An invalid type
  */
-class InvalidType: Throwable()
+class InvalidType: Error({
+    respond(HttpStatusCode.BadRequest, Response("Invalid type!"))
+})
 
 /**
  * The body is too large.
  */
-class BodyTooLarge: Throwable()
+class BodyTooLarge: Error({
+    respond(HttpStatusCode.PayloadTooLarge, Response("The body is too large."))
+})
 
 /**
  * The limit of something has been reached.
  */
-class LimitReached: Throwable()
+class LimitReached: Error({
+    respond(HttpStatusCode.InsufficientStorage, Response("Limit has been reached."))
+})
+
+/**
+ * Internal content is malformed.
+ */
+class MalformedContent: Error({
+    respond(HttpStatusCode.InternalServerError, "There was an issue with internal content.")
+})
+
+open class Error(val response: suspend ApplicationCall.() -> Unit): Throwable()

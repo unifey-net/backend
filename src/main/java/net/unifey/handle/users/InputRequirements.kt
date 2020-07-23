@@ -12,21 +12,24 @@ object InputRequirements {
     /**
      * To see if usernames are proper.
      */
-    val USERNAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
+    private val USERNAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
 
+    /**
+     * To see if passwords are proper.
+     */
     private val PASSWORD_REGEX = Regex("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&-_+=()!]).{8,128}$")
 
     /**
      * If [email] meets the requirements.
      */
     @Throws(InvalidVariableInput::class)
-    fun emailMeets(email: String) {
+    fun emailMeets(email: String, checkExists: Boolean = true) {
         when {
-            Authenticator.emailInUse(email) ->
+            checkExists && Authenticator.emailInUse(email) ->
                throw InvalidVariableInput("email", "That email is already in use!")
 
             !EMAIL_REGEX.matches(email) ->
-                throw InvalidVariableInput("email", "Please an invalid email!")
+                throw InvalidVariableInput("email", "Please input a valid email!")
 
             email.length > 128 ->
                 throw InvalidVariableInput("email", "That email is too long!")
@@ -54,9 +57,9 @@ object InputRequirements {
      * If [username] meets the requirements.
      */
     @Throws(InvalidVariableInput::class)
-    fun usernameMeets(username: String) {
+    fun usernameMeets(username: String, checkExists: Boolean = true) {
         when {
-            Authenticator.usernameTaken(username) ->
+            checkExists && Authenticator.usernameTaken(username) ->
                 throw InvalidVariableInput("username", "That username is already in use!")
 
             username.length > 16  ->

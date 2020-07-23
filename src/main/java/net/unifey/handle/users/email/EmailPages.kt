@@ -143,6 +143,18 @@ fun Routing.emailPages() {
         }
 
         /**
+         * Beta verify
+         */
+        post("/betaverify") {
+            val params = call.receiveParameters()
+            val verify = params["verify"] ?: throw InvalidArguments("verify")
+
+            UserEmailManager.betaVerify(verify)
+
+            call.respond(Response())
+        }
+
+        /**
          * When a bounce is received from AWS.
          */
         post("/bounce") {

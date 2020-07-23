@@ -262,6 +262,17 @@ fun Routing.communityPages() {
                 }
 
                 /**
+                 * Change the comment permissions.
+                 */
+                put("/comment") {
+                    val (community, role) = call.modifyRole()
+
+                    community.commentRole = role
+
+                    call.respond(Response())
+                }
+
+                /**
                  * Change the post permissions.
                  */
                 put("/post") {

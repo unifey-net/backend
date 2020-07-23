@@ -31,11 +31,15 @@ object PostManager {
                         "author_id" to post.authorId,
                         "content" to post.content,
                         "feed" to post.feed,
-                        "hidden" to post.hidden,
                         "title" to post.title,
                         "vote" to Document(mapOf(
                                 "downvotes" to post.downvotes,
                                 "upvotes" to post.upvotes
+                        )),
+                        "attributes" to Document(mapOf(
+                                "hidden" to false,
+                                "pinned" to false,
+                                "nsfw" to false
                         ))
                 )))
 
@@ -47,9 +51,6 @@ object PostManager {
      */
     @Throws(InvalidArguments::class)
     fun createPost(feed: Feed, title: String, content: String, author: Long): Post {
-        if (!FeedManager.canPostFeed(feed, author))
-            throw NoPermission()
-
         val parsedTitle = cleanInput(title)
         val parsedContent = cleanInput(content)
 
@@ -63,7 +64,6 @@ object PostManager {
                 feed.id,
                 parsedTitle,
                 parsedContent,
-                false,
                 0,
                 0
         )
@@ -95,7 +95,6 @@ object PostManager {
                     doc.getString("feed"),
                     doc.getString("title"),
                     doc.getString("content"),
-                    doc.getBoolean("hidden"),
                     vote.getLong("upvotes"),
                     vote.getLong("downvotes")
             )

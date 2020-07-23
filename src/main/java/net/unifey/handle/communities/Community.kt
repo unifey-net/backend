@@ -11,12 +11,26 @@ class Community(
         val createdAt: Long,
         postRole: Int,
         viewRole: Int,
+        commentRole: Int,
         name: String,
         description: String,
         val roles: MutableMap<Long, Int>
 ) {
     /**
-     * The whole where users are allowed to post.
+     * The role where users are allowed to comment.
+     */
+    var commentRole = commentRole
+        set(value) {
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.comment_role", value))
+
+            field = value
+        }
+
+    /**
+     * The role where users are allowed to post.
      */
     var postRole = postRole
         set(value) {
@@ -29,7 +43,7 @@ class Community(
         }
 
     /**
-     * The whole where users are allowed to view the communities' feed.
+     * The role where users are allowed to view the communities' feed.
      */
     var viewRole = viewRole
         set(value) {

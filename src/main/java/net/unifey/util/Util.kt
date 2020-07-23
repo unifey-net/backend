@@ -11,6 +11,9 @@ import org.jsoup.safety.Whitelist
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 
+/**
+ * The header for a JPEG image. This is used to make sure an uploaded image is a JPEG.
+ */
 private val JPEG_HEADER = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte())
 
 /**

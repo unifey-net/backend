@@ -1,3 +1,6 @@
 package net.unifey.response
 
-data class Response(val payload: Any? = null)
+/**
+ * A plaintext response or errors use this.
+ */
+data class Response(val payload: Any? = "OK")

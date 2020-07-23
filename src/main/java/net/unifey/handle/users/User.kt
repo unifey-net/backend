@@ -3,11 +3,13 @@ package net.unifey.handle.users
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.bson.Document
+import org.omg.CosNaming.NamingContextPackage.NotFound
 
 class User(
         val id: Long,
@@ -79,6 +81,28 @@ class User(
 
             Member(id, mutableListOf())
         }
+    }
+
+    /**
+     * A user's friends.
+     */
+    fun getFriends() =
+            FriendManager.getFriends(id)
+
+    /**
+     * Add [id] to friends.
+     */
+    @Throws(InvalidArguments::class)
+    fun addFriend(id: Long) {
+        FriendManager.addFriend(this.id, id)
+    }
+
+    /**
+     * Remove [id] from friends.
+     */
+    @Throws(net.unifey.handle.NotFound::class)
+    fun removeFriend(id: Long) {
+        FriendManager.removeFriend(this.id, id)
     }
 
     /**

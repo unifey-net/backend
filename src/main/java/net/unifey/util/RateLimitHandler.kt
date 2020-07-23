@@ -4,16 +4,25 @@ import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
 import io.github.bucket4j.Bucket4j
 import io.github.bucket4j.Refill
-import io.ktor.application.ApplicationCall
+import io.ktor.http.HttpStatusCode
+import io.ktor.response.header
+import io.ktor.response.respond
 import net.unifey.auth.tokens.Token
-import java.lang.Exception
-import java.security.Security
+import net.unifey.handle.Error
+import net.unifey.response.Response
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
+/**
+ * Handles rate limiting. Unifey rate-limits users by their token.
+ */
 object RateLimitHandler {
     private val buckets = ConcurrentHashMap<String, Bucket>()
 
+    /**
+     * Get a [Bucket] by a [token].
+     */
     fun getBucket(token: String): Bucket {
         val cacheBucket = buckets[token]
 
@@ -27,6 +36,9 @@ object RateLimitHandler {
         return bucket
     }
 
+    /**
+     * Create a bucket for a token.
+     */
     private fun createBucket(): Bucket =
             Bucket4j.builder()
                     .addLimit(Bandwidth.classic(
@@ -35,7 +47,10 @@ object RateLimitHandler {
                     .build()
 }
 
-fun ApplicationCall.checkRateLimit(token: Token): Long {
+/**
+ * Check a user's rate limit using their [token].
+ */
+fun checkRateLimit(token: Token): Long {
     val bucket = RateLimitHandler.getBucket(token.token)
 
     val probe = bucket.tryConsumeAndReturnRemaining(1)
@@ -44,4 +59,14 @@ fun ApplicationCall.checkRateLimit(token: Token): Long {
     else return probe.remainingTokens
 }
 
-class RateLimitException(val refill: Long) : Exception()
+/**
+ * If a user's exceeded their rate limit.
+ */
+class RateLimitException(private val refill: Long): Error({
+    response.header(
+            "X-Rate-Limit-Retry-After-Seconds",
+            TimeUnit.NANOSECONDS.toSeconds(refill)
+    )
+
+    respond(HttpStatusCode.TooManyRequests, Response("You are being rate limited!"))
+})

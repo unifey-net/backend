@@ -24,6 +24,7 @@ import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
+import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.userPages() {
     route("/user") {
@@ -210,7 +211,7 @@ fun Routing.userPages() {
 
             InputRequirements.passwordMeets(password)
 
-            user.password = password
+            user.password = BCrypt.hashpw(password, BCrypt.gensalt())
 
             call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }

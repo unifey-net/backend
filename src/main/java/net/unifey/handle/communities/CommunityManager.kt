@@ -1,6 +1,5 @@
 package net.unifey.handle.communities
 
-import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
 import net.unifey.handle.InvalidArguments
@@ -68,6 +67,7 @@ object CommunityManager {
                 doc.getLong("created_at"),
                 permissions.getInteger("post_role"),
                 permissions.getInteger("view_role"),
+                permissions.getInteger("comment_role"),
                 doc.getString("name"),
                 doc.getString("description"),
                 doc.get("roles", Document::class.java)
@@ -149,6 +149,7 @@ object CommunityManager {
                 System.currentTimeMillis(),
                 CommunityRoles.MEMBER,
                 CommunityRoles.DEFAULT,
+                CommunityRoles.MEMBER,
                 name,
                 desc,
                 roles
@@ -161,7 +162,8 @@ object CommunityManager {
                 "created_at" to community.createdAt,
                 "permissions" to Document(mapOf(
                         "post_role" to community.postRole,
-                        "view_role" to community.viewRole
+                        "view_role" to community.viewRole,
+                        "comment_role" to community.commentRole
                 )),
                 "roles" to Document(mapOf(
                         "$owner" to CommunityRoles.OWNER
