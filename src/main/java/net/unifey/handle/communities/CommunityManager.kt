@@ -14,14 +14,16 @@ import kotlin.math.ceil
 
 /**
  * Manage [Community]s
- *
- * TODO add local cache
  */
 object CommunityManager {
+    private val cache: MutableList<Community> = mutableListOf()
+
     /**
      * Delete a community by it's [id]
      */
     fun deleteCommunity(id: Long) {
+        cache.removeIf { community -> community.id == id }
+
         Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -32,6 +34,11 @@ object CommunityManager {
      * Get a [Community] by [name].
      */
     fun getCommunityByName(name: String): Community {
+        val cacheCommunity = cache.singleOrNull { community -> community.name == name }
+
+        if (cacheCommunity != null)
+            return cacheCommunity
+
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -46,6 +53,11 @@ object CommunityManager {
      * Get a [Community] by [id].
      */
     fun getCommunityById(id: Long): Community {
+        val cacheCommunity = cache.singleOrNull { community -> community.id == id }
+
+        if (cacheCommunity != null)
+            return cacheCommunity
+
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -62,7 +74,7 @@ object CommunityManager {
     private fun getCommunity(doc: Document): Community {
         val permissions = doc.get("permissions", Document::class.java)
 
-        return Community(
+        val community = Community(
                 doc.getLong("id"),
                 doc.getLong("created_at"),
                 permissions.getInteger("post_role"),
@@ -75,6 +87,10 @@ object CommunityManager {
                         .mapValues { it.value as Int }
                         .toMutableMap()
         )
+
+        cache.add(community)
+
+        return community
     }
 
     /**
@@ -176,6 +192,8 @@ object CommunityManager {
                 .insertOne(communityDoc)
 
         FeedManager.createFeedForCommunity(community.id, owner)
+
+        cache.add(community)
 
         return community
     }

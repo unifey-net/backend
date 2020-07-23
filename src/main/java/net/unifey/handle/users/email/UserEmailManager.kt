@@ -274,8 +274,6 @@ object UserEmailManager {
 
     /**
      * Handle a bounce request
-     *
-     * TODO
      */
     fun handleBounce(bounce: String) {
         val obj = JSONObject(bounce)
