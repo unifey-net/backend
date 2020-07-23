@@ -2,17 +2,13 @@ package net.unifey.handle.feeds
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
-import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.*
-import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
-import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.feeds.posts.PostLimits
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.comments.commentPages
@@ -102,7 +98,7 @@ fun Routing.feedPages() {
                     val (token, post) = call.getPost()
 
                     val vote = if (token != null)
-                        VoteManager.getVote(post.id, token.owner)
+                        VoteManager.getPostVote(post.id, token.owner)
                     else null
 
                     call.respond(
@@ -123,7 +119,7 @@ fun Routing.feedPages() {
                     val vote = params["vote"]?.toIntOrNull()
                             ?: throw InvalidArguments("vote")
 
-                    VoteManager.setVote(post.id, token.owner, vote)
+                    VoteManager.setPostVote(post.id, token.owner, vote)
 
                     call.respond(Response())
                 }
@@ -146,7 +142,7 @@ fun Routing.feedPages() {
                 val response = FeedManager.getFeedPosts(feed, page, sort)
                         .map {
                             val vote = if (token != null)
-                                VoteManager.getVote(it.id, token.owner)
+                                VoteManager.getPostVote(it.id, token.owner)
                             else
                                 null
 

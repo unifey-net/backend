@@ -9,12 +9,10 @@ import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.MalformedContent
 import net.unifey.handle.NoPermission
-import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.CommunityRoles
-import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.getFeed
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.getPost
+import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
@@ -129,6 +127,29 @@ fun Route.commentPages() {
                 throw InvalidArguments("content")
 
             obj.content = content
+
+            call.respond(Response())
+        }
+
+        /**
+         * Manage your own vote.
+         */
+        post("/vote") {
+            val (token, _) = call.getPost()
+
+            if (token == null)
+                throw NoPermission()
+
+            val comment = call.parameters["comment"]?.toLongOrNull()
+                    ?: throw InvalidArguments("comment")
+
+            val obj = CommentManager.getCommentById(comment)
+
+            val params = call.receiveParameters()
+            val vote = params["vote"]?.toIntOrNull()
+                    ?: throw InvalidArguments("vote")
+
+            VoteManager.setCommentVote(obj.id, token.owner, vote)
 
             call.respond(Response())
         }
