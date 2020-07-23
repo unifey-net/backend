@@ -36,12 +36,12 @@ fun Route.commentPages() {
      * Get a comment.
      */
     get {
-        val (_, post) = call.getPost()
+        val (token, post) = call.getPost()
 
         val page = call.request.queryParameters["page"]?.toIntOrNull()
                 ?: 1
 
-        call.respond(CommentManager.getPostCommentData(post, page))
+        call.respond(CommentManager.getPostCommentData(post, page, token?.owner))
     }
 
     /**
@@ -83,6 +83,8 @@ fun Route.commentPages() {
          * Get all comments on the included comments.
          */
         get {
+            val (token) = call.getPost()
+
             val comment = call.parameters["comment"]?.toLongOrNull()
                     ?: throw InvalidArguments("comment")
 
@@ -94,7 +96,7 @@ fun Route.commentPages() {
             if (obj.level == 2)
                 throw InvalidArguments("comment")
 
-            call.respond(CommentManager.getCommentData(obj, page))
+            call.respond(CommentManager.getCommentData(obj, page, token?.owner))
         }
 
         /**

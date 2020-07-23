@@ -61,6 +61,9 @@ fun main(args: Array<String>) {
     val rootLogger = loggerContext.getLogger("org.mongodb.driver")
     rootLogger.level = OFF
 
+    val awsLogger = loggerContext.getLogger("software.amazon.awssdk")
+    awsLogger.level = OFF
+
     val argH = ArgsHandler()
 
     argH.hook("--dev") {

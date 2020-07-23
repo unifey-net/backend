@@ -7,6 +7,7 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostManager
+import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
@@ -95,30 +96,30 @@ object CommentManager {
                 .size
     }
 
-    fun getPostCommentData(post: Post, page: Int): CommentData {
+    fun getPostCommentData(post: Post, page: Int, user: Long?): CommentData {
         val size = getAmountOfComments(post.id)
 
         return CommentData(
                 size,
                 ceil(size.toDouble() / COMMENT_PAGE_SIZE.toDouble()).toInt(),
-                getComments(post.id, page)
+                getComments(post.id, page, user)
         )
     }
 
-    fun getCommentData(comment: Comment, page: Int): CommentData {
+    fun getCommentData(comment: Comment, page: Int, user: Long?): CommentData {
         val size = getAmountOfComments(comment.id)
 
         return CommentData(
                 size,
                 ceil(size.toDouble() / COMMENT_PAGE_SIZE.toDouble()).toInt(),
-                getComments(comment.id, page)
+                getComments(comment.id, page, user)
         )
     }
 
     /**
      * Get comments for [post].
      */
-    fun getComments(post: Long, page: Int): MutableList<GetCommentResponse> {
+    fun getComments(post: Long, page: Int, user: Long?): MutableList<GetCommentResponse> {
         val startAt = ((page - 1) * COMMENT_PAGE_SIZE)
 
         return Mongo.getClient()
@@ -131,7 +132,8 @@ object CommentManager {
                 .map { comment ->
                     GetCommentResponse(
                             comment,
-                            if (comment.level == 1) getCommentData(comment, 1) else null,
+                            if (comment.level == 1) getCommentData(comment, 1, user) else null,
+                            if (user != null) VoteManager.getCommentVote(comment.id, user) else null,
                             UserManager.getUser(comment.authorId)
                     )
                 }

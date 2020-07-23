@@ -26,7 +26,7 @@ object VoteManager {
                 .map { doc ->
                     UserVote(
                             doc.getInteger("vote"),
-                            doc.getLong("post"),
+                            doc.getLong("id"),
                             doc.getLong("user"),
                             doc.getInteger("type")
                     )
@@ -89,7 +89,8 @@ object VoteManager {
                     .insertOne(Document(mapOf(
                             "id" to comment,
                             "user" to user,
-                            "vote" to type
+                            "vote" to type,
+                            "type" to UserVote.COMMENT
                     )))
 
             when (type) {
