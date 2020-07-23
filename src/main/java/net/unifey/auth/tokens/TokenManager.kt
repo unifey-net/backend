@@ -44,7 +44,7 @@ object TokenManager {
      * If [token] has expired
      */
     fun isTokenExpired(token: Token): Boolean =
-            System.currentTimeMillis() > token.expires
+            token.expires != -1L && System.currentTimeMillis() > token.expires
 
     /**
      * Create a token with [tokenStr], [owner] and [expire].

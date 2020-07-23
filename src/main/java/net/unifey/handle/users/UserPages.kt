@@ -370,17 +370,17 @@ fun Routing.userPages() {
 
         val username = params["username"]
         val password = params["password"]
+        val remember = params["remember"]?.toBoolean()
 
-        if (username == null || password == null)
-            call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))
+        if (username == null || password == null || remember == null)
+            throw InvalidArguments("username", "password", "remember")
+
+        val auth = Authenticator.generateIfCorrect(username, password, remember)
+
+        if (auth == null)
+            call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
         else {
-            val auth = Authenticator.generateIfCorrect(username, password)
-
-            if (auth == null)
-                call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
-            else {
-                call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
-            }
+            call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
         }
     }
 }

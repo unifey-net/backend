@@ -37,7 +37,7 @@ object Authenticator {
      * Generate a token if [username] and [password] are correct. If not, return null.
      */
     @Throws(InvalidArguments::class)
-    fun generateIfCorrect(username: String, password: String): Token? {
+    fun generateIfCorrect(username: String, password: String, remember: Boolean): Token? {
         val user = Mongo.getClient()
                 .getDatabase("users")
                 .getCollection("users")
@@ -53,7 +53,7 @@ object Authenticator {
                 return TokenManager.createToken(
                         token,
                         user.getLong("id"),
-                        System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1)
+                        if (remember) -1 else System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1)
                 )
             }
         }
