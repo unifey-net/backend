@@ -13,8 +13,8 @@ import net.unifey.handle.beta.Beta
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
-import net.unifey.unifey
 import net.unifey.util.IdGenerator
+import net.unifey.webhook
 import org.bson.Document
 import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
@@ -282,7 +282,7 @@ object UserEmailManager {
         for (i in 0 until destinations.length())
             unSubscribe(destinations.getString(i))
 
-        unifey.webhook.sendBigMessage(bounce, "A bounce has occurred when sending an email to $destinations")
+        webhook.sendBigMessage(bounce, "A bounce has occurred when sending an email to $destinations")
     }
 
     /**
@@ -347,7 +347,7 @@ object UserEmailManager {
             client.sendEmail(emailRequest)
         } catch (ex: Exception) {
             // TODO
-            unifey.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
+            webhook.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
         }
     }
 }

@@ -39,15 +39,16 @@ import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
+import org.apache.http.util.ExceptionUtils
 import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.time.Duration
+import kotlin.reflect.jvm.internal.impl.utils.ExceptionUtilsKt
 
 
-val unifey = Application("unifey", "0.3.2", ConfigHandler.useConfig(ConfigType.YML, "unifey", net.unifey.config.Config::class.java)) { name, ver, cfg ->
-    DiscordWebhook(cfg.asObject<net.unifey.config.Config>().webhook ?: "", WebhookUser("Unifey", "https://unifey.net/favicon.png"))
-}
+lateinit var webhook: DiscordWebhook
+lateinit var mongo: String
 
 var prod = true
 
@@ -68,6 +69,9 @@ fun main(args: Array<String>) {
     }
 
     argH.initWith(args)
+
+    mongo = System.getenv("MONGO")
+    webhook = DiscordWebhook(System.getenv("WEBHOOK"), WebhookUser("Unifey", "https://unifey.net/favicon.png"))
 
     val server = embeddedServer(Netty, 8077) {
         install(ContentNegotiation) {
@@ -93,7 +97,7 @@ fun main(args: Array<String>) {
         }
 
         install(DefaultHeaders) {
-            header("Server", "Unifey/${unifey.version}")
+            header("Server", "Unifey")
         }
 
         install(AutoHeadResponse)
@@ -119,7 +123,7 @@ fun main(args: Array<String>) {
 
             exception<Throwable> {
                 it.printStackTrace()
-                it.logDiscord(unifey)
+                webhook.sendBigMessage(it.stackTrace.joinToString("\n"), "Unifey Error: ${it.message}")
 
                 call.respond(HttpStatusCode.InternalServerError, Response("There was an internal error processing that request."))
             }
