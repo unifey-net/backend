@@ -9,9 +9,21 @@ import org.bson.Document
 
 /**
  * A comment. This could be on an actual [Post] or on another [Comment]. This depends on [level].
+ *
+ * @param parent The parent comment. This could also be [post]
+ * @param post The top level post.
+ * @param level Level 1 is a comment on the main post, level 2 is a comment on a comment.
+ * @param id The ID of the post.
+ * @param createdAt When the comment was created.
+ * @param authorId The author's ID.
+ * @param feed The feed the comment is in.
+ * @param content The comment's content.
+ * @param upvotes The upvotes.
+ * @param downvotes The downvotes.
  */
 class Comment(
         val parent: Long,
+        val post: Long,
         val level: Int,
         val id: Long,
         val createdAt: Long,

@@ -114,6 +114,11 @@ object PostManager {
                 .getCollection("posts")
                 .deleteOne(Filters.eq("id", id))
 
+        Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("comments")
+                .deleteOne(Filters.eq("post", id))
+
         posts.remove(id)
     }
 }

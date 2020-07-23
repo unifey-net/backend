@@ -21,30 +21,39 @@ object CommentManager {
     /**
      * Create a comment on [post].
      *
-     * @param post The post/comment to comment on.
+     * @param topPost The top level post that the user is commenting on.
+     * @param parent Set this if the user is commenting on a comment. If not, parent is [topPost].
      * @param isComment If it's a post or a comment.
      */
     @Throws(NotFound::class)
-    fun createComment(post: Long, feed: String, isComment: Boolean, user: User, content: String) {
+    fun createComment(
+            topPost: Long,
+            parent: Long?,
+            feed: String,
+            user: User,
+            content: String
+    ) {
         var level = 1
+        var actualParent = topPost
 
-        // to ensure it exists
-        if (isComment) {
-            val comment = getCommentById(post)
+        if (parent != null) {
+            val comment = getCommentById(parent)
+            actualParent = parent
 
             if (comment.level >= 2)
                 throw NoPermission()
 
             level = 2
         } else {
-            PostManager.getPost(post)
+            PostManager.getPost(topPost)
         }
 
-        if (getAmountOfComments(post) >= MAX_THREAD_SIZE)
+        if (getAmountOfComments(actualParent) >= MAX_THREAD_SIZE)
             throw LimitReached()
 
         val comment = Comment(
-                post,
+                actualParent,
+                topPost,
                 level,
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
@@ -63,6 +72,7 @@ object CommentManager {
                         "authorId" to comment.authorId,
                         "level" to comment.level,
                         "feed" to comment.feed,
+                        "post" to comment.post,
                         "parent" to comment.parent,
                         "createdAt" to comment.createdAt,
                         "content" to comment.content,
@@ -171,6 +181,7 @@ object CommentManager {
 
         return Comment(
                 doc.getLong("parent"),
+                doc.getLong("post"),
                 doc.getInteger("level"),
                 doc.getLong("id"),
                 doc.getLong("createdAt"),

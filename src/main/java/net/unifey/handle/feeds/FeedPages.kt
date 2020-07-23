@@ -107,6 +107,25 @@ fun Routing.feedPages() {
                 }
 
                 /**
+                 * Delete a post. Only deletes if authorization token is the owner.
+                 */
+                delete {
+                    val (token, post, feed) = call.getPost()
+
+                    when {
+                        token == null ->
+                            throw NoPermission()
+
+                        !feed.moderators.contains(token.owner) && token.owner != post.authorId ->
+                            throw NoPermission()
+                    }
+
+                    PostManager.deletePost(post.id)
+
+                    call.respond(Response())
+                }
+
+                /**
                  * Manage your own vote.
                  */
                 post("/vote") {
@@ -181,25 +200,6 @@ fun Routing.feedPages() {
                 }
 
                 call.respond(PostManager.createPost(feed, title, content, token.owner))
-            }
-
-            /**
-             * Delete a post. Only deletes if authorization token is the owner.
-             */
-            delete {
-                val (token, post, feed) = call.getPost()
-
-                when {
-                    token == null ->
-                        throw NoPermission()
-
-                    !feed.moderators.contains(token.owner) && token.owner != post.authorId ->
-                        throw NoPermission()
-                }
-
-                PostManager.deletePost(post.id)
-
-                call.respond(Response())
             }
         }
     }

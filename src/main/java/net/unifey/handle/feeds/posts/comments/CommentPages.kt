@@ -50,7 +50,7 @@ fun Route.commentPages() {
     put {
         val (token, post, content) = call.createComment()
 
-        CommentManager.createComment(post.id, post.feed, false, UserManager.getUser(token.owner), content)
+        CommentManager.createComment(post.id, null, post.feed, UserManager.getUser(token.owner), content)
 
         call.respond(Response())
     }
@@ -62,7 +62,7 @@ fun Route.commentPages() {
         /**
          * Manage a comment.
          */
-        fun ApplicationCall.manageComment(): Triple<Token, Comment, Post> {
+        fun ApplicationCall.manageComment(requireManage: Boolean = true): Triple<Token, Comment, Post> {
             val (token, post) = getPost()
 
             if (token == null)
@@ -73,7 +73,7 @@ fun Route.commentPages() {
 
             val obj = CommentManager.getCommentById(comment)
 
-            if (!CommentManager.canManageComment(token.owner, obj))
+            if (!CommentManager.canManageComment(token.owner, obj) && requireManage)
                 throw NoPermission()
 
             return Triple(token, obj, post)
@@ -162,7 +162,7 @@ fun Route.commentPages() {
         put {
             call.getFeed(requireComment = true)
 
-            val (token, obj, post) = call.manageComment()
+            val (token, obj, post) = call.manageComment(false)
 
             if (obj.level == 2)
                 throw InvalidArguments("comments")
@@ -172,7 +172,7 @@ fun Route.commentPages() {
 
             content = cleanInput(content)
 
-            CommentManager.createComment(obj.id, post.feed, true, UserManager.getUser(token.owner), content)
+            CommentManager.createComment(post.id, obj.id, obj.feed, UserManager.getUser(token.owner), content)
 
             call.respond(Response())
         }
