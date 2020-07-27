@@ -42,6 +42,6 @@ class PostAttributes(val id: Long, private val collection: String = "posts") {
     /**
      * Get [attr] as [T]
      */
-    fun <T> getAttribute(attr: String): T =
-            store[attr] as T
+    fun <T> getAttribute(attr: String, default: T): T =
+            store[attr] as? T ?: default
 }

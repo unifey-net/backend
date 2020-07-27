@@ -33,21 +33,28 @@ open class Post(
      * If the post is hidden.
      */
     var hidden: Boolean
-        get() = attributes.getAttribute("hidden")
+        get() = attributes.getAttribute("hidden", false)
         set(value) = attributes.setAttribute("hidden", value)
 
     /**
      * If the post is pinned.
      */
     var pinned: Boolean
-        get() = attributes.getAttribute("pinned")
+        get() = attributes.getAttribute("pinned", false)
         set(value) = attributes.setAttribute("pinned", value)
+
+    /**
+     * If this post has been previously editied. <- pepega
+     */
+    var edited: Boolean
+        get() = attributes.getAttribute("edited", false)
+        set(value) = attributes.setAttribute("edited", value)
 
     /**
      * If the post is not safe for work.
      */
     var nsfw: Boolean
-        get() = attributes.getAttribute("nsfw")
+        get() = attributes.getAttribute("nsfw", false)
         set(value) = attributes.setAttribute("pinned", value)
 
     /**
@@ -58,9 +65,7 @@ open class Post(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "title" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("title", value))
 
             field = value
         }
@@ -73,9 +78,7 @@ open class Post(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "content" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("content", value))
 
             field = value
         }

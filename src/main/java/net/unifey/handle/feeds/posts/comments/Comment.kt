@@ -42,15 +42,22 @@ class Comment(
      * If the post is pinned.
      */
     var pinned: Boolean
-        get() = attributes.getAttribute("pinned")
+        get() = attributes.getAttribute("pinned", false)
         set(value) = attributes.setAttribute("pinned", value)
 
     /**
      * If the post is hidden.
      */
     var hidden: Boolean
-        get() = attributes.getAttribute("hidden")
+        get() = attributes.getAttribute("hidden", false)
         set(value) = attributes.setAttribute("hidden", value)
+
+    /**
+     * If this comment has been previously edited.
+     */
+    var edited: Boolean
+        get() = attributes.getAttribute("edited", false)
+        set(value) = attributes.setAttribute("edited", value)
 
     /**
      * Change a post's content
@@ -60,7 +67,7 @@ class Comment(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("comments")
-                    .updateOne(Filters.eq("id", id), Updates.set("content", content))
+                    .updateOne(Filters.eq("id", id), Updates.set("content", value))
 
             field = value
         }

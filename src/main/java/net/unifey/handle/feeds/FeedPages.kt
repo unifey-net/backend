@@ -8,7 +8,9 @@ import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NoPermission
+import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostLimits
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.comments.commentPages
@@ -16,6 +18,7 @@ import net.unifey.handle.feeds.posts.getPost
 import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.feeds.responses.GetFeedResponse
 import net.unifey.handle.feeds.responses.GetPostResponse
+import net.unifey.handle.reports.ReportHandler
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
@@ -90,11 +93,31 @@ fun Routing.feedPages() {
                 }
 
                 /**
+                 * Report a post.
+                 */
+                post("/report") {
+                    val (token, post) = call.getPost()
+
+                    if (token == null)
+                        throw NoPermission()
+
+                    var reason = call.receiveParameters()["reason"]
+                            ?: throw InvalidArguments("reason")
+
+                    reason = cleanInput(reason)
+
+                    if (reason.isBlank())
+                        throw InvalidVariableInput("reason", "reason cannot be blank")
+
+                    ReportHandler.addReport(post.id, ReportHandler.TargetType.POST, token.owner, reason)
+
+                    call.respond(Response())
+                }
+
+                /**
                  * Get the post
                  */
                 get {
-                    call.getFeed(requireView = true)
-
                     val (token, post) = call.getPost()
 
                     val vote = if (token != null)
@@ -139,6 +162,42 @@ fun Routing.feedPages() {
                             ?: throw InvalidArguments("vote")
 
                     VoteManager.setPostVote(post.id, token.owner, vote)
+
+                    call.respond(Response())
+                }
+
+                suspend fun ApplicationCall.managePost(param: String): Pair<String, Post> {
+                    val (token, post) = getPost()
+
+                    if (token == null || token.owner != post.authorId)
+                        throw NoPermission()
+
+                    val received = receiveParameters()[param]
+                            ?: throw InvalidArguments(param)
+
+                    return cleanInput(received) to post
+                }
+
+                post("/content") {
+                    val (content, post) = call.managePost("content")
+
+                    if (content.isBlank() || content.length > PostLimits.MAX_CONTENT_LEN)
+                        throw InvalidVariableInput("content", "Post must be under ${PostLimits.MAX_CONTENT_LEN} characters.")
+
+                    post.content = content
+                    post.edited = true
+
+                    call.respond(Response())
+                }
+
+                post("/title") {
+                    val (content, post) = call.managePost("title")
+
+                    if (content.isBlank() || content.length > PostLimits.MAX_TITLE_LEN)
+                        throw InvalidVariableInput("title", "Title must be under ${PostLimits.MAX_CONTENT_LEN} characters.")
+
+                    post.title = content
+                    post.edited = true
 
                     call.respond(Response())
                 }
