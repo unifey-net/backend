@@ -1,5 +1,6 @@
 package net.unifey.handle.communities
 
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
 import net.unifey.handle.InvalidArguments
@@ -207,5 +208,17 @@ object CommunityManager {
                 .getCollection("communities")
                 .find(eq("name", name))
                 .any()
+    }
+
+    /**
+     * Get the member count of a community
+     */
+    fun getMemberCount(community: Long): Int {
+        return Mongo.getClient()
+                .getDatabase("users")
+                .getCollection("members")
+                .find(Filters.`in`("member", community))
+                .toList()
+                .size
     }
 }

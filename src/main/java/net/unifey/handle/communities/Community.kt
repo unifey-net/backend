@@ -1,5 +1,6 @@
 package net.unifey.handle.communities
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import dev.shog.lib.util.eitherOr
@@ -16,8 +17,15 @@ class Community(
         commentRole: Int,
         name: String,
         description: String,
+        @JsonIgnore
         val roles: MutableMap<Long, Int>
 ) {
+    /**
+     * The size of the community.
+     */
+    val size
+        get() = CommunityManager.getMemberCount(id)
+
     /**
      * The role where users are allowed to comment.
      */
