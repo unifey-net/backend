@@ -2,9 +2,11 @@ package net.unifey.handle.communities
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import dev.shog.lib.util.eitherOr
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.UserManager
 
 class Community(
         val id: Long,
@@ -136,8 +138,15 @@ class Community(
     /**
      * Get [user]'s role.
      */
-    fun getRole(user: Long): Int? =
-            roles[user]
+    fun getRole(user: Long): Int? {
+        val role = roles[user]
+
+        return role
+                ?: UserManager.getUser(user) // if they're in the community, give them member
+                        .member
+                        .isMemberOf(id)
+                        .eitherOr(CommunityRoles.MEMBER, CommunityRoles.DEFAULT)
+    }
 
     /**
      * Get the communities feed.

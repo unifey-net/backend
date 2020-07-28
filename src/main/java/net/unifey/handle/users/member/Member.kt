@@ -34,9 +34,6 @@ class Member(
         if (member.contains(community))
             throw AlreadyExists("community", community.toString())
 
-        CommunityManager.getCommunityById(community)
-                .setRole(id, CommunityRoles.MEMBER)
-
         member.add(community)
 
         update()
@@ -48,9 +45,6 @@ class Member(
     fun leave(community: Long) {
         if (!member.contains(community))
             throw NotFound("community")
-
-        CommunityManager.getCommunityById(community)
-                .setRole(id, CommunityRoles.DEFAULT)
 
         member.remove(community)
 
