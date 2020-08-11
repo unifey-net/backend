@@ -68,7 +68,7 @@ fun main(args: Array<String>) {
 
     argH.hook("--dev") {
         prod = false
-        url = "http://192.168.1.102:8077"
+        url = "http://localhost:8077"
     }
 
     argH.initWith(args)
