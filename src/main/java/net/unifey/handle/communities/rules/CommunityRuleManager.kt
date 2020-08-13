@@ -2,122 +2,113 @@ package net.unifey.handle.communities.rules
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import io.ktor.http.HttpStatusCode
+import io.ktor.response.respond
+import net.unifey.handle.Error
+import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import org.bson.Document
+import kotlin.math.sign
 
 object CommunityRuleManager {
+    private const val MAX_RULES = 32
+
     /**
      * Create a rule for [community].
      * The rules index is the first one available.
      *
      * @param title The title of the rule.
      * @param body The body of the rule.
-     * @param community The communities' id.
+     * @param community The community.
      */
-    suspend fun createRule(title: String, body: String, community: Long) {
-        Mongo.useJob {
-            getDatabase("communities")
-                    .getCollection("rules")
-                    .insertOne(Document(mapOf(
-                            "id" to community,
-                            "index" to getRules(community).size,
-                            "title" to title,
-                            "body" to body
-                    )))
-        }
-    }
+    @Throws(Error::class)
+    suspend fun createRule(title: String, body: String, community: Community) {
+        if (community.rules.size >= MAX_RULES)
+            throw Error {
+                respond(HttpStatusCode.BadRequest, Response("You cannot have over 32 rules!"))
+            }
 
-    /**
-     * Modify a rule's body.
-     *
-     * @param body The new body for the rule.
-     * @param index The index of the rule.
-     * @param community The community where the rule resides.
-     */
-    suspend fun modifyBody(body: String, index: Int, community: Long) {
+        val id = IdGenerator.getId()
+
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("rules")
+                    .getCollection("communities")
                     .updateOne(
-                            Filters.and(Filters.eq("id", community), Filters.eq("index", index)),
-                            Updates.set("body", body)
-                    )
+                            Filters.eq("id", community.id),
+                            Updates.set("rules.${id}",
+                                    Document(mapOf(
+                                            "title" to title,
+                                            "body" to body
+                                    ))))
         }
+
+        community.rules.add(CommunityRule(
+                id,
+                title,
+                body
+        ))
     }
 
     /**
      * Modify a rule's title.
      *
      * @param title The new title for the rule.
-     * @param index The index of the rule.
+     * @param id The ID of the rule.
      * @param community The community where the rule resides.
      */
-    suspend fun modifyTitle(title: String, index: Int, community: Long) {
+    suspend fun modifyTitle(title: String, id: Long, community: Community) {
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("rules")
+                    .getCollection("communities")
                     .updateOne(
-                            Filters.and(Filters.eq("id", community), Filters.eq("index", index)),
-                            Updates.set("title", title)
+                            Filters.eq("id", community.id),
+                            Updates.set("rules.${id}.title", title)
                     )
         }
+
+        community.rules
+                .single { rule -> rule.id == id }
+                .title = title
     }
 
     /**
-     * Modify a rule's index.
+     * Modify a rule's body.
      *
-     * @param newIndex The new index for the rule.
-     * @param oldIndex The current index of the rule.
+     * @param body The new body for the rule.
+     * @param id The ID of the rule.
      * @param community The community where the rule resides.
      */
-    suspend fun modifyIndex(newIndex: Int, oldIndex: Int, community: Long) {
-        val rules = getRules(community)
+    suspend fun modifyBody(body: String, id: Long, community: Community) {
+        Mongo.useJob {
+            getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(
+                            Filters.eq("id", community.id),
+                            Updates.set("rules.${id}.body", body)
+                    )
+        }
+
+        community.rules
+                .single { rule -> rule.id == id }
+                .body = body
     }
 
     /**
-     * Delete a rule by it's index.
+     * Delete a rule by it's ID.
      *
-     * @param index The index of the rule
+     * @param id The ID of the rule.
      * @param community The community where the rule resides.
      */
-    suspend fun deleteRule(index: Int, community: Long) {
+    suspend fun deleteRule(id: Long, community: Community) {
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("rules")
-                    .deleteOne(Filters.and(Filters.eq("id", community), Filters.eq("index", index)))
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", community.id), Updates.unset("rules.${id}"))
         }
-    }
 
-    /**
-     * Delete all rules from [community].
-     */
-    suspend fun deleteAll(community: Long) {
-        Mongo.useJob {
-            getDatabase("communities")
-                    .getCollection("rules")
-                    .deleteMany(Filters.eq("id", community))
-        }
-    }
-
-    /**
-     * Get [community]'s rules.
-     */
-    suspend fun getRules(community: Long): MutableList<CommunityRule> {
-        return Mongo.useAsync {
-            getDatabase("communities")
-                    .getCollection("rules")
-                    .find(Filters.eq("id", community))
-                    .map { doc ->
-                        CommunityRule(
-                                community,
-                                doc.getInteger("index"),
-                                doc.getString("title"),
-                                doc.getString("body")
-                        )
-                    }
-                    .toMutableList()
-        }.await()
+        community.rules.removeIf { rule -> rule.id == id }
     }
 }

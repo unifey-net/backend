@@ -138,6 +138,7 @@ fun main(args: Array<String>) {
             method(HttpMethod.Options)
             method(HttpMethod.Put)
             method(HttpMethod.Delete)
+            method(HttpMethod.Patch)
 
             header("Authorization")
             allowCredentials = true

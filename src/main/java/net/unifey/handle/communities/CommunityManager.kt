@@ -5,6 +5,7 @@ import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
@@ -73,6 +74,27 @@ object CommunityManager {
      * Parse a [Community] from a bson [doc].
      */
     private fun getCommunity(doc: Document): Community {
+        fun getRules(rulesDoc: Document): List<CommunityRule> {
+            return rulesDoc.keys
+                    .map { key ->
+                        rulesDoc.get(key, Document::class.java) to key
+                    }
+                    .map { (doc, key) ->
+                        CommunityRule(
+                                key.toLong(),
+                                doc.getString("title"),
+                                doc.getString("body")
+                        )
+                    }
+        }
+
+        val roles = doc.get("roles", Document::class.java)
+                .mapKeys { it.key.toLong() }
+                .mapValues { it.value as Int }
+                .toMutableMap()
+
+        val rules = getRules(doc.get("rules", Document::class.java))
+
         val permissions = doc.get("permissions", Document::class.java)
 
         val community = Community(
@@ -83,10 +105,8 @@ object CommunityManager {
                 permissions.getInteger("comment_role"),
                 doc.getString("name"),
                 doc.getString("description"),
-                doc.get("roles", Document::class.java)
-                        .mapKeys { it.key.toLong() }
-                        .mapValues { it.value as Int }
-                        .toMutableMap()
+                rules.toMutableList(),
+                roles
         )
 
         cache.add(community)
@@ -169,6 +189,7 @@ object CommunityManager {
                 CommunityRoles.MEMBER,
                 name,
                 desc,
+                mutableListOf(),
                 roles
         )
 

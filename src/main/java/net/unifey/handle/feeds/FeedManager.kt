@@ -106,7 +106,10 @@ object FeedManager {
             if (community.viewRole != CommunityRoles.DEFAULT && user == null)
                 return false
 
-            return community.getRole(user ?: -1) ?: CommunityRoles.DEFAULT >= community.viewRole
+            return if (user == null)
+                CommunityRoles.hasPermission(CommunityRoles.DEFAULT, community.viewRole)
+            else
+                CommunityRoles.hasPermission(community.getRole(user), community.viewRole)
         }
 
         return true

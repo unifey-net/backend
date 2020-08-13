@@ -10,12 +10,15 @@ import io.ktor.response.respondBytes
 import io.ktor.routing.*
 import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.isAuthenticated
+import net.unifey.auth.tokens.Token
 import net.unifey.handle.*
 import net.unifey.handle.communities.responses.GetCommunityResponse
+import net.unifey.handle.communities.rules.CommunityRuleManager
 import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
+import net.unifey.util.clean
 import net.unifey.util.cleanInput
 import net.unifey.util.ensureProperImageBody
 
@@ -115,6 +118,9 @@ fun Routing.communityPages() {
         }
 
         route("/{id}") {
+            /**
+             * Get a community by it's ID
+             */
             get {
                 val id = call.parameters["id"]?.toLongOrNull()
                         ?: throw InvalidArguments("p_id")
@@ -141,6 +147,97 @@ fun Routing.communityPages() {
                 CommunityManager.deleteCommunity(id)
 
                 call.respond(Response())
+            }
+
+            /**
+             * Manage a communities rules.
+             */
+            route("/rules") {
+                @Throws(NoPermission::class)
+                fun ApplicationCall.getRule(): Pair<Community, Token> {
+                    val token = isAuthenticated()
+
+                    val id = parameters["id"]?.toLongOrNull()
+                            ?: throw InvalidArguments("p_id")
+
+                    val community = CommunityManager.getCommunityById(id)
+
+                    if (!CommunityRoles.hasPermission(community.getRole(token.owner), CommunityRoles.ADMIN))
+                        throw NoPermission()
+
+                    return community to token
+                }
+
+                /**
+                 * Create a rule.
+                 */
+                put {
+                    val (community) = call.getRule()
+
+                    val params = call.receiveParameters()
+
+                    val title = params["title"].clean()
+                    val body = params["body"].clean()
+
+                    if (title == null || body == null)
+                        throw InvalidArguments("title", "body")
+
+                    CommunityRuleManager.createRule(title, body, community)
+
+                    call.respond(Response())
+                }
+
+                /**
+                 * Delete a rule.
+                 */
+                delete("/{rule}") {
+                    val (community) = call.getRule()
+
+                    val id = call.parameters["rule"]?.toLongOrNull()
+                            ?: throw InvalidArguments("p_rule")
+
+                    CommunityRuleManager.deleteRule(id, community)
+
+                    call.respond(Response())
+                }
+
+                /**
+                 * Update the rule's body.
+                 */
+                patch("/body") {
+                    val (community) = call.getRule()
+
+                    val params = call.receiveParameters()
+
+                    val id = params["id"]?.toLongOrNull()
+                    val body = params["body"].clean()
+
+                    if (id == null || body == null)
+                        throw InvalidArguments("body", "id")
+
+                    CommunityRuleManager.modifyBody(body, id, community)
+
+                    call.respond(Response())
+                }
+
+                /**
+                 * Update the rule's title.
+                 */
+                patch("/title") {
+                    val (community) = call.getRule()
+
+                    val params = call.receiveParameters()
+
+                    val id = params["id"]?.toLongOrNull()
+                    val title = params["title"].clean()
+
+                    if (id == null || title == null)
+                        throw InvalidArguments("title", "id")
+
+                    CommunityRuleManager.modifyTitle(title, id, community)
+
+                    call.respond(Response())
+                }
             }
 
             /**

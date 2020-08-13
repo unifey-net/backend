@@ -5,6 +5,7 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import dev.shog.lib.util.eitherOr
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
@@ -17,6 +18,7 @@ class Community(
         commentRole: Int,
         name: String,
         description: String,
+        val rules: MutableList<CommunityRule>,
         @JsonIgnore
         val roles: MutableMap<Long, Int>
 ) {
@@ -25,6 +27,7 @@ class Community(
      */
     val size
         get() = CommunityManager.getMemberCount(id)
+
 
     /**
      * The role where users are allowed to comment.
@@ -147,6 +150,9 @@ class Community(
      * Get [user]'s role.
      */
     fun getRole(user: Long): Int? {
+        if (user == -1L)
+            return CommunityRoles.DEFAULT
+
         val role = roles[user]
 
         return role

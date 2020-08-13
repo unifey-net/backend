@@ -50,3 +50,9 @@ suspend fun ApplicationCall.ensureProperImageBody(maxSize: Long = 4_000_000): By
 fun cleanInput(input: String): String {
     return Jsoup.clean(input, Whitelist.basic())
 }
+
+fun String?.clean(): String? {
+    this ?: return null
+
+    return cleanInput(this)
+}
