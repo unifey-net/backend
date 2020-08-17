@@ -131,6 +131,37 @@ fun Routing.communityPages() {
             }
 
             /**
+             * Get a communities staff members
+             */
+            get("/staff") {
+                data class CommunityStaffResponse(
+                        val role: Int,
+                        val user: User
+                )
+
+                val user = try {
+                    call.isAuthenticated()
+                } catch (authEx: AuthenticationException) {
+                    null
+                }
+
+                val id = call.parameters["id"]?.toLongOrNull()
+                        ?: throw InvalidArguments("p_id")
+
+                val community = CommunityManager.getCommunityById(id)
+
+                if (community.viewRole != CommunityRoles.DEFAULT && (user == null || community.getRole(user.owner) != community.viewRole))
+                    throw NoPermission()
+
+                call.respond(
+                        community.roles.map { (id, role) ->
+                            CommunityStaffResponse(role, UserManager.getUser(id))
+                        }
+                )
+            }
+
+
+            /**
              * Delete a community.
              */
             delete {
