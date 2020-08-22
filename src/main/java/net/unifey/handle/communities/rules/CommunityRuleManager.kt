@@ -23,9 +23,11 @@ object CommunityRuleManager {
      * @param title The title of the rule.
      * @param body The body of the rule.
      * @param community The community.
+     *
+     * @return The new rule's id
      */
     @Throws(Error::class)
-    suspend fun createRule(title: String, body: String, community: Community) {
+    suspend fun createRule(title: String, body: String, community: Community): Long {
         if (community.rules.size >= MAX_RULES)
             throw Error {
                 respond(HttpStatusCode.BadRequest, Response("You cannot have over 32 rules!"))
@@ -50,6 +52,8 @@ object CommunityRuleManager {
                 title,
                 body
         ))
+
+        return id
     }
 
     /**

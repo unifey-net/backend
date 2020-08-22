@@ -14,6 +14,7 @@ import net.unifey.auth.tokens.Token
 import net.unifey.handle.*
 import net.unifey.handle.communities.responses.GetCommunityResponse
 import net.unifey.handle.communities.rules.CommunityRuleManager
+import net.unifey.handle.communities.rules.RuleInputRequirements
 import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
@@ -210,12 +211,20 @@ fun Routing.communityPages() {
                     val title = params["title"].clean()
                     val body = params["body"].clean()
 
-                    if (title == null || body == null)
-                        throw InvalidArguments("title", "body")
+                    when {
+                        title == null || body == null ->
+                            throw InvalidArguments("title", "body")
 
-                    CommunityRuleManager.createRule(title, body, community)
+                        !RuleInputRequirements.BODY.contains(body.length) ->
+                            throw InvalidVariableInput("Body", "The body length must be between ${RuleInputRequirements.BODY}")
 
-                    call.respond(Response())
+                        !RuleInputRequirements.TITLE.contains(title.length) ->
+                            throw InvalidVariableInput("Title", "The title length must be between ${RuleInputRequirements.TITLE}")
+                    }
+
+                    val id = CommunityRuleManager.createRule(title!!, body!!, community)
+
+                    call.respond(Response(id))
                 }
 
                 /**
@@ -243,10 +252,15 @@ fun Routing.communityPages() {
                     val id = params["id"]?.toLongOrNull()
                     val body = params["body"].clean()
 
-                    if (id == null || body == null)
-                        throw InvalidArguments("body", "id")
+                    when {
+                        id == null || body == null ->
+                            throw InvalidArguments("body", "id")
 
-                    CommunityRuleManager.modifyBody(body, id, community)
+                        !RuleInputRequirements.BODY.contains(body.length) ->
+                            throw InvalidVariableInput("Body", "The body length must be between ${RuleInputRequirements.BODY}")
+                    }
+
+                    CommunityRuleManager.modifyBody(body!!, id!!, community)
 
                     call.respond(Response())
                 }
@@ -262,10 +276,15 @@ fun Routing.communityPages() {
                     val id = params["id"]?.toLongOrNull()
                     val title = params["title"].clean()
 
-                    if (id == null || title == null)
-                        throw InvalidArguments("title", "id")
+                    when {
+                        id == null || title == null ->
+                            throw InvalidArguments("title", "id")
 
-                    CommunityRuleManager.modifyTitle(title, id, community)
+                        !RuleInputRequirements.TITLE.contains(title.length) ->
+                            throw InvalidVariableInput("Title", "The title length must be between ${RuleInputRequirements.TITLE}")
+                    }
+
+                    CommunityRuleManager.modifyTitle(title!!, id!!, community)
 
                     call.respond(Response())
                 }
