@@ -2,7 +2,6 @@ package net.unifey.handle.users
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
-import io.ktor.client.engine.callContext
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
@@ -15,7 +14,6 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.profile.Profile
@@ -193,7 +191,7 @@ fun Routing.userPages() {
         put("/email") {
             val (user, email) = call.changeUser("email")
 
-            InputRequirements.emailMeets(email)
+            UserInputRequirements.meets(email, UserInputRequirements.EMAIL_EXISTS)
 
             user.email = email
             user.verified = false
@@ -209,7 +207,7 @@ fun Routing.userPages() {
         put("/password") {
             val (user, password) = call.changeUser("password")
 
-            InputRequirements.passwordMeets(password)
+            UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
             user.password = BCrypt.hashpw(password, BCrypt.gensalt())
 
@@ -222,7 +220,7 @@ fun Routing.userPages() {
         put("/name") {
             val (user, username) = call.changeUser("username")
 
-            InputRequirements.usernameMeets(username)
+            UserInputRequirements.meets(username, UserInputRequirements.USERNAME_EXISTS)
 
             user.username = username
 

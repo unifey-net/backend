@@ -7,13 +7,10 @@ import io.ktor.request.receiveText
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
 import io.ktor.routing.*
-import kong.unirest.Unirest
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
-import net.unifey.handle.users.InputRequirements
+import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 
@@ -79,7 +76,7 @@ fun Routing.emailPages() {
             if (id == null || verify == null || password == null)
                 throw InvalidArguments("id", "verify", "password")
 
-            InputRequirements.passwordMeets(password)
+            UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
             UserEmailManager.passwordReset(id, verify, password)
 

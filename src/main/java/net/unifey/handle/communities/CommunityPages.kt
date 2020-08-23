@@ -211,18 +211,15 @@ fun Routing.communityPages() {
                     val title = params["title"].clean()
                     val body = params["body"].clean()
 
-                    when {
-                        title == null || body == null ->
-                            throw InvalidArguments("title", "body")
+                    if (title == null || body == null)
+                        throw InvalidArguments("title", "body")
 
-                        !RuleInputRequirements.BODY.contains(body.length) ->
-                            throw InvalidVariableInput("Body", "The body length must be between ${RuleInputRequirements.BODY}")
+                    RuleInputRequirements.meets(listOf(
+                            body to RuleInputRequirements.BODY,
+                            title to RuleInputRequirements.TITLE
+                    ))
 
-                        !RuleInputRequirements.TITLE.contains(title.length) ->
-                            throw InvalidVariableInput("Title", "The title length must be between ${RuleInputRequirements.TITLE}")
-                    }
-
-                    val id = CommunityRuleManager.createRule(title!!, body!!, community)
+                    val id = CommunityRuleManager.createRule(title, body, community)
 
                     call.respond(Response(id))
                 }
@@ -252,15 +249,12 @@ fun Routing.communityPages() {
                     val id = params["id"]?.toLongOrNull()
                     val body = params["body"].clean()
 
-                    when {
-                        id == null || body == null ->
-                            throw InvalidArguments("body", "id")
+                    if (id == null || body == null)
+                        throw InvalidArguments("body", "id")
 
-                        !RuleInputRequirements.BODY.contains(body.length) ->
-                            throw InvalidVariableInput("Body", "The body length must be between ${RuleInputRequirements.BODY}")
-                    }
+                    RuleInputRequirements.meets(body, RuleInputRequirements.BODY)
 
-                    CommunityRuleManager.modifyBody(body!!, id!!, community)
+                    CommunityRuleManager.modifyBody(body, id, community)
 
                     call.respond(Response())
                 }
@@ -276,15 +270,12 @@ fun Routing.communityPages() {
                     val id = params["id"]?.toLongOrNull()
                     val title = params["title"].clean()
 
-                    when {
-                        id == null || title == null ->
-                            throw InvalidArguments("title", "id")
+                    if (id == null || title == null)
+                        throw InvalidArguments("title", "id")
 
-                        !RuleInputRequirements.TITLE.contains(title.length) ->
-                            throw InvalidVariableInput("Title", "The title length must be between ${RuleInputRequirements.TITLE}")
-                    }
+                    RuleInputRequirements.meets(title, RuleInputRequirements.TITLE)
 
-                    CommunityRuleManager.modifyTitle(title!!, id!!, community)
+                    CommunityRuleManager.modifyTitle(title, id, community)
 
                     call.respond(Response())
                 }
@@ -358,7 +349,7 @@ fun Routing.communityPages() {
             put("/name") {
                 val (community, name) = call.modifyCommunity("name", CommunityRoles.ADMIN)
 
-                InputRequirements.nameMeets(name)
+                CommunityInputRequirements.meets(name, CommunityInputRequirements.NAME)
 
                 community.name = name
 
@@ -371,7 +362,7 @@ fun Routing.communityPages() {
             put("/description") {
                 val (community, desc) = call.modifyCommunity("description", CommunityRoles.ADMIN)
 
-                InputRequirements.descMeets(desc)
+                CommunityInputRequirements.meets(desc, CommunityInputRequirements.DESCRIPTION)
 
                 community.description = desc
 
@@ -503,8 +494,10 @@ fun Routing.communityPages() {
             if (name == null || desc == null)
                 throw InvalidArguments("name", "desc")
 
-            InputRequirements.nameMeets(name)
-            InputRequirements.descMeets(desc)
+            CommunityInputRequirements.meets(listOf(
+                    name to CommunityInputRequirements.NAME,
+                    desc to CommunityInputRequirements.DESCRIPTION
+            ))
 
             call.respond(CommunityManager.createCommunity(token.owner, name, desc))
         }

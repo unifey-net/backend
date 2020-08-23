@@ -88,8 +88,8 @@ object UserManager {
      * Create an account with [email], [username] and [password].
      */
     @Throws(InvalidVariableInput::class)
-    fun createUser(email: String, username: String, password: String): User {
-        InputRequirements.allMeets(username, password, email)
+    suspend fun createUser(email: String, username: String, password: String): User {
+        UserInputRequirements.allMeets(username, password, email)
 
         val id = IdGenerator.getId()
 

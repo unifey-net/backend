@@ -5,8 +5,7 @@ import com.mongodb.client.model.Updates
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
-import net.unifey.handle.users.InputRequirements
-import net.unifey.handle.users.email.EmailTypes
+import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.email.UserEmailManager
 import org.bson.Document
 import java.util.concurrent.TimeUnit
@@ -73,14 +72,16 @@ object Beta {
     /**
      * Sign up a user with [username] and [email].
      */
-    fun signUp(username: String, email: String) {
+    suspend fun signUp(username: String, email: String) {
         // check if exists
         usernameExists(username)
         emailExists(email)
 
         // check if meets regex
-        InputRequirements.usernameMeets(username, false)
-        InputRequirements.emailMeets(email, false)
+        UserInputRequirements.meets(listOf(
+                username to UserInputRequirements.USERNAME,
+                email to UserInputRequirements.EMAIL
+        ))
 
         val signup = BetaSignup(
                 username,

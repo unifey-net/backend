@@ -3,6 +3,8 @@ package net.unifey.handle.communities
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.runBlocking
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.rules.CommunityRule
@@ -223,23 +225,34 @@ object CommunityManager {
     /**
      * If another community has already taken [name].
      */
-    fun nameTaken(name: String): Boolean {
-        return Mongo.getClient()
-                .getDatabase("communities")
+    suspend fun nameTakenAsync(name: String): Deferred<Boolean> {
+        return Mongo.useAsync {
+            getDatabase("communities")
                 .getCollection("communities")
                 .find(eq("name", name))
                 .any()
+        }
     }
 
     /**
      * Get the member count of a community
      */
+    suspend fun getMemberCountAsync(community: Long): Deferred<Int> {
+        return Mongo.useAsync {
+            getDatabase("users")
+                    .getCollection("members")
+                    .find(Filters.`in`("member", community))
+                    .toList()
+                    .size
+        }
+    }
+
+    /**
+     * Get the sync member count.
+     */
     fun getMemberCount(community: Long): Int {
-        return Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("members")
-                .find(Filters.`in`("member", community))
-                .toList()
-                .size
+        return runBlocking {
+            getMemberCountAsync(community).await()
+        }
     }
 }
