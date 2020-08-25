@@ -56,10 +56,12 @@ fun Routing.emailPages() {
         put("/forgot") {
             val params = call.receiveParameters()
 
-            val id = params["id"]?.toLongOrNull()
-                    ?: throw InvalidArguments("id")
+            val input = params["input"]
+                    ?: throw InvalidArguments("input")
 
-            UserEmailManager.sendPasswordReset(id)
+            val user = UserPasswordResetHandler.findUsingInput(input)
+
+            UserEmailManager.sendPasswordReset(user)
 
             call.respond(Response())
         }
@@ -69,16 +71,16 @@ fun Routing.emailPages() {
          */
         post("/forgot") {
             val params = call.receiveParameters()
-            val id = params["id"]?.toLongOrNull()
+
             val verify = params["verify"]
             val password = params["password"]
 
-            if (id == null || verify == null || password == null)
-                throw InvalidArguments("id", "verify", "password")
+            if (verify == null || password == null)
+                throw InvalidArguments("verify", "password")
 
             UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
-            UserEmailManager.passwordReset(id, verify, password)
+            UserEmailManager.passwordReset(verify, password)
 
             call.respond(Response())
         }

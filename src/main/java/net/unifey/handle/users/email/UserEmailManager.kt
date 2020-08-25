@@ -6,6 +6,9 @@ import com.amazonaws.services.simpleemail.model.*
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.currentTimeMillis
+import io.ktor.http.HttpStatusCode
+import io.ktor.response.respond
+import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
@@ -13,11 +16,13 @@ import net.unifey.handle.beta.Beta
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
+import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import net.unifey.webhook
 import org.bson.Document
 import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
+import org.slf4j.LoggerFactory
 import java.lang.Exception
 
 object UserEmailManager {
@@ -146,28 +151,27 @@ object UserEmailManager {
     /**
      * Reset a password.
      */
-    fun passwordReset(id: Long, verify: String, newPassword: String) {
-        verifyRequests.singleOrNull { request ->
+    fun passwordReset(verify: String, newPassword: String) {
+        val request = verifyRequests.singleOrNull { request ->
             request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
-                    && request.id == id
                     && request.verify.equals(verify, true)
         }
                 ?: throw InvalidArguments("verify")
 
-        verifyRequests.removeIf { request -> request.verify.equals(verify, true) }
+        verifyRequests.removeIf { req -> req.verify.equals(verify, true) }
 
         Mongo.getClient()
                 .getDatabase("email")
                 .getCollection("verify")
-                .deleteOne(Filters.and(eq("id", id), eq("verify", verify)))
+                .deleteOne(Filters.and(eq("id", request.id!!), eq("verify", verify)))
 
-        UserManager.getUser(id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+        UserManager.getUser(request.id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
     }
 
     /**
      * Send a password reset email for [id] to [email]
      */
-    @Throws(AlreadyVerified::class, Unverified::class)
+    @Throws(AlreadyVerified::class, Unverified::class, Error::class)
     fun sendPasswordReset(id: Long) {
         val user = UserManager.getUser(id)
 
@@ -183,7 +187,9 @@ object UserEmailManager {
 
         // If there's already an ongoing email request, you can't change it until you've confirmed your first.
         if (exists != null)
-            throw NoPermission()
+            throw Error {
+                respond(HttpStatusCode.Companion.BadRequest, Response("There's already an outgoing request to reset the password on this account!"))
+            }
 
         val doc = Document(mapOf(
                 "id" to id,
@@ -324,6 +330,8 @@ object UserEmailManager {
      * Send an email.
      */
     private fun sendEmail(request: UserEmailRequest, email: Email) {
+        LoggerFactory.getLogger("Emails").info("An email has been sent to $email.")
+
         val client = AmazonSimpleEmailServiceClientBuilder.standard()
                 .withRegion(Regions.US_EAST_1)
                 .build()
