@@ -1,5 +1,7 @@
 package net.unifey.handle.communities
 
+import io.github.bucket4j.Bandwidth
+import io.github.bucket4j.Refill
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
 import io.ktor.http.ContentType
@@ -19,9 +21,12 @@ import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
+import net.unifey.util.PageRateLimit
 import net.unifey.util.clean
 import net.unifey.util.cleanInput
 import net.unifey.util.ensureProperImageBody
+import org.mindrot.jbcrypt.BCrypt
+import java.time.Duration
 
 fun Routing.communityPages() {
     route("/community") {
@@ -151,7 +156,7 @@ fun Routing.communityPages() {
 
                 val community = CommunityManager.getCommunityById(id)
 
-                if (community.viewRole != CommunityRoles.DEFAULT && (user == null || community.getRole(user.owner) != community.viewRole))
+                if (community.viewRole != CommunityRoles.DEFAULT && (user == null || community.viewRole > community.getRole(user.owner)))
                     throw NoPermission()
 
                 call.respond(
@@ -282,6 +287,60 @@ fun Routing.communityPages() {
             }
 
             /**
+             * Verify a name to be apart of a community.
+             */
+            get("/verifyname") {
+                call.isAuthenticated()
+
+                val id = call.parameters["id"]?.toLongOrNull()
+                        ?: throw InvalidArguments("p_id")
+
+                val community = CommunityManager.getCommunityById(id) // verify it exists
+
+                val name = call.request.queryParameters["name"]
+                        ?: throw InvalidArguments("q_name")
+
+                call.respond(
+                        Response(
+                                CommunityManager
+                                        .getMembersAsync(community.id)
+                                        .await()
+                                        .singleOrNull { user -> user.username.equals(name, true) }
+                                        ?.id
+                        )
+                )
+            }
+
+            /**
+             * Search members
+             */
+            post("/search") {
+                val token = call.isAuthenticated(pageRateLimit = PageRateLimit(Bandwidth.classic(
+                        5,
+                        Refill.greedy(1, Duration.ofSeconds(1))
+                )))
+
+                val id = call.parameters["id"]?.toLongOrNull()
+                        ?: throw InvalidArguments("p_id")
+
+                val community = CommunityManager.getCommunityById(id)
+
+                if (!CommunityRoles.hasPermission(community.getRole(token.owner), CommunityRoles.MODERATOR))
+                    throw NoPermission()
+
+                val params = call.receiveParameters()
+
+                val name = params["name"] ?: ""
+
+                call.respond(
+                        CommunityManager
+                                .getMembersAsync(community.id)
+                                .await()
+                                .filter { user -> user.username.contains(name, true) }
+                )
+            }
+
+            /**
              * Manage a communities' profile picture.
              */
             route("/picture") {
@@ -322,9 +381,17 @@ fun Routing.communityPages() {
 
             /**
              * For either modifying the name of description of a community.
+             *
+             * @param param The parameter name. (Ex: name)
+             * @param permission The required permission level (Ex: Admin)
+             * @param requirePassword If the password should be included for security.
              */
             @Throws(NotFound::class, InvalidArguments::class, NoPermission::class)
-            suspend fun ApplicationCall.modifyCommunity(param: String, permission: Int): Pair<Community, String> {
+            suspend fun ApplicationCall.modifyCommunity(
+                    param: String,
+                    permission: Int,
+                    requirePassword: Boolean = false
+            ): Pair<Community, String> {
                 val token = isAuthenticated()
 
                 val id = parameters["id"]?.toLongOrNull()
@@ -332,13 +399,23 @@ fun Routing.communityPages() {
 
                 val community = CommunityManager.getCommunityById(id)
 
-                if (permission > community.getRole(token.owner) ?: CommunityRoles.DEFAULT)
+                if (permission > community.getRole(token.owner))
                     throw NoPermission()
 
                 val params = receiveParameters()
 
                 val par = params[param]
                         ?: throw InvalidArguments(param)
+
+                if (requirePassword) {
+                    val password = params["password"]
+                            ?: throw InvalidArguments("password")
+
+                    if (!BCrypt.checkpw(password, token.getOwner().password))
+                        throw Error {
+                            respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
+                        }
+                }
 
                 return community to cleanInput(par)
             }
@@ -347,7 +424,7 @@ fun Routing.communityPages() {
              * Change the name.
              */
             put("/name") {
-                val (community, name) = call.modifyCommunity("name", CommunityRoles.ADMIN)
+                val (community, name) = call.modifyCommunity("name", CommunityRoles.ADMIN, true)
 
                 CommunityInputRequirements.meets(name, CommunityInputRequirements.NAME)
 
@@ -378,7 +455,7 @@ fun Routing.communityPages() {
                  */
                 @Throws(NotFound::class, InvalidArguments::class, NoPermission::class)
                 suspend fun ApplicationCall.modifyRole(): Pair<Community, Int> {
-                    val (community, roleStr) = modifyCommunity("role", CommunityRoles.ADMIN)
+                    val (community, roleStr) = modifyCommunity("role", CommunityRoles.ADMIN, false)
 
                     val role = roleStr.toIntOrNull()
 
@@ -386,6 +463,23 @@ fun Routing.communityPages() {
                         throw InvalidArguments("role")
 
                     return community to role
+                }
+
+                /**
+                 * Get a communities roles.
+                 */
+                get {
+                    val token = call.isAuthenticated()
+
+                    val id = call.parameters["id"]?.toLongOrNull()
+                            ?: throw InvalidArguments("p_id")
+
+                    val community = CommunityManager.getCommunityById(id)
+
+                    if (CommunityRoles.MODERATOR > community.getRole(token.owner))
+                        throw NoPermission()
+
+                    call.respond(community.roles)
                 }
 
                 /**

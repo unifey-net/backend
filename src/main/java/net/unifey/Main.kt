@@ -35,6 +35,7 @@ import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
+import net.unifey.handle.reports.reportPages
 import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
@@ -152,6 +153,7 @@ fun main(args: Array<String>) {
             userPages()
             friendsPages()
             communityPages()
+            reportPages()
 
             betaPages()
 

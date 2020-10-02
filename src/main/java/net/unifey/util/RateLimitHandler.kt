@@ -14,10 +14,14 @@ import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
+val DEFAULT_PAGE_RATE_LIMIT = PageRateLimit(Bandwidth.classic(
+        10, Refill.greedy(1, Duration.ofSeconds(2))
+))
+
 /**
- * Handles rate limiting. Unifey rate-limits users by their token.
+ * Handle a page's rate limit.
  */
-object RateLimitHandler {
+class PageRateLimit(val bandwidth: Bandwidth) {
     private val buckets = ConcurrentHashMap<String, Bucket>()
 
     /**
@@ -41,17 +45,15 @@ object RateLimitHandler {
      */
     private fun createBucket(): Bucket =
             Bucket4j.builder()
-                    .addLimit(Bandwidth.classic(
-                            10, Refill.greedy(1, Duration.ofSeconds(2))
-                    ))
+                    .addLimit(bandwidth)
                     .build()
 }
 
 /**
  * Check a user's rate limit using their [token].
  */
-fun checkRateLimit(token: Token): Long {
-    val bucket = RateLimitHandler.getBucket(token.token)
+fun checkRateLimit(token: Token, pageRateLimit: PageRateLimit): Long {
+    val bucket = pageRateLimit.getBucket(token.token)
 
     val probe = bucket.tryConsumeAndReturnRemaining(1)
     if (!probe.isConsumed)

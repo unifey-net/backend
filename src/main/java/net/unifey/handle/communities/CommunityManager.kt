@@ -10,6 +10,7 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import org.bson.Document
@@ -244,6 +245,16 @@ object CommunityManager {
                     .find(Filters.`in`("member", community))
                     .toList()
                     .size
+        }
+    }
+
+    suspend fun getMembersAsync(community: Long): Deferred<List<User>> {
+        return Mongo.useAsync {
+            getDatabase("users")
+                    .getCollection("members")
+                    .find(Filters.`in`("member", community))
+                    .toList()
+                    .map { doc -> UserManager.getUser((doc.getLong("id"))) }
         }
     }
 

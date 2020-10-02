@@ -48,6 +48,10 @@ class Member(
 
         member.remove(community)
 
+        CommunityManager
+                .getCommunityById(community)
+                .removeRole(id)
+
         update()
     }
 

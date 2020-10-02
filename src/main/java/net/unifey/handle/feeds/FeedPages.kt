@@ -39,7 +39,7 @@ fun ApplicationCall.getFeed(
 
     val feed = FeedManager.getFeed(feedStr)
 
-    if (requireView || requirePost) {
+    if (requireView || requirePost || requireComment) {
         val cantView = requireView && !FeedManager.canViewFeed(feed, token?.owner)
         val cantPost = requirePost && !FeedManager.canPostFeed(feed, token?.owner)
         val cantComment = requireComment && !FeedManager.canCommentFeed(feed, token?.owner)
@@ -90,28 +90,6 @@ fun Routing.feedPages() {
                  */
                 route("/comments") {
                     commentPages()
-                }
-
-                /**
-                 * Report a post.
-                 */
-                post("/report") {
-                    val (token, post) = call.getPost()
-
-                    if (token == null)
-                        throw NoPermission()
-
-                    var reason = call.receiveParameters()["reason"]
-                            ?: throw InvalidArguments("reason")
-
-                    reason = cleanInput(reason)
-
-                    if (reason.isBlank())
-                        throw InvalidVariableInput("reason", "reason cannot be blank")
-
-                    ReportHandler.addReport(post.id, ReportHandler.TargetType.POST, token.owner, reason)
-
-                    call.respond(Response())
                 }
 
                 /**
