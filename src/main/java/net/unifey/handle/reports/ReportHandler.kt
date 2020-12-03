@@ -78,6 +78,7 @@ object ReportHandler {
     fun getReportsForFeed(feed: String): List<Report> {
         return reportCache
                 .filter { report -> report.feed == feed }
+                .filter { report -> report.reportType == ReportType.COMMUNITY }
     }
 
     /**
@@ -85,7 +86,7 @@ object ReportHandler {
      */
     fun getReportsForUnifey(): List<Report> {
         return reportCache
-                .filter { report -> report.feed == null }
+                .filter { report -> report.reportType == ReportType.UNIFEY || report.feed == null }
     }
 
     /**

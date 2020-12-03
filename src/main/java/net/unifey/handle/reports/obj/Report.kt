@@ -9,7 +9,7 @@ import net.unifey.handle.reports.Target
  * @param feed The feed
  * @param reportee The person reporting.
  * @param target The target object.
- * @param reportType The blanket reason for reporting.
+ * @param reportType If it's either Unifey or community moderators.
  * @param reason The user extended reason (this can be blank)
  * @param date The date the report occurred
  */
