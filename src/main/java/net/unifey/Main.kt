@@ -2,13 +2,9 @@ package net.unifey
 
 import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
-import dev.shog.lib.app.Application
-import dev.shog.lib.app.cfg.ConfigHandler
-import dev.shog.lib.app.cfg.ConfigType
 import dev.shog.lib.discord.DiscordWebhook
 import dev.shog.lib.discord.WebhookUser
 import dev.shog.lib.util.ArgsHandler
-import dev.shog.lib.util.logDiscord
 import io.ktor.application.call
 import io.ktor.application.install
 import io.ktor.features.*
@@ -32,7 +28,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import net.unifey.handle.Error
 import net.unifey.handle.beta.betaPages
-import net.unifey.handle.communities.communityPages
+import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.reports.reportPages
@@ -40,8 +36,6 @@ import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
-import org.apache.http.util.ExceptionUtils
-import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.time.Duration
