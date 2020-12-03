@@ -9,6 +9,8 @@ import net.unifey.auth.isAuthenticated
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
+import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.comments.CommentManager
@@ -111,8 +113,14 @@ fun Routing.reportPages() {
 
                 val feed = FeedManager.getFeed(feedId)
 
-                // they must be moderator to view reports.
-                if (!feed.moderators.contains(token.owner))
+                if (feed.id.startsWith("cf_")) {
+                    val communityId = feed.id.removePrefix("cf_").toLong()
+
+                    val community = CommunityManager.getCommunityById(communityId)
+
+                    if (community.getRole(token.owner) < CommunityRoles.MODERATOR)
+                        throw NoPermission()
+                } else if (!feed.moderators.contains(token.owner))
                     throw NoPermission()
 
                 call.respond(ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id)))
