@@ -1,10 +1,14 @@
 package net.unifey.auth
 
+import io.ktor.http.*
+import io.ktor.response.*
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
+import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import java.util.concurrent.TimeUnit
 import org.mindrot.jbcrypt.BCrypt
@@ -37,7 +41,7 @@ object Authenticator {
      * Generate a token if [username] and [password] are correct. If not, return null.
      */
     @Throws(InvalidArguments::class)
-    fun generateIfCorrect(username: String, password: String, remember: Boolean): Token? {
+    fun generateIfCorrect(username: String, password: String, remember: Boolean): Token {
         val user = Mongo.getClient()
                 .getDatabase("users")
                 .getCollection("users")
@@ -58,6 +62,8 @@ object Authenticator {
             }
         }
 
-        throw InvalidArguments("username", "password")
+        throw Error {
+            respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
+        }
     }
 }

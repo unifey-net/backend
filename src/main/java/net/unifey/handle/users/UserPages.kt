@@ -378,10 +378,6 @@ fun Routing.userPages() {
 
         val auth = Authenticator.generateIfCorrect(username, password, remember)
 
-        if (auth == null)
-            call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
-        else {
-            call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
-        }
+        call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
     }
 }
