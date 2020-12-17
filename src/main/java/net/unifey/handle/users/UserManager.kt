@@ -42,18 +42,24 @@ object UserManager {
 
     /**
      * Get a user's ID by their [name].
-     *
-     * TODO caching
      */
     fun getId(name: String): Long {
+        val cacheUser = cache
+                .filter { user -> user.value.username.equals(name, true) }
+                .keys
+                .firstOrNull()
+
+        if (cacheUser != null)
+            return cacheUser
+
         val collection = Mongo.getClient()
                 .getDatabase("users")
                 .getCollection("users")
 
         val user = getUser(
                 collection
-                        .find(eq("username", name))
-                        .firstOrNull()
+                        .find()
+                        .firstOrNull { doc -> doc.getString("username").equals(name, true) }
         )
 
         return user.id
@@ -82,8 +88,8 @@ object UserManager {
      * Create an account with [email], [username] and [password].
      */
     @Throws(InvalidVariableInput::class)
-    fun createUser(email: String, username: String, password: String): User {
-        InputRequirements.allMeets(username, password, email)
+    suspend fun createUser(email: String, username: String, password: String): User {
+        UserInputRequirements.allMeets(username, password, email)
 
         val id = IdGenerator.getId()
 

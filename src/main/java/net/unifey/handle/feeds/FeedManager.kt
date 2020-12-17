@@ -99,11 +99,17 @@ object FeedManager {
     /**
      * If [user] can view [feed].
      */
-    fun canViewFeed(feed: Feed, user: Long): Boolean {
+    fun canViewFeed(feed: Feed, user: Long?): Boolean {
         if (feed.id.startsWith("cf_")) {
             val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
 
-            return community.getRole(user) ?: CommunityRoles.DEFAULT >= community.viewRole
+            if (community.viewRole != CommunityRoles.DEFAULT && user == null)
+                return false
+
+            return if (user == null)
+                CommunityRoles.hasPermission(CommunityRoles.DEFAULT, community.viewRole)
+            else
+                CommunityRoles.hasPermission(community.getRole(user), community.viewRole)
         }
 
         return true
@@ -112,12 +118,32 @@ object FeedManager {
     /**
      * If [user] can post to [feed].
      */
-    fun canPostFeed(feed: Feed, user: Long): Boolean {
+    fun canPostFeed(feed: Feed, user: Long?): Boolean {
+        if (user == null)
+            return false
+
         return if (feed.id.startsWith("cf")) {
             val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLong())
 
-            community.getRole(user) ?: CommunityRoles.DEFAULT >= community.postRole
-                    && !feed.banned.contains(user)
+            val role = community.getRole(user) ?: CommunityRoles.DEFAULT
+
+            role >= community.postRole && !feed.banned.contains(user)
+        } else !feed.banned.contains(user)
+    }
+
+    /**
+     * If [user] can comment on a post in [feed].
+     */
+    fun canCommentFeed(feed: Feed, user: Long?): Boolean {
+        if (user == null)
+            return false
+
+        return if (feed.id.startsWith("cf")) {
+            val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLong())
+
+            val role = community.getRole(user) ?: CommunityRoles.DEFAULT
+
+            role >= community.commentRole && !feed.banned.contains(user)
         } else !feed.banned.contains(user)
     }
 
@@ -129,18 +155,14 @@ object FeedManager {
     }
 
     /**
-     * Get [feed]'s posts. If [byUser] is set and they are not able to view the post [canViewFeed], it will throw [CannotViewFeed].
+     * Get [feed]'s posts.
      * Each [page] has up to [POSTS_PAGE_SIZE] posts.
+     *
+     * This assumes you've previously checked for permissions. (see if user can view feed)
      */
     @Throws(NoPermission::class, InvalidArguments::class)
-    fun getFeedPosts(feed: Feed, byUser: Long?, page: Int, method: String): MutableList<Post> {
-        when {
-            byUser != null && !canViewFeed(feed, byUser) ->
-                throw NoPermission()
-
-            page > feed.pageCount || 0 >= page ->
-                throw InvalidArguments("page")
-        }
+    fun getFeedPosts(feed: Feed, page: Int, method: String): MutableList<Post> {
+        if (page > feed.pageCount || 0 >= page) throw InvalidArguments("page")
 
         val parsedMethod = SortingMethod.values()
                 .firstOrNull { sort -> sort.toString().equals(method, true) }
@@ -186,11 +208,35 @@ object FeedManager {
                             feed.id,
                             doc.getString("title"),
                             doc.getString("content"),
-                            doc.getBoolean("hidden"),
                             vote.getLong("upvotes"),
                             vote.getLong("downvotes")
                     )
                 }
                 .toMutableList()
+    }
+
+    /**
+     * Get a post by it's [id]
+     */
+    fun getPost(id: Long): Post {
+        val doc = Mongo.getClient()
+                .getDatabase("feeds")
+                .getCollection("posts")
+                .find(eq("id", id))
+                .firstOrNull()
+                ?: throw NotFound("post")
+
+        val vote = doc.get("vote", Document::class.java)
+
+        return Post(
+                doc.getLong("id"),
+                doc.getLong("created_at"),
+                doc.getLong("author_id"),
+                doc.getString("feed"),
+                doc.getString("title"),
+                doc.getString("content"),
+                vote.getLong("upvotes"),
+                vote.getLong("downvotes")
+        )
     }
 }

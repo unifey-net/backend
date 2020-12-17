@@ -1,6 +1,5 @@
 package net.unifey.util
 
-import net.unifey.auth.Authenticator
 import net.unifey.auth.tokens.TokenManager
 import org.apache.commons.codec.digest.DigestUtils
 import java.security.SecureRandom
@@ -8,15 +7,27 @@ import kotlin.random.Random
 import kotlin.streams.asSequence
 
 object IdGenerator {
+    private val SEC_RANDOM = SecureRandom()
+
     /**
      * Get an 18 long ID
      */
-    fun getId(seed: Long = Random.nextLong()): Long {
+    fun getId(seed: Long = Random.nextLong(), assure: ((id: Long) -> Boolean)? = null): Long {
         val r = Random(System.currentTimeMillis() + seed)
 
-        return (0 until 14)
-                .joinToString("") { r.nextInt(10).toString() }
-                .toLong()
+        fun generate(): Long {
+            return (0 until 14)
+                    .joinToString("") { r.nextInt(10).toString() }
+                    .toLong()
+        }
+
+        var id = generate()
+
+        while (assure?.invoke(id) == true) {
+            id = generate()
+        }
+
+        return id
     }
 
     /**
@@ -32,15 +43,25 @@ object IdGenerator {
     }
 
     /**
+     * Generate bytes using [SEC_RANDOM]
+     */
+    private fun genBytes(): ByteArray {
+        val bytes = ByteArray(128)
+
+        SEC_RANDOM.nextBytes(bytes)
+
+        return bytes
+    }
+
+    /**
      * Generate a token
      */
     fun generateToken(): String {
-        val random = Random(System.currentTimeMillis() - Random.nextLong())
-
-        val token = DigestUtils.sha256Hex(random.nextBytes(128))
+        val token = DigestUtils.sha256Hex(genBytes())
 
         if (tokenUsed(token))
             return generateToken()
+
         return token
     }
 

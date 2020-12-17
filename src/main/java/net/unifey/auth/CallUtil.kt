@@ -6,18 +6,21 @@ import net.unifey.auth.ex.AuthenticationException
 import net.unifey.auth.ex.TokenExpiredException
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.util.DEFAULT_PAGE_RATE_LIMIT
+import net.unifey.util.PageRateLimit
 import net.unifey.util.checkRateLimit
 
 /**
  * Check if an [ApplicationCall] is authenticated.
  */
-fun ApplicationCall.isAuthenticated(): Token {
+fun ApplicationCall.isAuthenticated(rateLimit: Boolean = true, pageRateLimit: PageRateLimit = DEFAULT_PAGE_RATE_LIMIT): Token {
     val token = getTokenFromCall()
 
     if (TokenManager.isTokenExpired(token))
         throw TokenExpiredException()
 
-    checkRateLimit(token)
+    if (rateLimit)
+        checkRateLimit(token, pageRateLimit)
 
     return token
 }

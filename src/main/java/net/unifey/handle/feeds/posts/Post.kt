@@ -2,6 +2,7 @@ package net.unifey.handle.feeds.posts
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import net.unifey.handle.feeds.posts.comments.CommentManager
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
 
@@ -13,17 +14,49 @@ import org.bson.Document
  * @param authorId The ID of the user who created the post.
  * @param feed The ID of the feed the post was created in.
  */
-class Post(
+open class Post(
         val id: Long,
         val createdAt: Long,
         val authorId: Long,
         val feed: String,
         title: String,
         content: String,
-        hidden: Boolean,
         upvotes: Long,
         downvotes: Long
 ) {
+    /**
+     * The post's attributes.
+     */
+    private val attributes = PostAttributes(id)
+
+    /**
+     * If the post is hidden.
+     */
+    var hidden: Boolean
+        get() = attributes.getAttribute("hidden", false)
+        set(value) = attributes.setAttribute("hidden", value)
+
+    /**
+     * If the post is pinned.
+     */
+    var pinned: Boolean
+        get() = attributes.getAttribute("pinned", false)
+        set(value) = attributes.setAttribute("pinned", value)
+
+    /**
+     * If this post has been previously editied. <- pepega
+     */
+    var edited: Boolean
+        get() = attributes.getAttribute("edited", false)
+        set(value) = attributes.setAttribute("edited", value)
+
+    /**
+     * If the post is not safe for work.
+     */
+    var nsfw: Boolean
+        get() = attributes.getAttribute("nsfw", false)
+        set(value) = attributes.setAttribute("pinned", value)
+
     /**
      * Change a post's title.
      */
@@ -32,9 +65,7 @@ class Post(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "title" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("title", value))
 
             field = value
         }
@@ -47,24 +78,7 @@ class Post(
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "content" to value
-                    )))
-
-            field = value
-        }
-
-    /**
-     * If the post is hidden.
-     */
-    var hidden = hidden
-        set(value) {
-            Mongo.getClient()
-                    .getDatabase("feeds")
-                    .getCollection("posts")
-                    .updateOne(Filters.eq("id", id), Document(mapOf(
-                            "hidden" to value
-                    )))
+                    .updateOne(Filters.eq("id", id), Updates.set("content", value))
 
             field = value
         }

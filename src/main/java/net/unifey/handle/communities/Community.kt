@@ -1,22 +1,49 @@
 package net.unifey.handle.communities
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import dev.shog.lib.util.eitherOr
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.UserManager
 
 class Community(
         val id: Long,
         val createdAt: Long,
         postRole: Int,
         viewRole: Int,
+        commentRole: Int,
         name: String,
         description: String,
+        val rules: MutableList<CommunityRule>,
+        @JsonIgnore
         val roles: MutableMap<Long, Int>
 ) {
     /**
-     * The whole where users are allowed to post.
+     * The size of the community.
+     */
+    val size
+        get() = CommunityManager.getMemberCount(id)
+
+
+    /**
+     * The role where users are allowed to comment.
+     */
+    var commentRole = commentRole
+        set(value) {
+            Mongo.getClient()
+                    .getDatabase("communities")
+                    .getCollection("communities")
+                    .updateOne(Filters.eq("id", id), Updates.set("permissions.comment_role", value))
+
+            field = value
+        }
+
+    /**
+     * The role where users are allowed to post.
      */
     var postRole = postRole
         set(value) {
@@ -29,7 +56,7 @@ class Community(
         }
 
     /**
-     * The whole where users are allowed to view the communities' feed.
+     * The role where users are allowed to view the communities' feed.
      */
     var viewRole = viewRole
         set(value) {
@@ -122,8 +149,18 @@ class Community(
     /**
      * Get [user]'s role.
      */
-    fun getRole(user: Long): Int? =
-            roles[user]
+    fun getRole(user: Long): Int {
+        if (user == -1L)
+            return CommunityRoles.DEFAULT
+
+        val role = roles[user]
+
+        return role
+                ?: UserManager.getUser(user) // if they're in the community, give them member
+                        .member
+                        .isMemberOf(id)
+                        .eitherOr(CommunityRoles.MEMBER, CommunityRoles.DEFAULT)
+    }
 
     /**
      * Get the communities feed.

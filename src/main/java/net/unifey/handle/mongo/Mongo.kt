@@ -1,29 +1,54 @@
 package net.unifey.handle.mongo
 
 import com.mongodb.client.MongoClient
-import com.mongodb.client.MongoClientFactory
 import com.mongodb.client.MongoClients
-import com.mongodb.client.MongoDatabase
-import net.unifey.auth.tokens.TokenManager
+import kotlinx.coroutines.*
 import net.unifey.config.Config
-import net.unifey.handle.users.UserManager
+import net.unifey.mongo
 import net.unifey.prod
-import net.unifey.unifey
-import java.lang.Exception
+import kotlin.coroutines.CoroutineContext
 
+/**
+ * Interacts with MongoDB.
+ */
 object Mongo {
+    /**
+     * The MongoClient.
+     */
     private var client: MongoClient? = null
 
+    /**
+     * Create a MongoDB client, either with a local DB or production depending on [prod].
+     *
+     * This sets [client].
+     */
     private fun makeClient() {
         client = if (prod) {
-            val password = unifey.getConfigObject<Config>().mongoPass
-
-            MongoClients.create("mongodb+srv://unify-mongo:${password}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority")
+            MongoClients.create("mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority")
         } else {
             MongoClients.create("mongodb://127.0.0.1:27017") // local testing mongodb server
         }
     }
 
+    suspend fun <T> useJob(func: suspend MongoClient.() -> T): Job {
+        return coroutineScope {
+            launch {
+                func.invoke(getClient())
+            }
+        }
+    }
+
+    suspend fun <T> useAsync(func: suspend MongoClient.() -> T): Deferred<T> {
+        return coroutineScope {
+            async(Dispatchers.Default) {
+                func.invoke(getClient())
+            }
+        }
+    }
+
+    /**
+     * Get [client] and assure it's not null.
+     */
     fun getClient(): MongoClient {
         if (client == null)
             makeClient()

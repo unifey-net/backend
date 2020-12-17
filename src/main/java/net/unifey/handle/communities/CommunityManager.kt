@@ -3,10 +3,14 @@ package net.unifey.handle.communities
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.getAge
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.runBlocking
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import org.bson.Document
@@ -15,14 +19,16 @@ import kotlin.math.ceil
 
 /**
  * Manage [Community]s
- *
- * TODO add local cache
  */
 object CommunityManager {
+    private val cache: MutableList<Community> = mutableListOf()
+
     /**
      * Delete a community by it's [id]
      */
     fun deleteCommunity(id: Long) {
+        cache.removeIf { community -> community.id == id }
+
         Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -33,6 +39,11 @@ object CommunityManager {
      * Get a [Community] by [name].
      */
     fun getCommunityByName(name: String): Community {
+        val cacheCommunity = cache.singleOrNull { community -> community.name == name }
+
+        if (cacheCommunity != null)
+            return cacheCommunity
+
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -47,6 +58,11 @@ object CommunityManager {
      * Get a [Community] by [id].
      */
     fun getCommunityById(id: Long): Community {
+        val cacheCommunity = cache.singleOrNull { community -> community.id == id }
+
+        if (cacheCommunity != null)
+            return cacheCommunity
+
         val obj = Mongo.getClient()
                 .getDatabase("communities")
                 .getCollection("communities")
@@ -61,20 +77,44 @@ object CommunityManager {
      * Parse a [Community] from a bson [doc].
      */
     private fun getCommunity(doc: Document): Community {
+        fun getRules(rulesDoc: Document): List<CommunityRule> {
+            return rulesDoc.keys
+                    .map { key ->
+                        rulesDoc.get(key, Document::class.java) to key
+                    }
+                    .map { (doc, key) ->
+                        CommunityRule(
+                                key.toLong(),
+                                doc.getString("title"),
+                                doc.getString("body")
+                        )
+                    }
+        }
+
+        val roles = doc.get("roles", Document::class.java)
+                .mapKeys { it.key.toLong() }
+                .mapValues { it.value as Int }
+                .toMutableMap()
+
+        val rules = getRules(doc.get("rules", Document::class.java))
+
         val permissions = doc.get("permissions", Document::class.java)
 
-        return Community(
+        val community = Community(
                 doc.getLong("id"),
                 doc.getLong("created_at"),
                 permissions.getInteger("post_role"),
                 permissions.getInteger("view_role"),
+                permissions.getInteger("comment_role"),
                 doc.getString("name"),
                 doc.getString("description"),
-                doc.get("roles", Document::class.java)
-                        .mapKeys { it.key.toLong() }
-                        .mapValues { it.value as Int }
-                        .toMutableMap()
+                rules.toMutableList(),
+                roles
         )
+
+        cache.add(community)
+
+        return community
     }
 
     /**
@@ -149,8 +189,10 @@ object CommunityManager {
                 System.currentTimeMillis(),
                 CommunityRoles.MEMBER,
                 CommunityRoles.DEFAULT,
+                CommunityRoles.MEMBER,
                 name,
                 desc,
+                mutableListOf(),
                 roles
         )
 
@@ -161,7 +203,8 @@ object CommunityManager {
                 "created_at" to community.createdAt,
                 "permissions" to Document(mapOf(
                         "post_role" to community.postRole,
-                        "view_role" to community.viewRole
+                        "view_role" to community.viewRole,
+                        "comment_role" to community.commentRole
                 )),
                 "roles" to Document(mapOf(
                         "$owner" to CommunityRoles.OWNER
@@ -175,17 +218,52 @@ object CommunityManager {
 
         FeedManager.createFeedForCommunity(community.id, owner)
 
+        cache.add(community)
+
         return community
     }
 
     /**
      * If another community has already taken [name].
      */
-    fun nameTaken(name: String): Boolean {
-        return Mongo.getClient()
-                .getDatabase("communities")
+    suspend fun nameTakenAsync(name: String): Deferred<Boolean> {
+        return Mongo.useAsync {
+            getDatabase("communities")
                 .getCollection("communities")
                 .find(eq("name", name))
                 .any()
+        }
+    }
+
+    /**
+     * Get the member count of a community
+     */
+    suspend fun getMemberCountAsync(community: Long): Deferred<Int> {
+        return Mongo.useAsync {
+            getDatabase("users")
+                    .getCollection("members")
+                    .find(Filters.`in`("member", community))
+                    .toList()
+                    .size
+        }
+    }
+
+    suspend fun getMembersAsync(community: Long): Deferred<List<User>> {
+        return Mongo.useAsync {
+            getDatabase("users")
+                    .getCollection("members")
+                    .find(Filters.`in`("member", community))
+                    .toList()
+                    .map { doc -> UserManager.getUser((doc.getLong("id"))) }
+        }
+    }
+
+    /**
+     * Get the sync member count.
+     */
+    fun getMemberCount(community: Long): Int {
+        return runBlocking {
+            getMemberCountAsync(community).await()
+        }
     }
 }

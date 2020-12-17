@@ -2,7 +2,6 @@ package net.unifey.handle.users
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
-import io.ktor.client.engine.callContext
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
@@ -15,7 +14,6 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.profile.Profile
@@ -23,7 +21,9 @@ import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.response.Response
+import net.unifey.util.checkCaptcha
 import net.unifey.util.cleanInput
+import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.userPages() {
     route("/user") {
@@ -192,7 +192,7 @@ fun Routing.userPages() {
         put("/email") {
             val (user, email) = call.changeUser("email")
 
-            InputRequirements.emailMeets(email)
+            UserInputRequirements.meets(email, UserInputRequirements.EMAIL_EXISTS)
 
             user.email = email
             user.verified = false
@@ -208,9 +208,9 @@ fun Routing.userPages() {
         put("/password") {
             val (user, password) = call.changeUser("password")
 
-            InputRequirements.passwordMeets(password)
+            UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
-            user.password = password
+            user.password = BCrypt.hashpw(password, BCrypt.gensalt())
 
             call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }
@@ -221,7 +221,7 @@ fun Routing.userPages() {
         put("/name") {
             val (user, username) = call.changeUser("username")
 
-            InputRequirements.usernameMeets(username)
+            UserInputRequirements.meets(username, UserInputRequirements.USERNAME_EXISTS)
 
             user.username = username
 
@@ -367,19 +367,17 @@ fun Routing.userPages() {
     post("/authenticate") {
         val params = call.receiveParameters()
 
+        call.checkCaptcha(params)
+
         val username = params["username"]
         val password = params["password"]
+        val remember = params["remember"]?.toBoolean()
 
-        if (username == null || password == null)
-            call.respond(HttpStatusCode.BadRequest, Response("No username or password parameter."))
-        else {
-            val auth = Authenticator.generateIfCorrect(username, password)
+        if (username == null || password == null || remember == null)
+            throw InvalidArguments("username", "password", "remember")
 
-            if (auth == null)
-                call.respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
-            else {
-                call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
-            }
-        }
+        val auth = Authenticator.generateIfCorrect(username, password, remember)
+
+        call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
     }
 }

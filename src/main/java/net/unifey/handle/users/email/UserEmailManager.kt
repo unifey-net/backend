@@ -6,17 +6,23 @@ import com.amazonaws.services.simpleemail.model.*
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.shog.lib.util.currentTimeMillis
+import io.ktor.http.HttpStatusCode
+import io.ktor.response.respond
+import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
+import net.unifey.handle.beta.Beta
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
-import net.unifey.unifey
+import net.unifey.response.Response
 import net.unifey.util.IdGenerator
+import net.unifey.webhook
 import org.bson.Document
 import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
+import org.slf4j.LoggerFactory
 import java.lang.Exception
 
 object UserEmailManager {
@@ -29,7 +35,13 @@ object UserEmailManager {
                 .getCollection("verify")
                 .find()
                 .map { doc ->
-                    UserEmailRequest(doc.getLong("id"), doc.getString("email"), doc.getString("verify"), doc.getInteger("type"), doc.getInteger("attempts"))
+                    UserEmailRequest(
+                            doc.getLong("id"),
+                            doc.getString("email"),
+                            doc.getString("verify"),
+                            doc.getInteger("type"),
+                            doc.getInteger("attempts")
+                    )
                 }
                 .toMutableList()
     }
@@ -79,13 +91,12 @@ object UserEmailManager {
     }
 
     /**
-     * Reset a password.
+     * Verify using [verify]
      */
-    fun passwordReset(id: Long, verify: String, newPassword: String) {
-        verifyRequests.singleOrNull { request ->
-            request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
-                    && request.id == id
-                    && request.verify.equals(verify, true)
+    @Throws(InvalidArguments::class)
+    fun betaVerify(verify: String) {
+        val req = verifyRequests.singleOrNull { request ->
+            request.type == EmailTypes.VERIFY_BETA.id && request.verify.equals(verify, true)
         }
                 ?: throw InvalidArguments("verify")
 
@@ -94,15 +105,73 @@ object UserEmailManager {
         Mongo.getClient()
                 .getDatabase("email")
                 .getCollection("verify")
-                .deleteOne(Filters.and(eq("id", id), eq("verify", verify)))
+                .deleteOne(eq("verify", verify))
 
-        UserManager.getUser(id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+        Beta.verify(req.email)
+    }
+
+    /**
+     * Send a beta verify to [email].
+     */
+    @Throws(AlreadyVerified::class, Unverified::class)
+    fun sendBetaVerify(email: String) {
+        if (Beta.isVerified(email))
+            throw AlreadyVerified()
+
+        val verify = IdGenerator.generateRandomString(32)
+
+        val exists = verifyRequests.singleOrNull { request ->
+            request.type == EmailTypes.VERIFY_BETA.id && request.email.equals(email, true)
+        }
+
+        // If there's already an ongoing email request, you can't change it until you've confirmed your first.
+        if (exists != null)
+            throw NoPermission()
+
+        val doc = Document(mapOf(
+                "id" to null,
+                "verify" to verify,
+                "type" to EmailTypes.VERIFY_BETA.id,
+                "attempts" to 1,
+                "email" to email
+        ))
+
+        Mongo.getClient()
+                .getDatabase("email")
+                .getCollection("verify")
+                .insertOne(doc)
+
+        val request = UserEmailRequest(null, email, verify, EmailTypes.VERIFY_BETA.id, 1)
+
+        verifyRequests.add(request)
+
+        sendEmail(request, EmailTypes.VERIFY_BETA.default)
+    }
+
+    /**
+     * Reset a password.
+     */
+    fun passwordReset(verify: String, newPassword: String) {
+        val request = verifyRequests.singleOrNull { request ->
+            request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
+                    && request.verify.equals(verify, true)
+        }
+                ?: throw InvalidArguments("verify")
+
+        verifyRequests.removeIf { req -> req.verify.equals(verify, true) }
+
+        Mongo.getClient()
+                .getDatabase("email")
+                .getCollection("verify")
+                .deleteOne(Filters.and(eq("id", request.id!!), eq("verify", verify)))
+
+        UserManager.getUser(request.id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
     }
 
     /**
      * Send a password reset email for [id] to [email]
      */
-    @Throws(AlreadyVerified::class, Unverified::class)
+    @Throws(AlreadyVerified::class, Unverified::class, Error::class)
     fun sendPasswordReset(id: Long) {
         val user = UserManager.getUser(id)
 
@@ -118,7 +187,9 @@ object UserEmailManager {
 
         // If there's already an ongoing email request, you can't change it until you've confirmed your first.
         if (exists != null)
-            throw NoPermission()
+            throw Error {
+                respond(HttpStatusCode.Companion.BadRequest, Response("There's already an outgoing request to reset the password on this account!"))
+            }
 
         val doc = Document(mapOf(
                 "id" to id,
@@ -209,8 +280,6 @@ object UserEmailManager {
 
     /**
      * Handle a bounce request
-     *
-     * TODO
      */
     fun handleBounce(bounce: String) {
         val obj = JSONObject(bounce)
@@ -219,7 +288,7 @@ object UserEmailManager {
         for (i in 0 until destinations.length())
             unSubscribe(destinations.getString(i))
 
-        unifey.webhook.sendBigMessage(bounce, "A bounce has occurred when sending an email to $destinations")
+        webhook.sendBigMessage(bounce, "A bounce has occurred when sending an email to $destinations")
     }
 
     /**
@@ -261,6 +330,8 @@ object UserEmailManager {
      * Send an email.
      */
     private fun sendEmail(request: UserEmailRequest, email: Email) {
+        LoggerFactory.getLogger("Emails").info("An email has been sent to $email.")
+
         val client = AmazonSimpleEmailServiceClientBuilder.standard()
                 .withRegion(Regions.US_EAST_1)
                 .build()
@@ -284,7 +355,7 @@ object UserEmailManager {
             client.sendEmail(emailRequest)
         } catch (ex: Exception) {
             // TODO
-            unifey.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
+            webhook.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
         }
     }
 }

@@ -8,10 +8,10 @@ import net.unifey.handle.users.User
  * Getting a post.
  *
  * @param post The post itself.
- * @param owner The owner of the post.
+ * @param author The owner of the post.
  */
 data class GetPostResponse(
         val post: Post,
-        val owner: User,
+        val author: User,
         val vote: UserVote?
 )

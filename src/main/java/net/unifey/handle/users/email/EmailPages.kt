@@ -7,13 +7,10 @@ import io.ktor.request.receiveText
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
 import io.ktor.routing.*
-import kong.unirest.Unirest
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
-import net.unifey.handle.users.InputRequirements
+import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 
@@ -59,10 +56,12 @@ fun Routing.emailPages() {
         put("/forgot") {
             val params = call.receiveParameters()
 
-            val id = params["id"]?.toLongOrNull()
-                    ?: throw InvalidArguments("id")
+            val input = params["input"]
+                    ?: throw InvalidArguments("input")
 
-            UserEmailManager.sendPasswordReset(id)
+            val user = UserPasswordResetHandler.findUsingInput(input)
+
+            UserEmailManager.sendPasswordReset(user)
 
             call.respond(Response())
         }
@@ -72,16 +71,16 @@ fun Routing.emailPages() {
          */
         post("/forgot") {
             val params = call.receiveParameters()
-            val id = params["id"]?.toLongOrNull()
+
             val verify = params["verify"]
             val password = params["password"]
 
-            if (id == null || verify == null || password == null)
-                throw InvalidArguments("id", "verify", "password")
+            if (verify == null || password == null)
+                throw InvalidArguments("verify", "password")
 
-            InputRequirements.passwordMeets(password)
+            UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
-            UserEmailManager.passwordReset(id, verify, password)
+            UserEmailManager.passwordReset(verify, password)
 
             call.respond(Response())
         }
@@ -140,6 +139,18 @@ fun Routing.emailPages() {
             }
 
             throw InvalidArguments("verify", "email")
+        }
+
+        /**
+         * Beta verify
+         */
+        post("/betaverify") {
+            val params = call.receiveParameters()
+            val verify = params["verify"] ?: throw InvalidArguments("verify")
+
+            UserEmailManager.betaVerify(verify)
+
+            call.respond(Response())
         }
 
         /**

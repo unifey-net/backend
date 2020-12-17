@@ -6,46 +6,40 @@ import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
+import net.unifey.handle.InvalidArguments
 import net.unifey.response.Response
 
 /**
- * TODO make sure user exists before adding
- * TODO make sure there's no duplicates
+ * Manage friends.
  */
 fun Routing.friendsPages() {
     route("/friends") {
         put {
             val token = call.isAuthenticated()
-            val userUID = token.owner
 
             val params = call.receiveParameters()
-            val friendId = params["id"]?.toLong()
+            val id = params["id"]?.toLong()
+                    ?: throw InvalidArguments("id")
 
-            if (friendId != null) {
-                FriendManager.addFriend(userUID, friendId)
-                call.respond(Response())
-            } else
-                call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
+            token.getOwner().addFriend(id)
+            call.respond(Response())
         }
 
         delete {
             val token = call.isAuthenticated()
-            val userId = token.owner
 
             val params = call.receiveParameters()
-            val friendId = params["id"]?.toLong()
+            val id = params["id"]?.toLong()
+                    ?: throw InvalidArguments("id")
 
-            if (friendId != null) {
-                FriendManager.removeFriend(userId, friendId)
-                call.respond(Response())
-            } else
-                call.respond(HttpStatusCode.BadRequest, Response("No id parameter"))
+            token.getOwner().removeFriend(id)
+            call.respond(Response())
         }
 
         get {
             val token = call.isAuthenticated()
 
-            call.respond(FriendManager.getFriends(token.owner))
+            call.respond(token.getOwner().getFriends())
         }
     }
 }

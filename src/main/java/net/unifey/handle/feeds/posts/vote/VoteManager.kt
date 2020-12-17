@@ -3,9 +3,9 @@ package net.unifey.handle.feeds.posts.vote
 import com.mongodb.client.model.Filters
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.feeds.posts.PostManager
+import net.unifey.handle.feeds.posts.comments.CommentManager
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * There's probably a much better way of doing this.
@@ -26,8 +26,9 @@ object VoteManager {
                 .map { doc ->
                     UserVote(
                             doc.getInteger("vote"),
-                            doc.getLong("post"),
-                            doc.getLong("user")
+                            doc.getLong("id"),
+                            doc.getLong("user"),
+                            doc.getInteger("type")
                     )
                 }
                 .toMutableList()
@@ -36,19 +37,79 @@ object VoteManager {
     /**
      * Get a [user]'s vote on a [post].
      */
-    fun getVote(post: Long, user: Long): UserVote? =
-            voteCache.singleOrNull { vote -> vote.post == post && vote.user == user }
+    fun getPostVote(post: Long, user: Long): UserVote? =
+            voteCache
+                    .filter { vote -> vote.type == UserVote.POST }
+                    .singleOrNull { vote -> vote.id == post && vote.user == user }
+
+    fun getCommentVote(comment: Long, user: Long): UserVote? =
+            voteCache
+                    .filter { vote -> vote.type == UserVote.COMMENT }
+                    .singleOrNull { vote -> vote.id == comment && vote.user == user }
+
+    /**
+     * Set a [user]'s vote a [comment].
+     */
+    fun setCommentVote(comment: Long, user: Long, type: Int) {
+        if (type != UP_VOTE && type != DOWN_VOTE && type != NO_VOTE)
+            throw InvalidArguments("type")
+
+        val commentObj = CommentManager.getCommentById(comment)
+        val currentVote = getCommentVote(comment, user)
+
+        if (currentVote != null) {
+            when (currentVote.vote) {
+                UP_VOTE -> commentObj.upvotes--
+                DOWN_VOTE -> commentObj.downvotes--
+            }
+
+            voteCache.remove(currentVote)
+
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("votes")
+                    .deleteOne(Filters.and(
+                            Filters.eq("id", comment),
+                            Filters.eq("type", UserVote.COMMENT),
+                            Filters.eq("user", user))
+                    )
+        }
+
+        if (type != NO_VOTE) {
+            voteCache.add(UserVote(
+                    type,
+                    comment,
+                    user,
+                    UserVote.COMMENT
+            ))
+
+            Mongo.getClient()
+                    .getDatabase("feeds")
+                    .getCollection("votes")
+                    .insertOne(Document(mapOf(
+                            "id" to comment,
+                            "user" to user,
+                            "vote" to type,
+                            "type" to UserVote.COMMENT
+                    )))
+
+            when (type) {
+                UP_VOTE -> commentObj.upvotes++
+                DOWN_VOTE -> commentObj.downvotes++
+            }
+        }
+    }
 
     /**
      * Set a [user]'s vote on a [post]. Then update that [post]'s votes.
      */
     @Throws(InvalidArguments::class)
-    fun setVote(post: Long, user: Long, type: Int) {
+    fun setPostVote(post: Long, user: Long, type: Int) {
         if (type != UP_VOTE && type != DOWN_VOTE && type != NO_VOTE)
             throw InvalidArguments("type")
 
         val postObj = PostManager.getPost(post)
-        val currentVote = getVote(post, user)
+        val currentVote = getPostVote(post, user)
 
         if (currentVote != null) {
             when (currentVote.vote) {
@@ -61,23 +122,29 @@ object VoteManager {
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("votes")
-                    .deleteOne(Filters.and(Filters.eq("post", post), Filters.eq("user", user)))
+                    .deleteOne(Filters.and(
+                            Filters.eq("id", post),
+                            Filters.eq("user", user),
+                            Filters.eq("type", UserVote.POST)
+                    ))
         }
 
         if (type != NO_VOTE) {
             voteCache.add(UserVote(
                     type,
                     post,
-                    user
+                    user,
+                    UserVote.POST
             ))
 
             Mongo.getClient()
                     .getDatabase("feeds")
                     .getCollection("votes")
                     .insertOne(Document(mapOf(
-                            "post" to post,
+                            "id" to post,
                             "user" to user,
-                            "vote" to type
+                            "vote" to type,
+                            "type" to UserVote.POST
                     )))
 
             when (type) {
