@@ -197,16 +197,18 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
         )
     }
 
+    val searchBucket = PageRateLimit(
+        Bandwidth.classic(
+            5,
+            Refill.greedy(1, Duration.ofSeconds(5))
+        )
+    )
+
     /**
      * Search members
      */
     post("/search") {
-        val token = call.isAuthenticated(pageRateLimit = PageRateLimit(
-            Bandwidth.classic(
-            5,
-            Refill.greedy(1, Duration.ofSeconds(1))
-        ))
-        )
+        val token = call.isAuthenticated(pageRateLimit = searchBucket)
 
         val id = call.parameters["id"]?.toLongOrNull()
             ?: throw InvalidArguments("p_id")
@@ -300,6 +302,8 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
          * Get a communities roles.
          */
         get {
+            data class UserCommunityRole(val id: Long, val name: String, val role: Int)
+
             val token = call.isAuthenticated()
 
             val id = call.parameters["id"]?.toLongOrNull()
@@ -310,7 +314,10 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             if (CommunityRoles.MODERATOR > community.getRole(token.owner))
                 throw NoPermission()
 
-            call.respond(community.roles)
+            val response = community.roles
+                .map { role -> UserCommunityRole(role.key, UserManager.getUser(role.key).username, role.value) }
+
+            call.respond(response)
         }
 
         /**

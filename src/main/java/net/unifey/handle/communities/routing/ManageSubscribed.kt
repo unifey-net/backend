@@ -11,36 +11,31 @@ import net.unifey.response.Response
 
 val MANAGE_SUBSCRIBED: Route.() -> Unit = {
     /**
-     * Manage your personal communities. (joined communities)
+     * Join a community.
      */
-    route("/manage") {
-        /**
-         * Join a community.
-         */
-        put {
-            val (user, community) = call.managePersonalCommunities()
+    put {
+        val (user, community) = call.managePersonalCommunities()
 
-            if (!user.member.isMemberOf(community.id)) {
-                user.member.join(community.id)
-                call.respond(Response())
-            } else
-                throw AlreadyExists("community", community.id.toString())
-        }
+        if (!user.member.isMemberOf(community.id)) {
+            user.member.join(community.id)
+            call.respond(Response())
+        } else
+            throw AlreadyExists("community", community.id.toString())
+    }
 
-        /**
-         * Leave a community.
-         */
-        delete {
-            val (user, community) = call.managePersonalCommunities()
+    /**
+     * Leave a community.
+     */
+    delete {
+        val (user, community) = call.managePersonalCommunities()
 
-            if (community.getRole(user.id) == CommunityRoles.OWNER)
-                throw NoPermission()
+        if (community.getRole(user.id) == CommunityRoles.OWNER)
+            throw NoPermission()
 
-            if (user.member.isMemberOf(community.id)) {
-                user.member.leave(community.id)
-                call.respond(Response())
-            } else
-                throw NotFound("community")
-        }
+        if (user.member.isMemberOf(community.id)) {
+            user.member.leave(community.id)
+            call.respond(Response())
+        } else
+            throw NotFound("community")
     }
 }

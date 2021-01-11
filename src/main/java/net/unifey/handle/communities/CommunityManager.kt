@@ -30,9 +30,9 @@ object CommunityManager {
         cache.removeIf { community -> community.id == id }
 
         Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .deleteOne(eq("id", id))
+            .getDatabase("communities")
+            .getCollection("communities")
+            .deleteOne(eq("id", id))
     }
 
     /**
@@ -45,11 +45,11 @@ object CommunityManager {
             return cacheCommunity
 
         val obj = Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find()
-                .firstOrNull { doc -> doc.getString("name").equals(name, true) }
-                ?: throw NotFound("community")
+            .getDatabase("communities")
+            .getCollection("communities")
+            .find()
+            .firstOrNull { doc -> doc.getString("name").equals(name, true) }
+            ?: throw NotFound("community")
 
         return getCommunity(obj)
     }
@@ -64,11 +64,11 @@ object CommunityManager {
             return cacheCommunity
 
         val obj = Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find(eq("id", id))
-                .firstOrNull()
-                ?: throw NotFound("community")
+            .getDatabase("communities")
+            .getCollection("communities")
+            .find(eq("id", id))
+            .firstOrNull()
+            ?: throw NotFound("community")
 
         return getCommunity(obj)
     }
@@ -79,37 +79,37 @@ object CommunityManager {
     private fun getCommunity(doc: Document): Community {
         fun getRules(rulesDoc: Document): List<CommunityRule> {
             return rulesDoc.keys
-                    .map { key ->
-                        rulesDoc.get(key, Document::class.java) to key
-                    }
-                    .map { (doc, key) ->
-                        CommunityRule(
-                                key.toLong(),
-                                doc.getString("title"),
-                                doc.getString("body")
-                        )
-                    }
+                .map { key ->
+                    rulesDoc.get(key, Document::class.java) to key
+                }
+                .map { (doc, key) ->
+                    CommunityRule(
+                        key.toLong(),
+                        doc.getString("title"),
+                        doc.getString("body")
+                    )
+                }
         }
 
         val roles = doc.get("roles", Document::class.java)
-                .mapKeys { it.key.toLong() }
-                .mapValues { it.value as Int }
-                .toMutableMap()
+            .mapKeys { it.key.toLong() }
+            .mapValues { it.value as Int }
+            .toMutableMap()
 
         val rules = getRules(doc.get("rules", Document::class.java))
 
         val permissions = doc.get("permissions", Document::class.java)
 
         val community = Community(
-                doc.getLong("id"),
-                doc.getLong("created_at"),
-                permissions.getInteger("post_role"),
-                permissions.getInteger("view_role"),
-                permissions.getInteger("comment_role"),
-                doc.getString("name"),
-                doc.getString("description"),
-                rules.toMutableList(),
-                roles
+            doc.getLong("id"),
+            doc.getLong("created_at"),
+            permissions.getInteger("post_role"),
+            permissions.getInteger("view_role"),
+            permissions.getInteger("comment_role"),
+            doc.getString("name"),
+            doc.getString("description"),
+            rules.toMutableList(),
+            roles
         )
 
         cache.add(community)
@@ -136,23 +136,23 @@ object CommunityManager {
             0
 
         return Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find()
-                .skip(skip)
-                .limit(15)
-                .map { doc -> getCommunity(doc) }
-                .toList()
+            .getDatabase("communities")
+            .getCollection("communities")
+            .find()
+            .skip(skip)
+            .limit(15)
+            .map { doc -> getCommunity(doc) }
+            .toList()
     }
 
     /**
      * Get the amount of communities
      */
     private fun getCommunitiesSize(): Long =
-            Mongo.getClient()
-                    .getDatabase("communities")
-                    .getCollection("communities")
-                    .countDocuments()
+        Mongo.getClient()
+            .getDatabase("communities")
+            .getCollection("communities")
+            .countDocuments()
 
     /**
      * If [id] can create a community
@@ -172,10 +172,10 @@ object CommunityManager {
      */
     private fun hasCreatedCommunityBefore(id: Long): Boolean {
         return Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find(eq("roles.${id}", 4))
-                .singleOrNull() != null
+            .getDatabase("communities")
+            .getCollection("communities")
+            .find(eq("roles.${id}", 4))
+            .singleOrNull() != null
     }
 
     /**
@@ -185,36 +185,37 @@ object CommunityManager {
         val roles = hashMapOf(owner to CommunityRoles.OWNER)
 
         val community = Community(
-                IdGenerator.getId(),
-                System.currentTimeMillis(),
-                CommunityRoles.MEMBER,
-                CommunityRoles.DEFAULT,
-                CommunityRoles.MEMBER,
-                name,
-                desc,
-                mutableListOf(),
-                roles
+            IdGenerator.getId(),
+            System.currentTimeMillis(),
+            CommunityRoles.MEMBER,
+            CommunityRoles.DEFAULT,
+            CommunityRoles.MEMBER,
+            name,
+            desc,
+            mutableListOf(),
+            roles
         )
 
         val communityDoc = Document(mapOf(
-                "id" to community.id,
-                "name" to community.name,
-                "description" to community.description,
-                "created_at" to community.createdAt,
-                "permissions" to Document(mapOf(
-                        "post_role" to community.postRole,
-                        "view_role" to community.viewRole,
-                        "comment_role" to community.commentRole
-                )),
-                "roles" to Document(mapOf(
-                        "$owner" to CommunityRoles.OWNER
-                ))
+            "id" to community.id,
+            "name" to community.name,
+            "description" to community.description,
+            "created_at" to community.createdAt,
+            "permissions" to Document(mapOf(
+                "post_role" to community.postRole,
+                "view_role" to community.viewRole,
+                "comment_role" to community.commentRole
+            )),
+            "roles" to Document(mapOf(
+                "$owner" to CommunityRoles.OWNER
+            )),
+            "rules" to Document()
         ))
 
         Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .insertOne(communityDoc)
+            .getDatabase("communities")
+            .getCollection("communities")
+            .insertOne(communityDoc)
 
         FeedManager.createFeedForCommunity(community.id, owner)
 
@@ -241,20 +242,20 @@ object CommunityManager {
     suspend fun getMemberCountAsync(community: Long): Deferred<Int> {
         return Mongo.useAsync {
             getDatabase("users")
-                    .getCollection("members")
-                    .find(Filters.`in`("member", community))
-                    .toList()
-                    .size
+                .getCollection("members")
+                .find(Filters.`in`("member", community))
+                .toList()
+                .size
         }
     }
 
     suspend fun getMembersAsync(community: Long): Deferred<List<User>> {
         return Mongo.useAsync {
             getDatabase("users")
-                    .getCollection("members")
-                    .find(Filters.`in`("member", community))
-                    .toList()
-                    .map { doc -> UserManager.getUser((doc.getLong("id"))) }
+                .getCollection("members")
+                .find(Filters.`in`("member", community))
+                .toList()
+                .map { doc -> UserManager.getUser((doc.getLong("id"))) }
         }
     }
 

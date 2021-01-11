@@ -23,15 +23,18 @@ import io.ktor.serialization.serialization
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.websocket.WebSockets
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.UnstableDefault
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
 import net.unifey.handle.Error
 import net.unifey.handle.beta.betaPages
+import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.reports.reportPages
+import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
@@ -41,6 +44,7 @@ import org.slf4j.event.Level
 import java.time.Duration
 import kotlin.reflect.jvm.internal.impl.utils.ExceptionUtilsKt
 
+val logger = LoggerFactory.getLogger("Unifey")
 
 lateinit var webhook: DiscordWebhook
 lateinit var mongo: String
@@ -52,12 +56,7 @@ var url = "https://api.unifey.net"
 @UnstableDefault
 @KtorExperimentalLocationsAPI
 fun main(args: Array<String>) {
-    val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
-    val rootLogger = loggerContext.getLogger("org.mongodb.driver")
-    rootLogger.level = OFF
-
-    val awsLogger = loggerContext.getLogger("software.amazon.awssdk")
-    awsLogger.level = OFF
+    disableLoggers()
 
     val argH = ArgsHandler()
 
@@ -158,4 +157,13 @@ fun main(args: Array<String>) {
     }
 
     server.start(true)
+}
+
+fun disableLoggers() {
+    val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
+    val rootLogger = loggerContext.getLogger("org.mongodb.driver")
+    rootLogger.level = OFF
+
+    val awsLogger = loggerContext.getLogger("software.amazon.awssdk")
+    awsLogger.level = OFF
 }
