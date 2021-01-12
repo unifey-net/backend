@@ -8,6 +8,7 @@ import net.unifey.handle.AlreadyExists
 import net.unifey.handle.Error
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
 import net.unifey.response.Response
 
@@ -38,6 +39,9 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
 
         if (user.member.isMemberOf(community.id)) {
             user.member.leave(community.id)
+
+            CommunityManager.userLeave(community.id, user.id)
+
             call.respond(Response())
         } else
             throw NotFound("community")

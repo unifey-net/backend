@@ -24,6 +24,15 @@ object CommunityManager {
     private val cache: MutableList<Community> = mutableListOf()
 
     /**
+     * Handle [user] leaving [id].
+     * This removes their role from the data set.
+     * This doesn't affect their current posts.
+     */
+    fun userLeave(id: Long, user: Long) {
+        getCommunityById(id).removeRole(user)
+    }
+
+    /**
      * Delete a community by it's [id]
      */
     fun deleteCommunity(id: Long) {
