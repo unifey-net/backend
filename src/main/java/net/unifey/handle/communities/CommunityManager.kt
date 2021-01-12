@@ -219,6 +219,8 @@ object CommunityManager {
 
         FeedManager.createFeedForCommunity(community.id, owner)
 
+        UserManager.getUser(owner).join(community.id)
+
         cache.add(community)
 
         return community

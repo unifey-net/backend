@@ -21,6 +21,18 @@ class User(
         val createdAt: Long
 ) {
     /**
+     * Join a [community]
+     */
+    fun join(community: Long) =
+        member.join(community)
+
+    /**
+     * Leave a [community]
+     */
+    fun leave(community: Long) =
+        member.leave(community)
+
+    /**
      * A user's profile. This contains profile details such as Discord.
      */
     val profile by lazy {
