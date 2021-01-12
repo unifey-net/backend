@@ -1,9 +1,11 @@
 package net.unifey.handle.communities.routing
 
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import net.unifey.handle.AlreadyExists
+import net.unifey.handle.Error
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.CommunityRoles
@@ -30,7 +32,9 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
         val (user, community) = call.managePersonalCommunities()
 
         if (community.getRole(user.id) == CommunityRoles.OWNER)
-            throw NoPermission()
+            throw Error {
+                call.respond(HttpStatusCode.Unauthorized, Response("You're the owner of this community!"))
+            }
 
         if (user.member.isMemberOf(community.id)) {
             user.member.leave(community.id)
