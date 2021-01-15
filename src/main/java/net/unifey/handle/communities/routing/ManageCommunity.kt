@@ -396,10 +396,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             }
 
             if (role == 1) {
-                if (targetUser.member.isMemberOf(community.id))
-                    community.setRole(targetUser.id, CommunityRoles.MODERATOR)
-                else
-                    community.removeRole(targetUser.id)
+                community.removeRole(targetUser.id)
             } else {
                 community.setRole(targetUser.id, role)
             }
