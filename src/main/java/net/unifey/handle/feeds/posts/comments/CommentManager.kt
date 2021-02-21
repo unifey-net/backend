@@ -1,10 +1,12 @@
 package net.unifey.handle.feeds.posts.comments
 
 import com.mongodb.client.model.Filters
+import com.mongodb.client.model.Sorts
 import net.unifey.handle.LimitReached
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.feeds.SortingMethod
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.vote.VoteManager
@@ -97,7 +99,10 @@ object CommentManager {
                 .deleteOne(Filters.and(Filters.eq("id", comment.id), Filters.eq("parent", comment.parent)))
     }
 
-    fun getAmountOfComments(post: Long): Int {
+    /**
+     * Get the amount of comments on a [post].
+     */
+    private fun getAmountOfComments(post: Long): Int {
         return Mongo.getClient()
                 .getDatabase("feeds")
                 .getCollection("comments")
@@ -106,43 +111,59 @@ object CommentManager {
                 .size
     }
 
-    fun getPostCommentData(post: Post, page: Int, user: Long?): CommentData {
+    /**
+     * Get the [page] of a [CommentData] on a [post].
+     */
+    fun getPostCommentData(post: Post, page: Int, sort: SortingMethod = SortingMethod.NEW, user: Long?): CommentData {
         val size = getAmountOfComments(post.id)
 
         return CommentData(
                 size,
                 ceil(size.toDouble() / COMMENT_PAGE_SIZE.toDouble()).toInt(),
-                getComments(post.id, page, user)
+                getComments(post.id, page, sort, user)
         )
     }
 
-    fun getCommentData(comment: Comment, page: Int, user: Long?): CommentData {
+    fun getCommentData(comment: Comment, page: Int, sort: SortingMethod, user: Long?): CommentData {
         val size = getAmountOfComments(comment.id)
 
         return CommentData(
                 size,
                 ceil(size.toDouble() / COMMENT_PAGE_SIZE.toDouble()).toInt(),
-                getComments(comment.id, page, user)
+                getComments(comment.id, page, sort, user)
         )
     }
 
     /**
      * Get comments for [post].
      */
-    fun getComments(post: Long, page: Int, user: Long?): MutableList<GetCommentResponse> {
+    private fun getComments(post: Long, page: Int, sort: SortingMethod, user: Long?): MutableList<GetCommentResponse> {
         val startAt = ((page - 1) * COMMENT_PAGE_SIZE)
 
-        return Mongo.getClient()
+        val comments = Mongo.getClient()
                 .getDatabase("feeds")
                 .getCollection("comments")
                 .find(Filters.eq("parent", post))
+
+        val sorted = when (sort) {
+            SortingMethod.NEW ->
+                comments.sort(Sorts.descending("createdAt"))
+
+            SortingMethod.TOP ->
+                comments.sort(Sorts.descending("vote.upvotes"))
+
+            SortingMethod.OLD ->
+                comments.sort(Sorts.ascending("createdAt"))
+        }
+
+        return sorted
                 .skip(startAt)
                 .take(COMMENT_PAGE_SIZE)
                 .map(CommentManager::getComment)
                 .map { comment ->
                     GetCommentResponse(
                             comment,
-                            if (comment.level == 1) getCommentData(comment, 1, user) else null,
+                            if (comment.level == 1) getCommentData(comment, 1, SortingMethod.OLD, user) else null,
                             if (user != null) VoteManager.getCommentVote(comment.id, user) else null,
                             UserManager.getUser(comment.authorId)
                     )
