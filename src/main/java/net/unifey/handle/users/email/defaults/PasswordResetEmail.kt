@@ -2,6 +2,9 @@ package net.unifey.handle.users.email.defaults
 
 import net.unifey.handle.users.email.UserEmailRequest
 
+/**
+ * When a password is requested to be reset.
+ */
 object PasswordResetEmail : Email {
     override fun getSubject(request: UserEmailRequest): String =
             "Password reset for your Unifey account."

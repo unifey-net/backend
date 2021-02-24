@@ -2,6 +2,9 @@ package net.unifey.handle.users.email.defaults
 
 import net.unifey.handle.users.email.UserEmailRequest
 
+/**
+ * The email sent when an end user registers an account and needs to verify their account.
+ */
 object VerifyEmail : Email {
     override fun getSubject(request: UserEmailRequest): String =
             "Verify this email for your Unifey account."
