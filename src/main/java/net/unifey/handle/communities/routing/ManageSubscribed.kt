@@ -14,6 +14,15 @@ import net.unifey.response.Response
 
 val MANAGE_SUBSCRIBED: Route.() -> Unit = {
     /**
+     * View subscribed communities
+     */
+    get {
+        val (user) = call.managePersonalCommunities()
+
+        call.respond(user.member.getMembers())
+    }
+
+    /**
      * Join a community.
      */
     put {
