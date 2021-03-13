@@ -3,10 +3,8 @@ package net.unifey.handle.mongo
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
 import kotlinx.coroutines.*
-import net.unifey.config.Config
 import net.unifey.mongo
 import net.unifey.prod
-import kotlin.coroutines.CoroutineContext
 
 /**
  * Interacts with MongoDB.

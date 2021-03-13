@@ -7,7 +7,7 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import net.unifey.auth.ex.AuthenticationException
+import net.unifey.auth.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission

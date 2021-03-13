@@ -1,6 +1,9 @@
 package net.unifey.handle.feeds
 
+import com.mongodb.client.FindIterable
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Filters.or
 import com.mongodb.client.model.Sorts
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
@@ -171,12 +174,45 @@ object FeedManager {
         return getFeedPage(feed, page, parsedMethod)
     }
 
+    /**
+     * Get [feeds]'s posts.
+     * Each [page] has up to [POSTS_PAGE_SIZE] posts. It remains at the same limit disregarding how many feeds are in the query.
+     *
+     * This assumes you've previously checked for permissions. (see if user can view feed)
+     */
+    fun getFeedsPosts(feeds: MutableList<Feed>, page: Int, method: String): MutableList<Post> {
+        val pageCount = feeds.asSequence().map { feed -> feed.pageCount }.sum()
+
+        if (page > pageCount || 0 >= page) throw InvalidArguments("page")
+
+        val parsedMethod = SortingMethod.values()
+            .firstOrNull { sort -> sort.toString().equals(method, true) }
+            ?: throw InvalidArguments("sort")
+
+        return getFeedsPages(feeds, page, parsedMethod)
+    }
+
     const val POSTS_PAGE_SIZE = 50
+
+    /**
+     * Get a page out of multiple feeds.
+     */
+    private fun getFeedsPages(feeds: MutableList<Feed>, page: Int, sortMethod: SortingMethod): MutableList<Post> {
+        val startAt = ((page - 1) * POSTS_PAGE_SIZE)
+        val filters = feeds.map { feed -> eq("feed", feed.id) }
+
+        val posts = Mongo.getClient()
+            .getDatabase("feeds")
+            .getCollection("posts")
+            .find(or(filters))
+
+        return formFeeds(posts, startAt, sortMethod)
+    }
 
     /**
      * Get a page from a feed.
      */
-    private fun  getFeedPage(feed: Feed, page: Int, sortMethod: SortingMethod): MutableList<Post> {
+    private fun getFeedPage(feed: Feed, page: Int, sortMethod: SortingMethod): MutableList<Post> {
         val startAt = ((page - 1) * POSTS_PAGE_SIZE)
 
         val posts = Mongo.getClient()
@@ -184,6 +220,13 @@ object FeedManager {
                 .getCollection("posts")
                 .find(eq("feed", feed.id))
 
+        return formFeeds(posts, startAt, sortMethod)
+    }
+
+    /**
+     * Form a request of posts into a properly formed list of posts.
+     */
+    private fun formFeeds(posts: FindIterable<Document>, startAt: Int, sortMethod: SortingMethod): MutableList<Post> {
         val sorted = when (sortMethod) {
             SortingMethod.NEW ->
                 posts.sort(Sorts.descending("created_at"))
@@ -196,23 +239,23 @@ object FeedManager {
         }
 
         return sorted
-                .skip(startAt)
-                .take(POSTS_PAGE_SIZE)
-                .map { doc ->
-                    val vote = doc.get("vote", Document::class.java)
+            .skip(startAt)
+            .take(POSTS_PAGE_SIZE)
+            .map { doc ->
+                val vote = doc.get("vote", Document::class.java)
 
-                    Post(
-                            doc.getLong("id"),
-                            doc.getLong("created_at"),
-                            doc.getLong("author_id"),
-                            feed.id,
-                            doc.getString("title"),
-                            doc.getString("content"),
-                            vote.getLong("upvotes"),
-                            vote.getLong("downvotes")
-                    )
-                }
-                .toMutableList()
+                Post(
+                    doc.getLong("id"),
+                    doc.getLong("created_at"),
+                    doc.getLong("author_id"),
+                    doc.getString("feed"),
+                    doc.getString("title"),
+                    doc.getString("content"),
+                    vote.getLong("upvotes"),
+                    vote.getLong("downvotes")
+                )
+            }
+            .toMutableList()
     }
 
     /**
