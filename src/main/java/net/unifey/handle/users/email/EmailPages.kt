@@ -14,6 +14,9 @@ import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 
+/**
+ * Pages for email.
+ */
 fun Routing.emailPages() {
     route("/email") {
         get {

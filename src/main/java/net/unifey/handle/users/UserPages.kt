@@ -20,6 +20,7 @@ import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
+import net.unifey.prod
 import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
 import net.unifey.util.cleanInput
@@ -367,7 +368,9 @@ fun Routing.userPages() {
     post("/authenticate") {
         val params = call.receiveParameters()
 
-        call.checkCaptcha(params)
+        // only check for captcha in production
+        if (prod)
+            call.checkCaptcha(params)
 
         val username = params["username"]
         val password = params["password"]

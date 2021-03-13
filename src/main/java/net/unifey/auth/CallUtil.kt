@@ -2,8 +2,6 @@ package net.unifey.auth
 
 import io.ktor.application.ApplicationCall
 import io.ktor.auth.parseAuthorizationHeader
-import net.unifey.auth.ex.AuthenticationException
-import net.unifey.auth.ex.TokenExpiredException
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.util.DEFAULT_PAGE_RATE_LIMIT

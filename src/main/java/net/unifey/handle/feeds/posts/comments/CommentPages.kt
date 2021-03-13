@@ -9,6 +9,7 @@ import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.MalformedContent
 import net.unifey.handle.NoPermission
+import net.unifey.handle.feeds.SortingMethod
 import net.unifey.handle.feeds.getFeed
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.getPost
@@ -41,7 +42,15 @@ fun Route.commentPages() {
         val page = call.request.queryParameters["page"]?.toIntOrNull()
                 ?: 1
 
-        call.respond(CommentManager.getPostCommentData(post, page, token?.owner))
+        val sort = try {
+            val sortString = call.request.queryParameters["sort"] ?: "new"
+
+            SortingMethod.valueOf(sortString.toUpperCase())
+        } catch (ex: Exception) {
+            throw InvalidArguments("sort")
+        }
+
+        call.respond(CommentManager.getPostCommentData(post, page, sort, token?.owner))
     }
 
     /**
@@ -96,7 +105,7 @@ fun Route.commentPages() {
             if (obj.level == 2)
                 throw InvalidArguments("comment")
 
-            call.respond(CommentManager.getCommentData(obj, page, token?.owner))
+            call.respond(CommentManager.getCommentData(obj, page, SortingMethod.OLD, token?.owner))
         }
 
         /**

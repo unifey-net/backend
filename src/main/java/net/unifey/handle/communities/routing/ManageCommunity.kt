@@ -7,7 +7,7 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
-import net.unifey.auth.ex.AuthenticationException
+import net.unifey.auth.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
@@ -197,16 +197,18 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
         )
     }
 
+    val searchBucket = PageRateLimit(
+        Bandwidth.classic(
+            5,
+            Refill.greedy(1, Duration.ofSeconds(5))
+        )
+    )
+
     /**
      * Search members
      */
     post("/search") {
-        val token = call.isAuthenticated(pageRateLimit = PageRateLimit(
-            Bandwidth.classic(
-            5,
-            Refill.greedy(1, Duration.ofSeconds(1))
-        ))
-        )
+        val token = call.isAuthenticated(pageRateLimit = searchBucket)
 
         val id = call.parameters["id"]?.toLongOrNull()
             ?: throw InvalidArguments("p_id")
@@ -300,6 +302,8 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
          * Get a communities roles.
          */
         get {
+            data class UserCommunityRole(val id: Long, val name: String, val role: Int)
+
             val token = call.isAuthenticated()
 
             val id = call.parameters["id"]?.toLongOrNull()
@@ -310,7 +314,10 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             if (CommunityRoles.MODERATOR > community.getRole(token.owner))
                 throw NoPermission()
 
-            call.respond(community.roles)
+            val response = community.roles
+                .map { role -> UserCommunityRole(role.key, UserManager.getUser(role.key).username, role.value) }
+
+            call.respond(response)
         }
 
         /**
@@ -389,10 +396,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             }
 
             if (role == 1) {
-                if (targetUser.member.isMemberOf(community.id))
-                    community.setRole(targetUser.id, CommunityRoles.MODERATOR)
-                else
-                    community.removeRole(targetUser.id)
+                community.removeRole(targetUser.id)
             } else {
                 community.setRole(targetUser.id, role)
             }

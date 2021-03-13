@@ -10,6 +10,7 @@ import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NoPermission
+import net.unifey.handle.feeds.custom.PersonalizedFeed
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostLimits
 import net.unifey.handle.feeds.posts.PostManager
@@ -18,7 +19,6 @@ import net.unifey.handle.feeds.posts.getPost
 import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.feeds.responses.GetFeedResponse
 import net.unifey.handle.feeds.responses.GetPostResponse
-import net.unifey.handle.reports.ReportHandler
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
@@ -60,7 +60,21 @@ fun Routing.feedPages() {
          * Get a personalized list of subscribed communities.
          */
         get("/self") {
-            TODO()
+            val token = call.isAuthenticated()
+
+            val params = call.request.queryParameters
+
+            val page = params["page"]?.toIntOrNull()
+            val sort = params["sort"]
+
+            if (page == null || sort == null)
+                throw InvalidArguments("sort", "page")
+
+            call.respond(PersonalizedFeed.getUsersFeed(
+                token.getOwner(),
+                page,
+                sort
+            ))
         }
 
         /**

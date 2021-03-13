@@ -2,6 +2,9 @@ package net.unifey.handle.users.email.defaults
 
 import net.unifey.handle.users.email.UserEmailRequest
 
+/**
+ * Like [VerifyEmail], but for beta.
+ */
 object VerifyBeta: Email {
     override fun getSubject(request: UserEmailRequest): String =
             "Verify this email for your Beta Unifey account."

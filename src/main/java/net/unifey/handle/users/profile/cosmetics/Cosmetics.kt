@@ -3,7 +3,7 @@ package net.unifey.handle.users.profile.cosmetics
 import com.mongodb.client.model.Filters
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
-import net.unifey.url
+import net.unifey.util.URL
 import org.bson.Document
 
 object Cosmetics {
@@ -23,7 +23,7 @@ object Cosmetics {
         class Badge(override val id: String, override val desc: String) : Cosmetic() {
             override val type: Int = 0
 
-            val image = "${url}/user/cosmetic/viewer?type=${type}&id=${id}"
+            val image = "${URL}/user/cosmetic/viewer?type=${type}&id=${id}"
         }
     }
 

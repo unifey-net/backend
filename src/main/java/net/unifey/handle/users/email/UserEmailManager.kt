@@ -330,7 +330,7 @@ object UserEmailManager {
      * Send an email.
      */
     private fun sendEmail(request: UserEmailRequest, email: Email) {
-        LoggerFactory.getLogger("Emails").info("An email has been sent to $email.")
+        LoggerFactory.getLogger("Emails").info("An email has been sent to ${request.email}.")
 
         val client = AmazonSimpleEmailServiceClientBuilder.standard()
                 .withRegion(Regions.US_EAST_1)

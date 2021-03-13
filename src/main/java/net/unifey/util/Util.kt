@@ -12,11 +12,23 @@ import net.unifey.handle.BodyTooLarge
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidType
+import net.unifey.prod
 import net.unifey.response.Response
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+
+/**
+ * The API base url. Changes depending on if it's prod or not.
+ */
+val URL: String
+    get() =
+        if (prod) {
+            "https://api.unifey.net"
+        } else {
+            "http://localhost:8077"
+        }
 
 /**
  * The header for a JPEG image. This is used to make sure an uploaded image is a JPEG.

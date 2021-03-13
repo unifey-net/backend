@@ -4,7 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
-import net.unifey.auth.ex.AuthenticationException
+import net.unifey.auth.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.Error
