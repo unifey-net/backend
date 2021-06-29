@@ -66,17 +66,9 @@ val SERVER = embeddedServer(Netty, 8077) {
         /**
          * Error 404
          */
-
-        /**
-         * Error 404
-         */
         status(HttpStatusCode.NotFound) {
             call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
         }
-
-        /**
-         * Error 401
-         */
 
         /**
          * Error 401
@@ -114,7 +106,6 @@ val SERVER = embeddedServer(Netty, 8077) {
         friendsPages()
         communityPages()
         reportPages()
-
         betaPages()
 
         get("/") {
