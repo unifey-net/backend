@@ -1,0 +1,12 @@
+package net.unifey.handle.notification
+
+object NotificationWebsocketAction {
+    const val CLOSE_ALL_NOTIFICATION = "CLOSE_ALL_NOTIFICATION"
+    const val CLOSE_NOTIFICATION = "CLOSE_NOTIFICATION"
+    const val READ_NOTIFICATION = "READ_NOTIFICATION"
+    const val READ_ALL_NOTIFICATION = "READ_ALL_NOTIFICATION"
+    const val AUTHENTICATE = "AUTHENTICATE"
+
+    const val GET_ALL_UNREAD_NOTIFICATION = "GET_ALL_UNREAD_NOTIFICATION"
+    const val GET_ALL_NOTIFICATION = "GET_ALL_NOTIFICATION"
+}

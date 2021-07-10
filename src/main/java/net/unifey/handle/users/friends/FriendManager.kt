@@ -1,11 +1,11 @@
-package net.unifey.handle.users
+package net.unifey.handle.users.friends
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
-import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.UserManager
 import org.bson.Document
 
 object FriendManager {

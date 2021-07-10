@@ -18,6 +18,8 @@ import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
+import net.unifey.handle.users.profile.cosmetics.cosmeticPages
+import net.unifey.handle.users.profile.profilePages
 import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.prod
@@ -28,138 +30,9 @@ import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.userPages() {
     route("/user") {
-        route("/cosmetic") {
-            /**
-             * Helper function for cosmetic management calls.
-             * Returns the type to the ID.
-             */
-            fun ApplicationCall.manageCosmetic(): Triple<Int, String, String?> {
-                val token = isAuthenticated()
-
-                if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)
-                    throw NoPermission()
-
-                val params = request.queryParameters
-
-                val id = params["id"]
-                val type = params["type"]?.toIntOrNull()
-
-                if (id == null || type == null)
-                    throw InvalidArguments("type", "id")
-
-                return Triple(type, cleanInput(id), params["desc"])
-            }
-
-            /**
-             * Get an image cosmetic's image.
-             */
-            get("/viewer") {
-                val params = call.request.queryParameters
-
-                val type = params["type"]?.toIntOrNull()
-                val id = params["id"]
-
-                if (type == null || id == null)
-                    throw InvalidArguments("type", "id")
-
-                call.respondBytes(S3ImageHandler.getPicture("cosmetics/$type.$id.jpg", "cosmetics/default.jpg"))
-            }
-
-            /**
-             * Get all cosmetics, or select by type or id. To access a user's cosmetics, get their profile which contains their cosmetics.
-             */
-            get {
-                val params = call.request.queryParameters
-
-                val id = params["id"]
-                val type = params["type"]?.toIntOrNull()
-
-                val cosmetics = when {
-                    id != null && type != null -> Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) && cos.type == type }
-                    id != null -> Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) }
-                    type != null -> Cosmetics.getAll().filter { cos -> cos.type == type }
-
-                    else -> Cosmetics.getAll()
-                }
-
-                call.respond(cosmetics)
-            }
-
-            /**
-             * Toggle a cosmetic for a user.
-             */
-            post {
-                val token = call.isAuthenticated()
-
-                if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)
-                    throw NoPermission()
-
-                val params = call.receiveParameters()
-
-                val user = params["user"]?.toLongOrNull()
-                val id = params["id"]
-                val type = params["type"]?.toIntOrNull()
-
-                if (id == null || type == null || user == null)
-                    throw InvalidArguments("type", "id", "user")
-
-                val userObj = UserManager.getUser(user)
-
-                val retrieved = Cosmetics.getAll()
-                        .firstOrNull { cosmetic -> cosmetic.type == type && cosmetic.id.equals(id, true) }
-                        ?: throw NotFound("cosmetic")
-
-                val newCosmetics = userObj.profile.cosmetics.toMutableList()
-
-                if (newCosmetics.any { cos -> cos.id.equals(id, true) && cos.type == type })
-                    newCosmetics.removeIf { cos -> cos.id.equals(id, true) && cos.type == type }
-                else
-                    newCosmetics.add(retrieved)
-
-                userObj.profile.cosmetics = newCosmetics
-
-                call.respond(Response())
-            }
-
-            /**
-             * Create a cosmetic
-             */
-            put {
-                val (type, id, desc) = call.manageCosmetic()
-
-                if (desc == null)
-                    throw InvalidArguments("desc")
-
-                when (type) {
-                    0 -> {
-                        val badge = call.ensureProperImageBody()
-
-                        S3ImageHandler.upload("cosmetics/${type}.${id}.jpg", badge)
-                    }
-                }
-
-                Cosmetics.uploadCosmetic(type, id, desc)
-
-                call.respond(Response())
-            }
-
-            /**
-             * Delete a cosmetic
-             */
-            delete {
-                val (type, id) = call.manageCosmetic()
-
-                when (type) {
-                    0 -> {
-                        S3ImageHandler.delete("cosmetics/${type}.${id}.jpg")
-                    }
-                }
-
-                Cosmetics.deleteCosmetic(type, id)
-
-                call.respond(Response())
-            }
-        }
+        route("/cosmetic", cosmeticPages())
+        route("/friends", friendsPages())
+        route("/profile", profilePages())
 
         /**
          * Get your own user data.
@@ -240,63 +113,6 @@ fun Routing.userPages() {
             S3ImageHandler.upload("pfp/${token.owner}.jpg", bytes)
 
             call.respond(HttpStatusCode.PayloadTooLarge, Response("Image type is not JPEG!"))
-        }
-
-        /**
-         * Manage your profile
-         */
-        route("/profile") {
-            /**
-             * Get [paramName] for a profile action.
-             */
-            @Throws(InvalidArguments::class)
-            suspend fun ApplicationCall.profileInput(paramName: String, maxLength: Int): Pair<User, String> {
-                val token = isAuthenticated()
-
-                val params = receiveParameters()
-
-                val param = params[paramName] ?: throw InvalidArguments(paramName)
-
-                val properParam = cleanInput(param)
-
-                if (properParam.length > maxLength || properParam.isBlank())
-                    throw InvalidArguments(paramName)
-
-                return UserManager.getUser(token.owner) to param
-            }
-
-            /**
-             * Change the description
-             */
-            put("/description") {
-                val (user, desc) = call.profileInput("description", Profile.MAX_DESC_LEN)
-
-                user.profile.description = desc
-
-                call.respond(Response())
-            }
-
-            /**
-             * Change the location
-             */
-            put("/location") {
-                val (user, loc) = call.profileInput("location", Profile.MAX_LOC_LEN)
-
-                user.profile.location = loc
-
-                call.respond(Response())
-            }
-
-            /**
-             * Change the discord
-             */
-            put("/discord") {
-                val (user, disc) = call.profileInput("discord", Profile.MAX_DISC_LEN)
-
-                user.profile.discord = disc
-
-                call.respond(Response())
-            }
         }
 
         /**

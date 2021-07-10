@@ -4,16 +4,23 @@ import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import net.unifey.handle.AlreadyExists
+import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
 
+/**
+ * @param id The user's ID.
+ * @param member The communities the user's in.
+ * @param notifications The communities the user has notifications on for.
+ */
 class Member(
         @JsonIgnore
         val id: Long,
-        private val member: MutableList<Long>
+        private val member: MutableList<Long>,
+        private val notifications: MutableList<Long>
 ) {
     /**
      * If user is a member of [community].
@@ -47,6 +54,7 @@ class Member(
             throw NotFound("community")
 
         member.remove(community)
+        notifications.remove(community)
 
         CommunityManager
                 .getCommunityById(community)
@@ -54,6 +62,38 @@ class Member(
 
         update()
     }
+
+    /**
+     * Enable notifications for [community]. They must be joined.
+     */
+    fun enableNotifications(community: Long) {
+        if (!member.contains(community))
+            throw NoPermission()
+
+        notifications.add(community)
+    }
+
+    /**
+     * Disable notifications for [community].
+     */
+    fun disableNotifications(community: Long) {
+        if (!notifications.contains(community))
+            throw NotFound("community")
+
+        notifications.remove(community)
+    }
+
+    /**
+     * Get the notification subscribed communities
+     */
+    fun getNotifications(): List<Long> =
+        notifications
+
+    /**
+     * If the user has notifications enabled for [community].
+     */
+    fun hasNotificationsEnabled(community: Long): Boolean =
+        getNotifications().contains(community)
 
     /**
      * Update [member] in the database.

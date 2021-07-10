@@ -7,6 +7,8 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.notification.NotificationManager
+import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import net.unifey.util.cleanInput
 import org.bson.Document
@@ -50,7 +52,7 @@ object PostManager {
      * Add a post to the database.
      */
     @Throws(InvalidArguments::class)
-    fun createPost(feed: Feed, title: String, content: String, author: Long): Post {
+    suspend fun createPost(feed: Feed, title: String, content: String, author: Long): Post {
         val parsedTitle = cleanInput(title)
         val parsedContent = cleanInput(content)
 
@@ -67,6 +69,15 @@ object PostManager {
                 0,
                 0
         )
+
+        // TODO: possibly make this on a toggle
+        if (feed.id.startsWith("uf_")) {
+            val user = feed.id.removePrefix("uf_").toLong()
+
+            val name = UserManager.getUser(author).username
+
+            NotificationManager.postNotification(user, "$name just posted on your profile!")
+        }
 
         return createPost(post)
     }
