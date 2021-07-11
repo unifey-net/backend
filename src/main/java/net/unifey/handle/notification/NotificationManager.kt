@@ -4,12 +4,19 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import kotlinx.coroutines.channels.Channel
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
 import net.unifey.util.IdGenerator
 import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
 
 object NotificationManager {
     val LIVE = Channel<Pair<Long, Notification>>()
+
+    /**
+     * Post a notification with [message] for a [User].
+     */
+    suspend fun User.postNotification(message: String) =
+        postNotification(this.id, message)
 
     /**
      * Post a notification with [message] for [user].
@@ -98,6 +105,12 @@ object NotificationManager {
     }
 
     /**
+     * Delete all of a [User]'s notifications
+     */
+    fun User.deleteAllNotifications() =
+        deleteAllNotifications(this.id)
+
+    /**
      * Delete all of [user]'s notifications.
      */
     fun deleteAllNotifications(user: Long) {
@@ -118,6 +131,12 @@ object NotificationManager {
     }
 
     /**
+     * Read all [User]'s notifications.
+     */
+    fun User.readAllNotifications() =
+        readAllNotifications(this.id)
+
+    /**
      * Mark all notifications as read.
      */
     fun readAllNotifications(user: Long) {
@@ -126,6 +145,12 @@ object NotificationManager {
             .getCollection("notifications")
             .updateMany(Filters.eq("user", user), Updates.set("read", true))
     }
+
+    /**
+     * Get a [User]'s unread notifications.
+     */
+    fun User.getAllUnreadNotifications(): Pair<Int, List<Notification>> =
+        getAllUnreadNotifications(this.id)
 
     /**
      * Get all unread notifications for [user].

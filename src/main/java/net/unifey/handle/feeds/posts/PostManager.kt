@@ -4,10 +4,13 @@ import com.mongodb.client.model.Filters
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
+import net.unifey.handle.communities.Community
+import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.notification.NotificationManager
+import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import net.unifey.util.cleanInput
@@ -70,17 +73,36 @@ object PostManager {
                 0
         )
 
-        // TODO: possibly make this on a toggle
-        if (feed.id.startsWith("uf_")) {
-            val user = feed.id.removePrefix("uf_").toLong()
-
-            val name = UserManager.getUser(author).username
-
-            NotificationManager.postNotification(user, "$name just posted on your profile!")
-        }
+        sendPostNotification(feed, author)
 
         return createPost(post)
     }
+
+    /**
+     * Send create post notifications.
+     */
+    private suspend fun sendPostNotification(feed: Feed, author: Long) {
+        val name = UserManager.getUser(author).username
+
+        when {
+            feed.id.startsWith("uf_") -> {
+                val user = feed.id.removePrefix("uf_").toLong()
+
+                postNotification(user, "$name just posted on your profile!")
+            }
+
+            feed.id.startsWith("cf_") -> {
+                val communityId = feed.id.removePrefix("cf_").toLong()
+                val community = CommunityManager.getCommunityById(communityId)
+                val notifications = CommunityManager.getNotificationsAsync(communityId).await()
+
+                notifications.forEach { user ->
+                    user.postNotification("$name just posted in ${community.name}!")
+                }
+            }
+        }
+    }
+
 
     /**
      * Get a post by it's [id].

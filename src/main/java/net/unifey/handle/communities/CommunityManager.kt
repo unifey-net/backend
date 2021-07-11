@@ -270,6 +270,16 @@ object CommunityManager {
         }
     }
 
+    suspend fun getNotificationsAsync(community: Long): Deferred<List<User>> {
+        return Mongo.useAsync {
+            getDatabase("users")
+                .getCollection("members")
+                .find(Filters.`in`("notifications", community))
+                .toList()
+                .map { doc -> UserManager.getUser(doc) }
+        }
+    }
+
     /**
      * Get the sync member count.
      */
