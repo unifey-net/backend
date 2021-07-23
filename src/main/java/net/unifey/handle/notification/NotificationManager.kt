@@ -131,6 +131,16 @@ object NotificationManager {
     }
 
     /**
+     * Mark a notification as unread.
+     */
+    fun unReadNotification(id: Long) {
+        Mongo.getClient()
+            .getDatabase("users")
+            .getCollection("notifications")
+            .updateOne(Filters.eq("id", id), Updates.set("read", false))
+    }
+
+    /**
      * Read all [User]'s notifications.
      */
     fun User.readAllNotifications() =
