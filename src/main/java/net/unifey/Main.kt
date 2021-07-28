@@ -31,6 +31,7 @@ fun main(args: Array<String>) {
         System.getenv("WEBHOOK"),
         WebhookUser("Unifey", "https://unifey.net/favicon.png")
     )
+    System.getenv("RECAPTCHA") // to ensure exists.
 
     SERVER.start(true)
 }

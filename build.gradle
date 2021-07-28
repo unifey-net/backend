@@ -13,7 +13,6 @@ mainClassName = "net.unifey.MainKt"
 
 repositories {
     mavenCentral()
-    jcenter()
     maven { url 'https://jitpack.io'}
 }
 
