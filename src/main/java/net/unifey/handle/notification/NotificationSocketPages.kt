@@ -122,12 +122,12 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
      * Get all unread notifications and the count.
      */
     action("GET_ALL_UNREAD_NOTIFICATION") { token, _ ->
-        val notifications = NotificationManager.getAllUnreadNotifications(token.owner)
+        val (count, notifications) = NotificationManager.getAllUnreadNotifications(token.owner)
 
-        customTypeMessage("success_receive_unread",
+        customTypeMessage("SUCCESS_RECEIVE_UNREAD",
             JSONObject()
-                .put("notifications", notifications.second.map { notifs -> notifs.asJson() }.toJSON())
-                .put("count", notifications.first)
+                .put("notifications", notifications.map { notifs -> notifs.asJson() }.toJSON())
+                .put("count", count)
         )
 
         true
@@ -138,8 +138,8 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
      */
     action("GET_ALL_NOTIFICATION") { token, _ ->
         val notifications = NotificationManager.getNotifications(token.owner)
-
-        customTypeMessage("success_receive_all_notification", notifications.map { notif -> notif.asJson() }.toJSON())
+        
+        customTypeMessage("SUCCESS_RECEIVE_ALL_NOTIFICATION", notifications.map { notif -> notif.asJson() }.toJSON())
 
         true
     }

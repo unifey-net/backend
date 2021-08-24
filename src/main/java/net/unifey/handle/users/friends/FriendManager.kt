@@ -9,6 +9,7 @@ import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.UserManager
 import org.bson.Document
 
@@ -176,33 +177,28 @@ object FriendManager {
      * [to] has accepted [from]'s request.
      */
     suspend fun acceptFriendRequest(from: Long, to: Long) {
-        println("${from} : ${to}")
         deleteFriendRequest(from, to) // this checks if it exists
 
         // they're friends with each other
         addFriend(from, to)
         addFriend(to, from)
 
-        Live.CHANNEL.send(
-            Live.LiveObject(
-            "FRIEND_REQUEST_ACCEPTED",
-            from,
-            jsonObjectOf("user" to to)
-        ))
+        NotificationManager.postNotification(from, "${UserManager.getUser(to).username} has accepted your friend request!")
     }
 
     /**
      * Send a friend request.
-     *
-     * TODO: check if the user's already friended.
      */
     suspend fun sendFriendRequest(from: Long, to: Long) {
-        if (getPendingFriendRequests(from).any { req -> req.sentTo == to }) {
-            throw AlreadyExists("to", "You've already sent this user a friend request.")
-        }
+        when {
+            getPendingFriendRequests(from).any { req -> req.sentTo == to } ->
+                throw AlreadyExists("to", "You've already sent this user a friend request.")
 
-        if (from == to) {
-            throw InvalidVariableInput("to", "You're sending a friend request to yourself.")
+            from == to ->
+                throw InvalidVariableInput("to", "You're sending a friend request to yourself.")
+
+            getFriends(from).any { friend -> friend.id == to } ->
+                throw AlreadyExists("friend", "You're already friends!")
         }
 
         // make sure the user exists
@@ -219,10 +215,6 @@ object FriendManager {
                 "sentFrom" to friendRequestObject.sentFrom
             )))
 
-        Live.CHANNEL.send(Live.LiveObject(
-            "INCOMING_FRIEND_REQUEST",
-            to,
-            jsonObjectOf("sentFrom" to from, "sentAt" to friendRequestObject.sentAt))
-        )
+        NotificationManager.postNotification(to, "${UserManager.getUser(from).username} has sent you a friend request!")
     }
 }
