@@ -38,9 +38,8 @@ val SERVER = embeddedServer(Netty, 8077) {
 
         register(ContentType.Application.Json, JacksonConverter())
 
-        serialization(
-            contentType = ContentType.Application.Json,
-            json = Json(JsonConfiguration.Default)
+        json(
+            contentType = ContentType.Application.Json
         )
     }
 

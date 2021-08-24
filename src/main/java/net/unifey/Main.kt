@@ -5,7 +5,6 @@ import ch.qos.logback.classic.LoggerContext
 import dev.shog.lib.discord.DiscordWebhook
 import dev.shog.lib.discord.WebhookUser
 import io.ktor.locations.*
-import kotlinx.serialization.UnstableDefault
 import net.unifey.handle.SERVER
 import net.unifey.handle.notification.notificationSocketActions
 import org.slf4j.LoggerFactory
@@ -32,7 +31,6 @@ lateinit var mongo: String
  */
 var prod = System.getenv("PROD")?.toBoolean() ?: false
 
-@UnstableDefault
 @KtorExperimentalLocationsAPI
 fun main(args: Array<String>) {
     disableLoggers()
