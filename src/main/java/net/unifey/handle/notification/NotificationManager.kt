@@ -3,6 +3,7 @@ package net.unifey.handle.notification
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import kotlinx.coroutines.channels.Channel
+import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.util.IdGenerator
@@ -10,8 +11,6 @@ import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
 
 object NotificationManager {
-    val LIVE = Channel<Pair<Long, Notification>>()
-
     /**
      * Post a notification with [message] for a [User].
      */
@@ -43,7 +42,7 @@ object NotificationManager {
                 "read" to false
             )))
 
-        LIVE.send(user to notification)
+        Live.CHANNEL.send(Live.LiveObject("NOTIFICATION", user, notification.asJson()))
     }
 
     /**

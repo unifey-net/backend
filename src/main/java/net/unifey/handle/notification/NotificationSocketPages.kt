@@ -2,210 +2,145 @@ package net.unifey.handle.notification
 
 import dev.shog.lib.util.toJSON
 import io.ktor.http.cio.websocket.*
-import net.unifey.auth.tokens.Token
-import net.unifey.auth.tokens.TokenManager
-import net.unifey.handle.socket.WebSocket.authenticateMessage
+import net.unifey.handle.live.SocketActionHandler
+import net.unifey.handle.live.SocketActionHandler.action
 import net.unifey.handle.socket.WebSocket.customTypeMessage
 import net.unifey.handle.socket.WebSocket.errorMessage
 import net.unifey.handle.socket.WebSocket.successMessage
 import org.json.JSONObject
 
 /**
- * Pages for the notification websocket.
+ * Socket actions for notifications.
  */
-object NotificationSocketPages {
+fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
-     * The authenticate websocket action.
-     * A token must be sent as a parameter, and a [Token?] is returned. If unsuccessful, null will be returned.
+     * Close a notification.
      */
-    suspend fun WebSocketSession.authenticate(json: JSONObject): Token? {
-        if (!json.has("token")) {
-            errorMessage("Missing \"token\" parameter.")
-            return null
+    action("CLOSE_NOTIFICATION") { token, data ->
+        if (!data.has("notification") || data["notification"] !is Long) {
+            errorMessage("Missing \"notification\" parameter.")
+            return@action false
+        }
+
+        val notification = data.getLong("notification")
+
+        val obj = NotificationManager.getNotification(notification)
+
+        if (obj == null) {
+            errorMessage("That notification couldn't be found.")
+            return@action false
+        }
+
+        if (token.owner == obj.user) {
+            NotificationManager.deleteNotification(notification)
+
+            successMessage("Successfully deleted notification.")
+            return@action true
         } else {
-            val tokenStr = json.getString("token")
-
-            val token = TokenManager.getToken(tokenStr)
-
-            if (token == null) {
-                errorMessage("Failed to authenticate with provided token")
-                return null
-            } else {
-                authenticateMessage(token.owner, token.expires)
-                connectedTokens.add(token.owner)
-            }
-
-            return token
+            errorMessage("You don't have permission with this notification!")
+            return@action false
         }
     }
 
     /**
-     * The close notification websocket action.
+     * Delete all notifications
      */
-    suspend fun WebSocketSession.closeNotification(token: Token?, json: JSONObject): Boolean {
-        when {
-            token == null -> errorMessage("You must be authenticated.")
-            !json.has("notification") -> errorMessage("Missing \"notification\" parameter.")
+    action("CLOSE_ALL_NOTIFICATION") { token, _ ->
+        NotificationManager.deleteAllNotifications(token.owner)
 
-            else -> {
-                val notification = json.getLong("notification")
+        successMessage("Successfully deleted all notifications")
 
-                val obj = NotificationManager.getNotification(notification)
-
-                if (obj == null) {
-                    errorMessage("That notification couldn't be found.")
-                    return false
-                }
-
-                if (token.owner == obj.user) {
-                    NotificationManager.deleteNotification(notification)
-
-                    successMessage("Successfully deleted notification.")
-                } else {
-                    errorMessage("You don't have permission with this notification!")
-                    return false
-                }
-            }
-        }
-
-        return true
+        true
     }
 
     /**
-     * Close all notifications.
+     * Get a notification from [data].
      */
-    suspend fun WebSocketSession.closeAllNotifications(token: Token?): Boolean {
-        return when (token) {
-            null -> {
-                errorMessage("You must be authenticated.")
-                false
-            }
-            else -> {
-                NotificationManager.deleteAllNotifications(token.owner)
-
-                successMessage("Successfully deleted all notifications")
-
-                true
-            }
+    suspend fun WebSocketSession.getNotification(data: JSONObject): Notification? {
+        if (!data.has("notification") && data["notification"] !is Long) {
+            errorMessage("Missing \"notification\" parameter.")
+            return null
         }
+
+        val notification = data.getLong("notification")
+
+        val obj = NotificationManager.getNotification(notification)
+
+        if (obj == null) {
+            errorMessage("That notification couldn't be found.")
+            return null
+        }
+
+        return obj
     }
 
     /**
-     * Mark a notification as read through the websocket.
+     * Read a notification.
      */
-    suspend fun WebSocketSession.readNotification(token: Token?, json: JSONObject): Boolean {
-        when {
-            token == null -> errorMessage("You must be authenticated.")
-            !json.has("notification") -> errorMessage("Missing \"notification\" parameter.")
+    action("READ_NOTIFICATION") { token, data ->
+        val obj = getNotification(data) ?: return@action false
 
-            else -> {
-                val notification = json.getLong("notification")
+        if (token.owner == obj.user) {
+            NotificationManager.readNotification(obj.id)
 
-                val obj = NotificationManager.getNotification(notification)
-
-                if (obj == null) {
-                    errorMessage("That notification couldn't be found.")
-                    return false
-                }
-
-                if (token.owner == obj.user) {
-                    NotificationManager.readNotification(notification)
-
-                    successMessage("Successfully read notification.")
-                    return true
-                } else {
-                    errorMessage("You don't have permission with this notification!")
-                }
-            }
+            successMessage("Successfully read notification.")
+            return@action true
+        } else {
+            errorMessage("You don't have permission with this notification!")
+            return@action false
         }
-        return false
-    }
-
-    /**
-     * Read all notifications.
-     */
-    suspend fun WebSocketSession.readAllNotifications(token: Token?): Boolean {
-        when (token) {
-            null -> errorMessage("You must be authenticated.")
-            else -> {
-                NotificationManager.readAllNotifications(token.owner)
-
-                successMessage("Successfully read all notifications")
-                return true
-            }
-        }
-
-        return false
     }
 
     /**
      * Un-read a notification
      */
-    suspend fun WebSocketSession.unReadNotification(token: Token?, json: JSONObject): Boolean {
-        when {
-            token == null -> errorMessage("You must be authenticated.")
-            !json.has("notification") -> errorMessage("Missing \"notification\" parameter.")
+    action("UN_READ_NOTIFICATION") { token, data ->
+        val obj = getNotification(data) ?: return@action false
 
-            else -> {
-                val notification = json.getLong("notification")
+        if (token.owner == obj.user) {
+            NotificationManager.unReadNotification(obj.id)
 
-                val obj = NotificationManager.getNotification(notification)
-
-                if (obj == null) {
-                    errorMessage("That notification couldn't be found.")
-                    return false
-                }
-
-                if (token.owner == obj.user) {
-                    NotificationManager.unReadNotification(notification)
-
-                    successMessage("Notification successfully unread.")
-                    return true
-                } else {
-                    errorMessage("You don't have permission with this notification!")
-                }
-            }
+            successMessage("Notification successfully unread.")
+            return@action true
+        } else {
+            errorMessage("You don't have permission with this notification!")
+            return@action true
         }
+    }
 
-        return false
+
+    /**
+     * Read all notifications.
+     */
+    action("READ_ALL_NOTIFICATION") { token, _ ->
+        NotificationManager.readAllNotifications(token.owner)
+        successMessage("Successfully read all notifications")
+        true
     }
 
     /**
-     * Get all unread notifications, as well as a count of how many there are.
+     * Get all unread notifications and the count.
      */
-    suspend fun WebSocketSession.getAllUnreadNotifications(token: Token?): Boolean {
-        when (token) {
-            null -> errorMessage("You must be authenticated.")
-            else -> {
-                val notifications = NotificationManager.getAllUnreadNotifications(token.owner)
+    action("GET_ALL_UNREAD_NOTIFICATION") { token, _ ->
+        val notifications = NotificationManager.getAllUnreadNotifications(token.owner)
 
-                customTypeMessage("success_receive_unread",
-                    JSONObject()
-                        .put("notifications", notifications.second.map { notifs -> notifs.asJson() }.toJSON())
-                        .put("count", notifications.first)
-                )
+        customTypeMessage("success_receive_unread",
+            JSONObject()
+                .put("notifications", notifications.second.map { notifs -> notifs.asJson() }.toJSON())
+                .put("count", notifications.first)
+        )
 
-                return true
-            }
-        }
-
-        return false
+        true
     }
 
     /**
      * Get all notifications.
      */
-    suspend fun WebSocketSession.getAllNotifications(token: Token?): Boolean {
-        when (token) {
-            null -> errorMessage("You must be authenticated.")
-            else -> {
-                val notifications = NotificationManager.getNotifications(token.owner)
+    action("GET_ALL_NOTIFICATION") { token, _ ->
+        val notifications = NotificationManager.getNotifications(token.owner)
 
-                customTypeMessage("success_receive_all_notification", notifications.map { notif -> notif.asJson() }.toJSON())
+        customTypeMessage("success_receive_all_notification", notifications.map { notif -> notif.asJson() }.toJSON())
 
-                return true
-            }
-        }
-        return false
+        true
     }
 }

@@ -11,25 +11,22 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
+import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
-import net.unifey.handle.notification.NotificationManager
-import net.unifey.handle.notification.notificationPages
+import net.unifey.handle.live.liveSocket
+import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.reports.reportPages
 import net.unifey.handle.users.email.emailPages
-import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.webhook
 import org.slf4j.event.Level
 import java.time.Duration
-import kotlin.random.Random
 
 /**
  * the actual server, localhost:8077 :)
@@ -111,16 +108,18 @@ val SERVER = embeddedServer(Netty, 8077) {
         communityPages()
         reportPages()
         betaPages()
-        notificationPages()
+        liveSocket()
 
         get("/") {
             call.respond(Response("unifey :)"))
         }
+
+        get("/debug-notif") {
+            val token = call.isAuthenticated()
+
+            token.getOwner().postNotification("Debug notification")
+
+            call.respond(Response("OK"))
+        }
     }
-//    launch {
-//        while (true) {
-//            delay(Random.nextLong(10000))
-//            NotificationManager.postNotification(26783367602830, "someone upvoted yo shit")
-//        }
-//    }
 }

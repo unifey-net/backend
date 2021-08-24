@@ -7,7 +7,18 @@ import dev.shog.lib.discord.WebhookUser
 import io.ktor.locations.*
 import kotlinx.serialization.UnstableDefault
 import net.unifey.handle.SERVER
+import net.unifey.handle.notification.notificationSocketActions
 import org.slf4j.LoggerFactory
+
+/**
+ * The version of the backend.
+ */
+val VERSION = "0.6.0"
+
+/**
+ * What version is expected of the frontend.
+ */
+val FRONTEND_EXPECT = "0.6.0"
 
 val logger = LoggerFactory.getLogger("Unifey")
 
@@ -25,6 +36,8 @@ var prod = System.getenv("PROD")?.toBoolean() ?: false
 @KtorExperimentalLocationsAPI
 fun main(args: Array<String>) {
     disableLoggers()
+
+    notificationSocketActions()
 
     mongo = System.getenv("MONGO")
     webhook = DiscordWebhook(

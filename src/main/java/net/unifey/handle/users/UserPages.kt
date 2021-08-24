@@ -11,13 +11,11 @@ import io.ktor.routing.*
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
-import net.unifey.handle.NoPermission
-import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
+import net.unifey.handle.live.SocketInteraction
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
-import net.unifey.handle.users.profile.Profile
-import net.unifey.handle.users.profile.cosmetics.Cosmetics
+import net.unifey.handle.users.friends.friendsPages
 import net.unifey.handle.users.profile.cosmetics.cosmeticPages
 import net.unifey.handle.users.profile.profilePages
 import net.unifey.util.ensureProperImageBody
@@ -25,7 +23,6 @@ import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.prod
 import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
-import net.unifey.util.cleanInput
 import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.userPages() {

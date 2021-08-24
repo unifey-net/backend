@@ -29,13 +29,9 @@ object WebSocket {
             .put("response", message)
             .toString()))
 
-    suspend fun WebSocketSession.authenticateMessage(id: Long, expire: Long) =
+    suspend fun WebSocketSession.authenticateMessage() =
         outgoing.send(Frame.Text(JSONObject()
-            .put("response",
-                JSONObject()
-                    .put("id", id)
-                    .put("expire", expire)
-            )
+            .put("response", "welcome :)")
             .put("type", "authenticated")
             .toString()))
 }
