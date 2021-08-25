@@ -4,6 +4,7 @@ import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import net.unifey.auth.isAuthenticated
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.Error
 import net.unifey.handle.NoPermission
@@ -17,9 +18,9 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
      * View subscribed communities
      */
     get {
-        val (user) = call.managePersonalCommunities()
+        val token = call.isAuthenticated()
 
-        call.respond(user.member.getMembers())
+        call.respond(token.getOwner().member.getMembers())
     }
 
     /**
@@ -54,5 +55,47 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
             call.respond(Response())
         } else
             throw NotFound("community")
+    }
+
+    /**
+     * Manage notifications for communities.
+     */
+    route("/notifications") {
+        /**
+         * Get all notification subscribed communities
+         */
+        get {
+            val token = call.isAuthenticated()
+
+            call.respond(token.getOwner().member.getNotifications())
+        }
+
+        /**
+         * Subscribe to notifications for a community.
+         */
+        put {
+            val (user, community) = call.managePersonalCommunities()
+
+            if (!user.member.hasNotificationsEnabled(community.id)) {
+                user.member.enableNotifications(community.id)
+
+                call.respond(Response())
+            } else
+                throw NoPermission()
+        }
+
+        /**
+         * Unsubscribe to notifications for a community.
+         */
+        delete {
+            val (user, community) = call.managePersonalCommunities()
+
+            if (user.member.hasNotificationsEnabled(community.id)) {
+                user.member.disableNotifications(community.id)
+
+                call.respond(Response())
+            } else
+                throw NoPermission()
+        }
     }
 }

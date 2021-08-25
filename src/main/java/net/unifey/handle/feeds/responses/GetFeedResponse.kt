@@ -7,5 +7,6 @@ import net.unifey.handle.feeds.Feed
  */
 data class GetFeedResponse(
         val feed: Feed,
-        val posts: List<GetPostResponse>
+        val posts: List<GetPostResponse>,
+        val feedPermissions: UserFeedPermissions
 )

@@ -33,12 +33,12 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
     }
 
     if (community.viewRole != CommunityRoles.DEFAULT) {
-        if (user == null || community.getRole(user.owner) != community.viewRole) {
+        if (user == null || !CommunityRoles.hasPermission(community.getRole(user.owner), community.viewRole)) {
             respond(
                 GetCommunityResponse(
                     community,
                     community.getRole(user?.owner ?: -1),
-                    null,
+                    listOf(),
                     null
                 )
             )

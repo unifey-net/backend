@@ -4,46 +4,20 @@ import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
 import dev.shog.lib.discord.DiscordWebhook
 import dev.shog.lib.discord.WebhookUser
-import dev.shog.lib.util.ArgsHandler
-import io.ktor.application.call
-import io.ktor.application.install
-import io.ktor.features.*
-import io.ktor.http.ContentType
-import io.ktor.http.HttpMethod
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.cio.websocket.timeout
-import io.ktor.jackson.JacksonConverter
-import io.ktor.jackson.jackson
-import io.ktor.locations.KtorExperimentalLocationsAPI
-import io.ktor.locations.Locations
-import io.ktor.response.respond
-import io.ktor.routing.get
-import io.ktor.routing.routing
-import io.ktor.serialization.serialization
-import io.ktor.server.engine.embeddedServer
-import io.ktor.server.netty.Netty
-import io.ktor.websocket.WebSockets
-import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.UnstableDefault
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonConfiguration
-import net.unifey.handle.Error
+import io.ktor.locations.*
 import net.unifey.handle.SERVER
-import net.unifey.handle.beta.betaPages
-import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.routing.communityPages
-import net.unifey.handle.emotes.emotePages
-import net.unifey.handle.feeds.feedPages
-import net.unifey.handle.reports.reportPages
-import net.unifey.handle.users.UserManager
-import net.unifey.handle.users.email.emailPages
-import net.unifey.handle.users.friendsPages
-import net.unifey.handle.users.userPages
-import net.unifey.response.Response
+import net.unifey.handle.notification.notificationSocketActions
 import org.slf4j.LoggerFactory
-import org.slf4j.event.Level
-import java.time.Duration
-import kotlin.reflect.jvm.internal.impl.utils.ExceptionUtilsKt
+
+/**
+ * The version of the backend.
+ */
+val VERSION = "0.6.0"
+
+/**
+ * What version is expected of the frontend.
+ */
+val FRONTEND_EXPECT = "0.6.0"
 
 val logger = LoggerFactory.getLogger("Unifey")
 
@@ -57,16 +31,18 @@ lateinit var mongo: String
  */
 var prod = System.getenv("PROD")?.toBoolean() ?: false
 
-@UnstableDefault
 @KtorExperimentalLocationsAPI
 fun main(args: Array<String>) {
     disableLoggers()
+
+    notificationSocketActions()
 
     mongo = System.getenv("MONGO")
     webhook = DiscordWebhook(
         System.getenv("WEBHOOK"),
         WebhookUser("Unifey", "https://unifey.net/favicon.png")
     )
+    System.getenv("RECAPTCHA") // to ensure exists.
 
     SERVER.start(true)
 }

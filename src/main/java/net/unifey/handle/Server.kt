@@ -13,13 +13,15 @@ import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonConfiguration
+import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
+import net.unifey.handle.live.liveSocket
+import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.reports.reportPages
 import net.unifey.handle.users.email.emailPages
-import net.unifey.handle.users.friendsPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.webhook
@@ -36,9 +38,8 @@ val SERVER = embeddedServer(Netty, 8077) {
 
         register(ContentType.Application.Json, JacksonConverter())
 
-        serialization(
-            contentType = ContentType.Application.Json,
-            json = Json(JsonConfiguration.Default)
+        json(
+            contentType = ContentType.Application.Json
         )
     }
 
@@ -66,17 +67,9 @@ val SERVER = embeddedServer(Netty, 8077) {
         /**
          * Error 404
          */
-
-        /**
-         * Error 404
-         */
         status(HttpStatusCode.NotFound) {
             call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
         }
-
-        /**
-         * Error 401
-         */
 
         /**
          * Error 401
@@ -111,14 +104,21 @@ val SERVER = embeddedServer(Netty, 8077) {
         emailPages()
         feedPages()
         userPages()
-        friendsPages()
         communityPages()
         reportPages()
-
         betaPages()
+        liveSocket()
 
         get("/") {
             call.respond(Response("unifey :)"))
+        }
+
+        get("/debug-notif") {
+            val token = call.isAuthenticated()
+
+            token.getOwner().postNotification("Debug notification")
+
+            call.respond(Response("OK"))
         }
     }
 }

@@ -5,11 +5,11 @@ import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.friends.FriendManager
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.bson.Document
-import org.omg.CosNaming.NamingContextPackage.NotFound
 
 class User(
         val id: Long,
@@ -80,7 +80,8 @@ class User(
         if (doc != null) {
             Member(
                     id,
-                    doc["member"] as MutableList<Long>
+                    doc["member"] as MutableList<Long>,
+                    doc["notifications"] as MutableList<Long>
             )
         } else {
             Mongo.getClient()
@@ -88,10 +89,11 @@ class User(
                     .getCollection("members")
                     .insertOne(Document(mapOf(
                             "id" to id,
-                            "member" to listOf<Long>()
+                            "member" to listOf<Long>(),
+                            "notifications" to listOf<Long>()
                     )))
 
-            Member(id, mutableListOf())
+            Member(id, mutableListOf(), mutableListOf())
         }
     }
 

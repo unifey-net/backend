@@ -219,7 +219,11 @@ fun Routing.feedPages() {
                             GetPostResponse(it, UserManager.getUser(it.authorId), vote)
                         }
 
-                call.respond(GetFeedResponse(feed, response))
+                call.respond(GetFeedResponse(
+                    feed,
+                    response,
+                    feed.getFeedPermissions(token?.getOwner()!!)
+                ))
             }
 
             /**
