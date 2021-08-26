@@ -164,6 +164,10 @@ fun Routing.userPages() {
         put("/register") {
             val params = call.receiveParameters()
 
+            // only check for captcha in production
+            if (prod)
+                call.checkCaptcha(params)
+
             val username = params["username"]
             val password = params["password"]
             val email = params["email"]
