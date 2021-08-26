@@ -1,8 +1,10 @@
 package net.unifey.handle.live
 
+import dev.shog.lib.util.jsonObjectOf
 import io.ktor.http.cio.websocket.*
 import net.unifey.VERSION
 import net.unifey.auth.tokens.Token
+import net.unifey.handle.socket.WebSocket.customTypeMessage
 import net.unifey.handle.socket.WebSocket.successMessage
 import org.json.JSONObject
 import org.reflections.Reflections
@@ -82,6 +84,11 @@ object SocketActionHandler {
 
             action("GET_SERVER_VERSION") { _, _ ->
                 successMessage(VERSION)
+                true
+            }
+
+            action("PING") { _, _ ->
+                customTypeMessage("PONG", jsonObjectOf())
                 true
             }
         }

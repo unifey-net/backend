@@ -7,6 +7,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.unifey.FRONTEND_EXPECT
 import net.unifey.VERSION
@@ -83,7 +84,7 @@ fun Routing.liveSocket() {
                             try {
                                 handleIncoming(token, data)
                             } catch (ex: SocketError) {
-                                socketLogger.info("CLOSE: ${ex.message}")
+                                socketLogger.info("CLOSE: ${ex.message}, ${ex.reason}")
                                 close(ex.reason)
                             }
                         } else {
@@ -114,7 +115,7 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
         throw SocketError(400, "Invalid data type, expects JSON.")
     }
 
-    if (!json.has("action") && json["action"] is String)
+    if (!json.has("action") || json["action"] !is String)
         throw SocketError(400, "JSON doesn't contain \"action\" parameter.")
 
     val page = findPage(json.getString("action"))
