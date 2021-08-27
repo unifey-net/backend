@@ -62,35 +62,43 @@ fun Routing.liveSocket() {
                     is Frame.Text -> {
                         val data = String(frame.data)
 
-                        if (data.startsWith("bearer")) {
-                            val split = data.split(" ")
+                        when {
+                            data.startsWith("bearer") -> {
+                                val split = data.split(" ")
 
-                            if (split[0].equals("bearer", true)) {
-                                val tokenObj = TokenManager.getToken(split[1])
+                                if (split[0].equals("bearer", true)) {
+                                    val tokenObj = TokenManager.getToken(split[1])
 
-                                if (tokenObj == null) {
-                                    errorMessage("Invalid token.")
-                                } else {
-                                    token = tokenObj
+                                    if (tokenObj == null) {
+                                        errorMessage("Invalid token.")
+                                    } else {
+                                        token = tokenObj
 
-                                    socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+                                        socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
-                                    Live.userOnline(tokenObj.owner)
-                                    authenticateMessage()
+                                        Live.userOnline(tokenObj.owner)
+                                        authenticateMessage()
+                                    }
                                 }
-                            } else
-                                errorMessage("Invalid authentication method.")
-                        } else if (token != null) {
-                            try {
-                                handleIncoming(token, data)
-                            } catch (ex: SocketError) {
-                                socketLogger.info("CLOSE: ${ex.message}, ${ex.reason}")
-                                close(ex.reason)
                             }
-                        } else {
-                            errorMessage("Not authenticated.")
+
+                            data.startsWith("ping") -> {
+                                customTypeMessage("PONG", jsonObjectOf())
+                            }
+
+                            token != null -> {
+                                try {
+                                    handleIncoming(token, data)
+                                } catch (ex: SocketError) {
+                                    socketLogger.info("CLOSE: ${ex.message}, ${ex.reason}")
+                                    close(ex.reason)
+                                }
+                            }
+
+                            else ->
+                                errorMessage("Not authenticated.")
                         }
-                    }
+                        }
 
                     else -> errorMessage("Unexpected frame.")
                 }
