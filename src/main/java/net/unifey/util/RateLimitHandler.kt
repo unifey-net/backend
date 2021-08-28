@@ -15,7 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 val DEFAULT_PAGE_RATE_LIMIT = PageRateLimit(Bandwidth.classic(
-        10, Refill.greedy(1, Duration.ofSeconds(2))
+        50, Refill.greedy(1, Duration.ofSeconds(2))
 ))
 
 /**
