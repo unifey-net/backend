@@ -81,7 +81,11 @@ object UserInputRequirements: InputRequirements() {
     @Throws(InvalidVariableInput::class)
     suspend fun allMeets(username: String, password: String, email: String) {
         meets(username, USERNAME_EXISTS)
+        meets(username, USERNAME)
+
         meets(password, PASSWORD)
+
         meets(email, EMAIL)
+        meets(email, EMAIL_EXISTS)
     }
 }
