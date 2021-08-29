@@ -4,16 +4,25 @@ import kotlinx.coroutines.channels.Channel
 import net.unifey.handle.users.friends.updateFriendOffline
 import net.unifey.handle.users.friends.updateFriendOnline
 import org.json.JSONObject
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Different classes can send out live information (such as notifications)
  */
 object Live {
-    val CHANNEL = Channel<LiveObject>()
+    private val USERS_ONLINE = ConcurrentHashMap<Long, Channel<LiveObject>>()
+
+    /**
+     * Send update.
+     */
+    suspend fun sendUpdate(obj: LiveObject) {
+        socketLogger.debug("SEND ${obj.user} (ATTEMPT): ${obj.type} (${obj.data})")
+        socketLogger.debug(USERS_ONLINE.toString())
+
+        USERS_ONLINE[obj.user]?.send(obj)
+    }
 
     data class LiveObject(val type: String, val user: Long, val data: JSONObject)
-
-    private val USERS_ONLINE = arrayListOf<Long>()
 
     /**
      * Get [USERS_ONLINE]
@@ -23,8 +32,8 @@ object Live {
     /**
      * [user] goes online
      */
-    suspend fun userOnline(user: Long) {
-        USERS_ONLINE.add(user)
+    suspend fun userOnline(user: Long, channel: Channel<LiveObject>) {
+        USERS_ONLINE[user] = channel
 
         updateFriendOnline(user)
     }
