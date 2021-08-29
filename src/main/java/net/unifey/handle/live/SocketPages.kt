@@ -7,6 +7,7 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.unifey.FRONTEND_EXPECT
@@ -40,15 +41,14 @@ fun Routing.liveSocket() {
 
         webSocket {
             var token: Token? = null
+            var channel = Channel<Live.LiveObject>()
 
             launch {
-                while (!Live.CHANNEL.isClosedForReceive) {
-                    val (type, user, data) = Live.CHANNEL.receive()
+                while (!channel.isClosedForReceive) {
+                    val (type, user, data) = channel.receive()
 
-                    if (Live.getOnlineUsers().contains(user) && token?.owner == user) {
-                        socketLogger.info("SEND $user: LIVE $type ($data)")
-                        customTypeMessage(type, data)
-                    }
+                    socketLogger.info("SEND $user: LIVE $type ($data)")
+                    customTypeMessage(type, data)
                 }
             }
 
@@ -74,12 +74,14 @@ fun Routing.liveSocket() {
                                     } else {
                                         token = tokenObj
 
-                                        if (Live.getOnlineUsers().contains(tokenObj.owner)) {
+                                        if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
+                                            socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
+
                                             close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
                                         } else {
                                             socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
-                                            Live.userOnline(tokenObj.owner)
+                                            Live.userOnline(tokenObj.owner, channel)
                                             authenticateMessage()
                                         }
                                     }
