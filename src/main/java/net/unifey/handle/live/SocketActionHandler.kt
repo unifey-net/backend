@@ -80,16 +80,25 @@ object SocketActionHandler {
 
         // default pages:
         socketActions {
+            /**
+             * Get the amount of users online.
+             */
             action("GET_USER_COUNT") { _, _ ->
                 successMessage("${Live.getOnlineUsers().size}")
                 true
             }
 
+            /**
+             * Get the server's version.
+             */
             action("GET_SERVER_VERSION") { _, _ ->
                 successMessage(VERSION)
                 true
             }
 
+            /**
+             * Get user. This is used when the frontend starts.
+             */
             action("GET_USER") { token, _ ->
                 val owner = token.getOwner()
 

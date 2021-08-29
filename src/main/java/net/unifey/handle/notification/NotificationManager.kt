@@ -42,7 +42,7 @@ object NotificationManager {
                 "read" to false
             )))
 
-        Live.CHANNEL.send(Live.LiveObject("NOTIFICATION", user, notification.asJson()))
+        Live.sendUpdate(Live.LiveObject("NOTIFICATION", user, notification.asJson()))
     }
 
     /**
