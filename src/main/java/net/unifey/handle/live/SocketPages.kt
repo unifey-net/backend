@@ -7,6 +7,8 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.unifey.FRONTEND_EXPECT
@@ -39,16 +41,15 @@ fun Routing.liveSocket() {
         }
 
         webSocket {
+            val channel = Channel<Live.LiveObject>()
             var token: Token? = null
 
             launch {
-                while (!Live.CHANNEL.isClosedForReceive) {
-                    val (type, user, data) = Live.CHANNEL.receive()
+                while (!channel.isClosedForReceive) {
+                    val (type, user, data) = channel.receive()
 
-                    if (Live.getOnlineUsers().contains(user) && token?.owner == user) {
-                        socketLogger.info("SEND $user: LIVE $type ($data)")
-                        customTypeMessage(type, data)
-                    }
+                    socketLogger.info("SEND $user: LIVE $type ($data)")
+                    customTypeMessage(type, data)
                 }
             }
 
@@ -76,7 +77,7 @@ fun Routing.liveSocket() {
 
                                         socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
-                                        Live.userOnline(tokenObj.owner)
+                                        Live.userOnline(tokenObj.owner, channel)
                                         authenticateMessage()
                                     }
                                 }
@@ -140,6 +141,9 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     }
 }
 
+/**
+ * Get the [SocketAction] by an [action] string.
+ */
 private fun findPage(action: String): SocketAction? {
     SocketActionHandler.socketActions.forEach { (name, page) ->
         if (action.equals(name, true))
