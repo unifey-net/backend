@@ -141,6 +141,9 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     }
 }
 
+/**
+ * Get the [SocketAction] by an [action] string.
+ */
 private fun findPage(action: String): SocketAction? {
     SocketActionHandler.socketActions.forEach { (name, page) ->
         if (action.equals(name, true))

@@ -10,19 +10,23 @@ import java.util.concurrent.ConcurrentHashMap
  * Different classes can send out live information (such as notifications)
  */
 object Live {
+    data class LiveObject(val type: String, val user: Long, val data: JSONObject)
+
+    /**
+     * An online user's ID to their socket's channel.
+     *
+     * The channel allows for live notifications.
+     */
     private val USERS_ONLINE = ConcurrentHashMap<Long, Channel<LiveObject>>()
 
     /**
-     * Send update.
+     * Send [obj] to a user on a socket.
      */
     suspend fun sendUpdate(obj: LiveObject) {
         socketLogger.debug("SEND ${obj.user} (ATTEMPT): ${obj.type} (${obj.data})")
-        socketLogger.debug(USERS_ONLINE.toString())
 
         USERS_ONLINE[obj.user]?.send(obj)
     }
-
-    data class LiveObject(val type: String, val user: Long, val data: JSONObject)
 
     /**
      * Get [USERS_ONLINE]
@@ -30,7 +34,9 @@ object Live {
     fun getOnlineUsers() = USERS_ONLINE
 
     /**
-     * [user] goes online
+     * [user] goes online. This sends updates to [user]'s friends.
+     *
+     * @param channel The channel from the websocket, to allow for live updates.
      */
     suspend fun userOnline(user: Long, channel: Channel<LiveObject>) {
         USERS_ONLINE[user] = channel
@@ -39,7 +45,7 @@ object Live {
     }
 
     /**
-     * [user] goes offline
+     * [user] goes offline. This sends updates to [user]'s friends.
      */
     suspend fun userOffline(user: Long) {
         USERS_ONLINE.remove(user)
