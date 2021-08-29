@@ -74,10 +74,14 @@ fun Routing.liveSocket() {
                                     } else {
                                         token = tokenObj
 
-                                        socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+                                        if (Live.getOnlineUsers().contains(tokenObj.owner)) {
+                                            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                        } else {
+                                            socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
-                                        Live.userOnline(tokenObj.owner)
-                                        authenticateMessage()
+                                            Live.userOnline(tokenObj.owner)
+                                            authenticateMessage()
+                                        }
                                     }
                                 }
                             }
