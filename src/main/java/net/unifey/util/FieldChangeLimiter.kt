@@ -5,6 +5,7 @@ import com.mongodb.client.model.Updates
 import io.ktor.routing.*
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
+import kotlin.jvm.Throws
 
 object FieldChangeLimiter {
     /**
@@ -72,5 +73,16 @@ object FieldChangeLimiter {
             .getDatabase("global")
             .getCollection("namechange")
             .deleteOne(Filters.and(Filters.eq("type", type), Filters.eq("id", id), Filters.eq("field", field)))
+    }
+
+    /**
+     * Inline check if a [field] is ratelimit for [type] + [id]. throws [RateLimitException] if limited
+     */
+    @Throws(RateLimitException::class)
+    fun checkLimited(type: String, id: Long, field: String) {
+        val (limit, time) = isLimited(type, id, field)
+
+        if (limit && time != null)
+            throw RateLimitException(time - System.currentTimeMillis(), time)
     }
 }

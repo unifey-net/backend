@@ -1,14 +1,21 @@
 package net.unifey.handle.communities.routing
 
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
+import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.communities.CommunityInputRequirements
 import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.users.UserManager
+import net.unifey.prod
+import net.unifey.response.Response
+import net.unifey.util.checkCaptcha
+import org.mindrot.jbcrypt.BCrypt
 
 fun Routing.communityPages() {
     route("/community") {
@@ -32,17 +39,28 @@ fun Routing.communityPages() {
          */
         put {
             val token = call.isAuthenticated()
-
-            if (!CommunityManager.canCreate(token.owner))
-                throw NoPermission()
-
             val params = call.receiveParameters()
 
+            // only check for captcha in production
+            if (prod)
+                call.checkCaptcha(params)
+
+            if (!CommunityManager.canCreate(token.owner))
+                throw Error {
+                    call.respond(HttpStatusCode.Unauthorized, Response("Your account must be 14 days old and you can't have create a community before!"))
+                }
+
             val name = params["name"]
-            val desc = params["desc"]
+            val desc = params["description"]
+            val password = params["password"]
+
+            if (!BCrypt.checkpw(password, token.getOwner().password))
+                throw Error {
+                    respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
+                }
 
             if (name == null || desc == null)
-                throw InvalidArguments("name", "desc")
+                throw InvalidArguments("name", "description")
 
             CommunityInputRequirements.meets(listOf(
                     name to CommunityInputRequirements.NAME,
