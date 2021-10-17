@@ -1,13 +1,18 @@
 package net.unifey.handle.users
 
 import com.mongodb.client.model.Filters.eq
+import net.unifey.auth.tokens.TokenManager
+import net.unifey.auth.tokens.TokenManager.deleteToken
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.util.IdGenerator
 import org.bson.Document
+import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
 import java.util.concurrent.ConcurrentHashMap
 
@@ -112,6 +117,18 @@ object UserManager {
 
         UserEmailManager.sendVerify(id, email)
 
+        NotificationManager.postNotification(id, "A verification link has been sent to your email. If you can't see it, visit your settings to resend.")
+
         return getUser(id)
+    }
+
+    /**
+     * Signs out all users connected to the account (aka delete all tokens)
+     */
+    suspend fun signOutAll(user: User) {
+        TokenManager.getTokensForUser(user)
+            .forEach(::deleteToken)
+
+        Live.sendUpdate(Live.LiveObject("SIGN_OUT", user.id, JSONObject()))
     }
 }

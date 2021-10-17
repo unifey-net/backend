@@ -25,9 +25,17 @@ import javax.imageio.ImageIO
 val URL: String
     get() =
         if (prod) {
-            "https://api.unifey.net"
+            "https://unifeyapi.ajkneisl.dev"
         } else {
             "http://localhost:8077"
+        }
+
+val FRONTEND_URL: String
+    get() =
+        if (prod) {
+            "https://unifey.ajkneisl.dev"
+        } else {
+            "http://localhost:3000"
         }
 
 /**

@@ -13,6 +13,8 @@ import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
+import net.unifey.util.FieldChangeLimiter
+import net.unifey.util.RateLimitException
 
 /**
  * Pages for email.
@@ -27,30 +29,25 @@ fun Routing.emailPages() {
 
         /**
          * Resend an email
+         *
+         * TODO Resend limit should attach to email type, not just in general.
          */
         post("/resend") {
-            val params = call.receiveParameters()
-            val id = params["id"]?.toLongOrNull()
-            val type = params["type"]?.toIntOrNull()
-
-            if (id == null || type == null)
-                throw InvalidArguments("id", "type")
-
-            UserEmailManager.resendEmail(id, type)
-
-            call.respond(Response())
-        }
-
-        /**
-         * Get your email status.
-         */
-        get("/status") {
             val token = call.isAuthenticated()
 
-            val type = call.request.queryParameters["type"]?.toIntOrNull()
-                    ?: throw InvalidArguments("type")
+            val params = call.receiveParameters()
+            val type = params["type"]?.toIntOrNull() ?: throw InvalidArguments("type")
 
-            call.respond(Response(UserEmailManager.getRequest(token.owner, type).attempts))
+            val (limit, time) = FieldChangeLimiter.isLimited("USER", token.owner, "EMAIL_RESEND")
+
+            if (limit && time != null)
+                throw RateLimitException(time - System.currentTimeMillis(), time)
+
+            UserEmailManager.resendEmail(token.owner, type)
+
+            FieldChangeLimiter.createLimit("USER", token.owner, "EMAIL_RESEND", System.currentTimeMillis() + 1000 * 60 * 5) // 5 minutes
+
+            call.respond(Response())
         }
 
         /**
@@ -142,27 +139,6 @@ fun Routing.emailPages() {
             }
 
             throw InvalidArguments("verify", "email")
-        }
-
-        /**
-         * Beta verify
-         */
-        post("/betaverify") {
-            val params = call.receiveParameters()
-            val verify = params["verify"] ?: throw InvalidArguments("verify")
-
-            UserEmailManager.betaVerify(verify)
-
-            call.respond(Response())
-        }
-
-        /**
-         * When a bounce is received from AWS.
-         */
-        post("/bounce") {
-            UserEmailManager.handleBounce(call.receiveText())
-
-            call.respond(Response())
         }
     }
 }

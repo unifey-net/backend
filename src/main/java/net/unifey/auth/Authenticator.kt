@@ -18,6 +18,11 @@ import org.mindrot.jbcrypt.BCrypt
  */
 object Authenticator {
     /**
+     * The default token expire time. (two days)
+     */
+    const val TOKEN_EXPIRE = 1000 * 60 * 60 * 24 * 2
+
+    /**
      * If [username] has been previously used.
      */
     fun usernameTaken(username: String): Boolean =
@@ -52,18 +57,25 @@ object Authenticator {
             val dbPassword = user.getString("password")
 
             if (BCrypt.checkpw(password, dbPassword)) {
-                val token = IdGenerator.generateToken()
-
-                return TokenManager.createToken(
-                        token,
-                        user.getLong("id"),
-                        if (remember) -1 else System.currentTimeMillis() + TimeUnit.DAYS.toMillis(1)
-                )
+                return generate(user.getLong("id"), remember)
             }
         }
 
         throw Error {
             respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
         }
+    }
+
+    /**
+     * Generate a token for [user]
+     */
+    fun generate(user: Long, remember: Boolean = false): Token {
+        val token = IdGenerator.generateToken()
+
+        return TokenManager.createToken(
+            token,
+            user,
+            if (remember) -1 else System.currentTimeMillis() + TOKEN_EXPIRE
+        )
     }
 }

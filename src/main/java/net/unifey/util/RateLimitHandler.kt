@@ -64,11 +64,19 @@ fun checkRateLimit(token: Token, pageRateLimit: PageRateLimit): Long {
 /**
  * If a user's exceeded their rate limit.
  */
-class RateLimitException(private val refill: Long): Error({
+class RateLimitException(private val refill: Long, private val whenAllowed: Long = -1): Error({
     response.header(
             "X-Rate-Limit-Retry-After-Seconds",
-            TimeUnit.NANOSECONDS.toSeconds(refill)
+            TimeUnit.MILLISECONDS.toSeconds(refill)
     )
+
+    if (whenAllowed != -1L)
+        response.header(
+            "X-Rate-Limit-Reset",
+            whenAllowed
+        )
+
+    response.header("Access-Control-Expose-Headers", "X-Rate-Limit-Reset")
 
     respond(HttpStatusCode.TooManyRequests, Response("You are being rate limited!"))
 })

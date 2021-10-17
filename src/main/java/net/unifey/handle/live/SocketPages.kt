@@ -10,6 +10,8 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.buildJsonObject
 import net.unifey.FRONTEND_EXPECT
 import net.unifey.VERSION
 import net.unifey.auth.tokens.Token
@@ -52,10 +54,11 @@ fun Routing.liveSocket() {
                 }
             }
 
-            customTypeMessage("init", jsonObjectOf(
-                "version" to "Unifey Backend $VERSION",
-                "frontend" to FRONTEND_EXPECT
-            ))
+            customTypeMessage("init",
+                JSONObject()
+                    .put("frontend", FRONTEND_EXPECT)
+                    .put("version", "Unifey Backend $VERSION")
+            )
 
             for (frame in incoming) {
                 when (frame) {
@@ -72,17 +75,21 @@ fun Routing.liveSocket() {
                                     if (tokenObj == null) {
                                         errorMessage("Invalid token.")
                                     } else {
-                                        token = tokenObj
-
-                                        if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
-                                            socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
-
-                                            close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                        if (TokenManager.isTokenExpired(tokenObj)) {
+                                            close(CloseReason(4011, "Your token was expired!"))
                                         } else {
-                                            socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+                                            token = tokenObj
 
-                                            Live.userOnline(tokenObj.owner, channel)
-                                            authenticateMessage()
+                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
+                                                socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
+
+                                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                            } else {
+                                                socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+
+                                                Live.userOnline(tokenObj.owner, channel)
+                                                authenticateMessage()
+                                            }
                                         }
                                     }
                                 }
