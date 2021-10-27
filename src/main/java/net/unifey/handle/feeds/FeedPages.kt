@@ -222,7 +222,7 @@ fun Routing.feedPages() {
                 call.respond(GetFeedResponse(
                     feed,
                     response,
-                    feed.getFeedPermissions(token?.getOwner()!!)
+                    if (token != null) feed.getFeedPermissions(token.getOwner()) else null
                 ))
             }
 

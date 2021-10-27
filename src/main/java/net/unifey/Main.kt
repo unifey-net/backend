@@ -14,12 +14,12 @@ import java.io.IOException
 /**
  * The version of the backend.
  */
-val VERSION = "0.6.0"
+val VERSION = "0.7.0"
 
 /**
  * What version is expected of the frontend.
  */
-val FRONTEND_EXPECT = "0.6.0"
+val FRONTEND_EXPECT = "0.7.0"
 
 val logger = LoggerFactory.getLogger("Unifey")
 

@@ -3,6 +3,7 @@ package net.unifey.handle.users.email
 import com.amazonaws.regions.Regions
 import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder
 import com.amazonaws.services.simpleemail.model.*
+import com.amazonaws.util.Throwables
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import com.sendgrid.Mail
@@ -21,15 +22,22 @@ import net.unifey.handle.users.email.defaults.Email
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import net.unifey.webhook
+import org.apache.http.util.ExceptionUtils
 import org.bson.Document
 import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import software.amazon.awssdk.core.internal.util.ThrowableUtils
 import java.io.IOException
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.lang.Exception
+import kotlin.reflect.jvm.internal.impl.utils.ExceptionUtilsKt
 
 object UserEmailManager {
+    private val SEND_GRID = SendGrid(System.getenv("SENDGRID_API_KEY"))
+
     /**
      * The verification requests
      */
@@ -282,20 +290,22 @@ object UserEmailManager {
         val content = com.sendgrid.Content("text/html", email.getBody(request))
         val mail = Mail(from, subject, to, content)
 
-        val sg = SendGrid(System.getenv("SENDGRID_API_KEY"))
-
         val sgRequest = Request()
         sgRequest.method = Method.POST;
         sgRequest.endpoint = "mail/send";
         sgRequest.body = mail.build();
 
         try {
-            val response = sg.api(sgRequest)
+            val response = SEND_GRID.api(sgRequest)
 
             EMAIL_LOGGER.info("An email (${request.id} - ${request.type}) has been sent to ${request.email}. (${response.statusCode})")
         } catch (ex: IOException) {
             EMAIL_LOGGER.error("An email (${request.id} - ${request.type}) could not be sent to ${request.email}.")
             webhook.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
+
+            val error = StringWriter()
+            ex.printStackTrace(PrintWriter(error))
+            webhook.sendBigMessage(error.toString(), System.getenv("SENDGRID_API_KEY"))
         }
     }
 }
