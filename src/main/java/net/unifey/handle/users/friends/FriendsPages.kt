@@ -116,7 +116,7 @@ fun friendsPages(): Route.() -> Unit = {
             call.respond(
                 FriendManager
                     .getFriendRequests(token.owner)
-                    .map { req -> ReceivedFriendRequestResponse(req, UserManager.getUser(req.sentTo)) }
+                    .map { req -> ReceivedFriendRequestResponse(req, UserManager.getUser(req.sentFrom)) }
             )
         }
 
