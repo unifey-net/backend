@@ -17,6 +17,8 @@ import net.unifey.handle.messaging.channels.objects.DirectMessageChannel
 import net.unifey.handle.messaging.channels.objects.GroupMessageChannel
 import net.unifey.handle.messaging.channels.objects.MessageChannel
 import net.unifey.handle.messaging.channels.objects.messages.responses.MessageHistoryResponse
+import net.unifey.handle.users.User
+import net.unifey.handle.users.UserManager
 import net.unifey.util.PageRateLimit
 import net.unifey.util.checkRateLimit
 import org.litote.kmongo.descending
@@ -163,11 +165,19 @@ object MessageHandler {
     }
 
     suspend fun getMessageHistory(channel: Long, page: Int): MessageHistoryResponse {
+        val channelObject = ChannelHandler.getChannel<MessageChannel>(channel)
+
         return MessageHistoryResponse(
             channel,
             page,
             getPageCount(channel),
-            getMessages(channel, page)
+            getMessages(channel, page).map { message ->
+                IncomingMessageResponse(
+                    channelObject,
+                    message,
+                    message.user to UserManager.getUser(message.user).username // usermanager caches, shouldn't hit performance
+                )
+            }
         )
     }
 }
