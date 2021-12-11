@@ -1,18 +1,16 @@
 package net.unifey.handle.users.email
 
-import com.amazonaws.regions.Regions
-import com.amazonaws.services.simpleemail.AmazonSimpleEmailServiceClientBuilder
 import com.amazonaws.services.simpleemail.model.*
-import com.amazonaws.util.Throwables
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
-import com.sendgrid.Mail
 import com.sendgrid.Method
 import com.sendgrid.Request
 import com.sendgrid.SendGrid
+import com.sendgrid.helpers.mail.Mail
+import com.sendgrid.helpers.mail.objects.Content
 import dev.shog.lib.util.currentTimeMillis
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.response.*
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
@@ -22,18 +20,14 @@ import net.unifey.handle.users.email.defaults.Email
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import net.unifey.webhook
-import org.apache.http.util.ExceptionUtils
 import org.bson.Document
 import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import software.amazon.awssdk.core.internal.util.ThrowableUtils
 import java.io.IOException
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.lang.Exception
-import kotlin.reflect.jvm.internal.impl.utils.ExceptionUtilsKt
 
 object UserEmailManager {
     private val SEND_GRID = SendGrid(System.getenv("SENDGRID_API_KEY"))
@@ -284,16 +278,16 @@ object UserEmailManager {
      * Send an email.
      */
     private fun sendEmail(request: UserEmailRequest, email: Email) {
-        val from = com.sendgrid.Email("unifey@ajkneisl.dev")
+        val from = com.sendgrid.helpers.mail.objects.Email("unifey@ajkneisl.dev")
         val subject = email.getSubject(request)
-        val to = com.sendgrid.Email(request.email)
-        val content = com.sendgrid.Content("text/html", email.getBody(request))
+        val to = com.sendgrid.helpers.mail.objects.Email(request.email)
+        val content = Content("text/html", email.getBody(request))
         val mail = Mail(from, subject, to, content)
 
         val sgRequest = Request()
         sgRequest.method = Method.POST;
         sgRequest.endpoint = "mail/send";
-        sgRequest.body = mail.build();
+        sgRequest.body = mail.build()
 
         try {
             val response = SEND_GRID.api(sgRequest)

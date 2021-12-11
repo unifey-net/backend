@@ -14,6 +14,7 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidType
 import net.unifey.prod
 import net.unifey.response.Response
+import org.bson.Document
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import java.io.ByteArrayInputStream
@@ -82,6 +83,10 @@ fun String?.clean(): String? {
     this ?: return null
 
     return cleanInput(this)
+}
+
+fun String.toDocument(): Document {
+    return Document.parse(this)
 }
 
 /**

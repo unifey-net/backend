@@ -8,22 +8,17 @@ import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.buildJsonObject
 import net.unifey.FRONTEND_EXPECT
 import net.unifey.VERSION
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
-import net.unifey.handle.socket.WebSocket.authenticateMessage
-import net.unifey.handle.socket.WebSocket.customTypeMessage
-import net.unifey.handle.socket.WebSocket.errorMessage
-import net.unifey.handle.socket.WebSocket.successMessage
+import net.unifey.handle.live.WebSocket.authenticateMessage
+import net.unifey.handle.live.WebSocket.customTypeMessage
+import net.unifey.handle.live.WebSocket.errorMessage
 import net.unifey.response.Response
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
 /**
@@ -144,7 +139,7 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     if (page != null)
         page.run {
             var success = false
-            val time = measureTimeMillis { success = receive(user, json) }
+            val time = measureTimeMillis { success = SocketSession(this@handleIncoming, json, user).receive() }
 
             socketLogger.info("${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
         }

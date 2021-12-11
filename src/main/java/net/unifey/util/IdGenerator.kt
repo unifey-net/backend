@@ -12,6 +12,27 @@ object IdGenerator {
     /**
      * Get an 18 long ID
      */
+    suspend fun getSuspensefulId(seed: Long = Random.nextLong(), assure: (suspend (id: Long) -> Boolean)? = null): Long {
+        val r = Random(System.currentTimeMillis() + seed)
+
+        fun generate(): Long {
+            return (0 until 14)
+                .joinToString("") { r.nextInt(10).toString() }
+                .toLong()
+        }
+
+        var id = generate()
+
+        while (assure?.invoke(id) == true) {
+            id = generate()
+        }
+
+        return id
+    }
+
+    /**
+     * Get an 18 long ID
+     */
     fun getId(seed: Long = Random.nextLong(), assure: ((id: Long) -> Boolean)? = null): Long {
         val r = Random(System.currentTimeMillis() + seed)
 

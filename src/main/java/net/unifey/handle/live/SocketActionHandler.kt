@@ -1,14 +1,15 @@
 package net.unifey.handle.live
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import dev.shog.lib.util.jsonObjectOf
 import dev.shog.lib.util.toJSON
 import io.ktor.http.cio.websocket.*
 import net.unifey.VERSION
 import net.unifey.auth.tokens.Token
-import net.unifey.handle.socket.WebSocket.customTypeMessage
-import net.unifey.handle.socket.WebSocket.successMessage
-import net.unifey.handle.users.User
-import net.unifey.handle.users.UserManager
+import net.unifey.handle.Error
+import net.unifey.handle.live.WebSocket.customTypeMessage
+import net.unifey.handle.live.WebSocket.errorMessage
+import net.unifey.handle.live.WebSocket.successMessage
 import org.json.JSONObject
 import org.reflections.Reflections
 import java.lang.Exception
@@ -62,13 +63,22 @@ object SocketActionHandler {
     /**
      * Create a action with [name].
      */
-    fun SocketActions.action(name: String, constructor: suspend WebSocketSession.(token: Token, data: JSONObject) -> Boolean = { _, _ -> true }) {
+    fun SocketActions.action(name: String, constructor: suspend SocketSession.() -> Boolean = { true }) {
         if (name.isBlank())
             throw Exception("Name cannot be blank!")
 
         val page = object : SocketAction {
-            override suspend fun WebSocketSession.receive(auth: Token, data: JSONObject): Boolean {
-                return constructor.invoke(this, auth, data)
+            override suspend fun SocketSession.receive(): Boolean {
+                return try {
+                    constructor.invoke(this)
+                } catch (err: SocketError) {
+                    this@receive.session.close(err.reason)
+                    false
+                } catch (ex: Error) {
+                    ex.printStackTrace()
+                    errorMessage(ex.message ?: "There was an issue processing that request.")
+                    false
+                }
             }
         }
 
@@ -83,7 +93,7 @@ object SocketActionHandler {
             /**
              * Get the amount of users online.
              */
-            action("GET_USER_COUNT") { _, _ ->
+            action("GET_USER_COUNT") {
                 successMessage("${Live.getOnlineUsers().size}")
                 true
             }
@@ -91,7 +101,7 @@ object SocketActionHandler {
             /**
              * Get the server's version.
              */
-            action("GET_SERVER_VERSION") { _, _ ->
+            action("GET_SERVER_VERSION") {
                 successMessage(VERSION)
                 true
             }
@@ -99,36 +109,13 @@ object SocketActionHandler {
             /**
              * Get user. This is used when the frontend starts.
              */
-            action("GET_USER") { token, _ ->
+            action("GET_USER") {
                 val owner = token.getOwner()
+                val mapper = jacksonObjectMapper()
 
                 customTypeMessage(
                     "GET_USER",
-                    jsonObjectOf(
-                        "id" to owner.id,
-                        "username" to owner.username,
-                        "role" to owner.role,
-                        "verified" to owner.verified,
-                        "createdAt" to owner.createdAt,
-                        "member" to jsonObjectOf(
-                            "id" to owner.member.id,
-                            "notifications" to owner.member.getNotifications().toJSON(),
-                            "member" to owner.member.getMembers().toJSON()
-                        ),
-                        "profile" to jsonObjectOf(
-                            "id" to owner.profile.id,
-                            "cosmetics" to owner.profile.cosmetics.map { cosmetic ->
-                                jsonObjectOf(
-                                    "id" to cosmetic.id,
-                                    "type" to cosmetic.type,
-                                    "desc" to cosmetic.desc
-                                )
-                            },
-                            "description" to owner.profile.description,
-                            "discord" to owner.profile.discord,
-                            "location" to owner.profile.location
-                        )
-                    )
+                    mapper.writeValueAsString(owner)
                 )
 
                 true

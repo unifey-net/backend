@@ -7,6 +7,7 @@ import dev.shog.lib.discord.DiscordWebhook
 import dev.shog.lib.discord.WebhookUser
 import io.ktor.locations.*
 import net.unifey.handle.SERVER
+import net.unifey.handle.messaging.messageSocketActions
 import net.unifey.handle.notification.notificationSocketActions
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -38,6 +39,7 @@ fun main(args: Array<String>) {
     disableLoggers()
 
     notificationSocketActions()
+    messageSocketActions()
 
     mongo = System.getenv("MONGO")
     webhook = DiscordWebhook(

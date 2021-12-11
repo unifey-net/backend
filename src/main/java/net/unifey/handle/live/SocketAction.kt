@@ -11,5 +11,5 @@ interface SocketAction {
     /**
      * When an action receives an invoke.
      */
-    suspend fun WebSocketSession.receive(auth: Token, data: JSONObject): Boolean
+    suspend fun SocketSession.receive(): Boolean
 }

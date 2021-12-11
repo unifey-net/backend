@@ -13,6 +13,7 @@ import net.unifey.response.Response
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.jvm.Throws
 
 val DEFAULT_PAGE_RATE_LIMIT = PageRateLimit(Bandwidth.classic(
         50, Refill.greedy(1, Duration.ofSeconds(2))
@@ -52,6 +53,7 @@ class PageRateLimit(val bandwidth: Bandwidth) {
 /**
  * Check a user's rate limit using their [token].
  */
+@Throws(RateLimitException::class)
 fun checkRateLimit(token: Token, pageRateLimit: PageRateLimit): Long {
     val bucket = pageRateLimit.getBucket(token.token)
 

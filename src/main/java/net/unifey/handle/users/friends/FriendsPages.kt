@@ -109,6 +109,20 @@ fun friendsPages(): Route.() -> Unit = {
         )
     }
 
+    get("/search") {
+        val token = call.isAuthenticated()
+
+        val name = call.request.queryParameters["name"]
+            ?: throw InvalidArguments("name")
+
+        call.respond(
+            Response(token.getOwner()
+                .getFriends()
+                .map { friend -> UserManager.getUser(friend.id) }
+                .filter { friend -> friend.username.contains(name) })
+        )
+    }
+
     route("/requests") {
         get {
             val token = call.isAuthenticated()
