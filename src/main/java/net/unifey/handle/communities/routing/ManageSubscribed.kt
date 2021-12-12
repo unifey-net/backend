@@ -43,9 +43,9 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
         val (user, community) = call.managePersonalCommunities()
 
         if (community.getRole(user.id) == CommunityRoles.OWNER)
-            throw Error {
+            throw Error({
                 call.respond(HttpStatusCode.Unauthorized, Response("You're the owner of this community!"))
-            }
+            })
 
         if (user.member.isMemberOf(community.id)) {
             user.member.leave(community.id)

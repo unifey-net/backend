@@ -98,7 +98,7 @@ suspend fun ApplicationCall.checkCaptcha(parameters: Parameters? = null) {
             ?: throw InvalidArguments("captcha")
 
     if (!ReCaptcha.getSuccessAsync(captcha).await())
-        throw Error {
+        throw Error({
             respond(HttpStatusCode.BadRequest, Response("Invalid reCAPTCHA."))
-        }
+        })
 }

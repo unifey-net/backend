@@ -19,7 +19,7 @@ data class Token(
         val expires: Long
 ) {
     @JsonIgnore
-    fun getOwner(): User {
+    suspend fun getOwner(): User {
         return UserManager.getUser(owner)
     }
 }

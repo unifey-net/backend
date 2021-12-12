@@ -77,7 +77,7 @@ object UserEmailManager {
      * Verify [id] using [verify]
      */
     @Throws(InvalidArguments::class)
-    fun verify(id: Long, verify: String) {
+    suspend fun verify(id: Long, verify: String) {
         verifyRequests.singleOrNull { request ->
             request.type == EmailTypes.VERIFY_EMAIL.id
                     && request.id == id
@@ -98,7 +98,7 @@ object UserEmailManager {
     /**
      * Reset a password.
      */
-    fun passwordReset(verify: String, newPassword: String) {
+    suspend fun passwordReset(verify: String, newPassword: String) {
         val request = verifyRequests.singleOrNull { request ->
             request.type == EmailTypes.VERIFY_PASSWORD_RESET.id
                     && request.verify.equals(verify, true)
@@ -119,7 +119,7 @@ object UserEmailManager {
      * Send a password reset email for [id] to [email]
      */
     @Throws(AlreadyVerified::class, Unverified::class, Error::class)
-    fun sendPasswordReset(id: Long) {
+    suspend fun sendPasswordReset(id: Long) {
         val user = UserManager.getUser(id)
 
         if (!user.verified)
@@ -134,9 +134,9 @@ object UserEmailManager {
 
         // If there's already an ongoing email request, you can't change it until you've confirmed your first.
         if (exists != null)
-            throw Error {
+            throw Error({
                 respond(HttpStatusCode.Companion.BadRequest, Response("There's already an outgoing request to reset the password on this account!"))
-            }
+            })
 
         val doc = Document(mapOf(
                 "id" to id,
@@ -162,7 +162,7 @@ object UserEmailManager {
      * Send a verification email for [id] to [email]
      */
     @Throws(AlreadyVerified::class, Unverified::class)
-    fun sendVerify(id: Long, email: String) {
+    suspend fun sendVerify(id: Long, email: String) {
         val user = UserManager.getUser(id)
 
         if (user.verified)
@@ -242,7 +242,7 @@ object UserEmailManager {
      * Resend an email
      */
     @Throws(TooManyAttempts::class, InvalidArguments::class)
-    fun resendEmail(id: Long, type: Int) {
+    suspend fun resendEmail(id: Long, type: Int) {
         val request = verifyRequests
                 .singleOrNull { request -> request.type == type && request.id == id }
 

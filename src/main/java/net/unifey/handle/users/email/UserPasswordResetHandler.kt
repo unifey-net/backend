@@ -20,17 +20,11 @@ object UserPasswordResetHandler {
      * Find a user by their username ([input])
      */
     private suspend fun findUsingUsername(input: String): Long? {
-        val result = Mongo.useAsync {
-            getDatabase("users")
-                    .getCollection("users")
-                    .find()
-                    .filter { doc -> doc.getString("username").equals(input, true) }
-        }.await()
-
-        val document = result.firstOrNull()
-                ?: return null
-
-        return UserManager.getUser(document).id
+        return try {
+            UserManager.getId(input)
+        } catch (notFound: NotFound) {
+            return null
+        }
     }
 
     /**
@@ -47,6 +41,6 @@ object UserPasswordResetHandler {
         val document = result.firstOrNull()
                 ?: return null
 
-        return UserManager.getUser(document).id
+        return document.getLong("id")
     }
 }

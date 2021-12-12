@@ -29,7 +29,7 @@ object FriendManager {
      * Add [friend] to [id]'s friends.
      */
     @Throws(InvalidArguments::class)
-    fun addFriend(id: Long, friend: Long) {
+    suspend fun addFriend(id: Long, friend: Long) {
         val hasFriends = hasFriends(id)
 
         if (!hasFriends) {

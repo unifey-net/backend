@@ -113,7 +113,7 @@ class User(
      * Add [id] to friends.
      */
     @Throws(InvalidArguments::class)
-    fun addFriend(id: Long) {
+    suspend fun addFriend(id: Long) {
         FriendManager.addFriend(this.id, id)
     }
 

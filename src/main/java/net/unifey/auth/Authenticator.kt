@@ -61,9 +61,9 @@ object Authenticator {
             }
         }
 
-        throw Error {
+        throw Error({
             respond(HttpStatusCode.Unauthorized, Response("Invalid credentials."))
-        }
+        })
     }
 
     /**

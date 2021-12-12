@@ -39,7 +39,7 @@ private fun getReasonText(params: Parameters): String {
  *
  * Returns the feed if [target] is a post or comment.
  */
-private fun ensureExists(target: Target, reason: ReportType): String? {
+private suspend fun ensureExists(target: Target, reason: ReportType): String? {
     val id = target.id
 
     if (!reason.types.contains(target.type)) {
@@ -76,9 +76,9 @@ fun Routing.reportPages() {
             val token = call.isAuthenticated()
 
             if (ReportHandler.getReportsToday(token.owner) > ReportHandler.MAX_REPORT_PER_PERSON)
-                throw Error {
+                throw Error({
                     respond(HttpStatusCode.BadRequest, Response("You can only report 3 times per day!"))
-                }
+                })
 
             val params = call.receiveParameters()
 

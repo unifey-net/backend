@@ -114,7 +114,7 @@ object CommentManager {
     /**
      * Get the [page] of a [CommentData] on a [post].
      */
-    fun getPostCommentData(post: Post, page: Int, sort: SortingMethod = SortingMethod.NEW, user: Long?): CommentData {
+    suspend fun getPostCommentData(post: Post, page: Int, sort: SortingMethod = SortingMethod.NEW, user: Long?): CommentData {
         val size = getAmountOfComments(post.id)
 
         return CommentData(
@@ -124,7 +124,7 @@ object CommentManager {
         )
     }
 
-    fun getCommentData(comment: Comment, page: Int, sort: SortingMethod, user: Long?): CommentData {
+    suspend fun getCommentData(comment: Comment, page: Int, sort: SortingMethod, user: Long?): CommentData {
         val size = getAmountOfComments(comment.id)
 
         return CommentData(
@@ -137,7 +137,7 @@ object CommentManager {
     /**
      * Get comments for [post].
      */
-    private fun getComments(post: Long, page: Int, sort: SortingMethod, user: Long?): MutableList<GetCommentResponse> {
+    private suspend fun getComments(post: Long, page: Int, sort: SortingMethod, user: Long?): MutableList<GetCommentResponse> {
         val startAt = ((page - 1) * COMMENT_PAGE_SIZE)
 
         val comments = Mongo.getClient()

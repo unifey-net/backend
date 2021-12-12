@@ -29,9 +29,9 @@ object CommunityRuleManager {
     @Throws(Error::class)
     suspend fun createRule(title: String, body: String, community: Community): Long {
         if (community.rules.size >= MAX_RULES)
-            throw Error {
+            throw Error({
                 respond(HttpStatusCode.BadRequest, Response("You cannot have over 32 rules!"))
-            }
+            })
 
         val id = IdGenerator.getId()
 

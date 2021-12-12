@@ -172,11 +172,18 @@ object MessageHandler {
             page,
             getPageCount(channel),
             getMessages(channel, page).map { message ->
-                IncomingMessageResponse(
-                    channelObject,
-                    message,
-                    message.user to UserManager.getUser(message.user).username // usermanager caches, shouldn't hit performance
-                )
+                if (message.user != Message.SYSTEM_ID) {
+                    IncomingMessageResponse(
+                        channelObject,
+                        message,
+                        message.user to UserManager.getUser(message.user).username // usermanager caches, shouldn't hit performance
+                    )
+                } else
+                    IncomingMessageResponse(
+                        channelObject,
+                        message,
+                        Message.SYSTEM_ID to Message.SYSTEM_NAME
+                    )
             }
         )
     }

@@ -75,8 +75,7 @@ object SocketActionHandler {
                     this@receive.session.close(err.reason)
                     false
                 } catch (ex: Error) {
-                    ex.printStackTrace()
-                    errorMessage(ex.message ?: "There was an issue processing that request.")
+                    errorMessage(ex.message)
                     false
                 }
             }

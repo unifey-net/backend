@@ -23,7 +23,7 @@ import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
-fun ApplicationCall.getFeed(
+suspend fun ApplicationCall.getFeed(
         requireView: Boolean = false,
         requirePost: Boolean = false,
         requireComment: Boolean = false

@@ -113,9 +113,9 @@ object ReportHandler {
      */
     fun addReport(target: Target, type: ReportType, feed: String?, reportee: Long, reason: String) {
         if (getReportsToday(reportee) > MAX_REPORT_PER_PERSON)
-            throw Error {
+            throw Error({
                 respond(HttpStatusCode.BadRequest, Response("You can only report 3 times per day!"))
-            }
+            })
 
         val id = IdGenerator.getId {
             Mongo.getClient()
@@ -157,11 +157,11 @@ object ReportHandler {
     /**
      * Format [Report]s into [ReportRequest]
      */
-    fun asReportRequest(reports: List<Report>): List<ReportRequest> {
+    suspend fun asReportRequest(reports: List<Report>): List<ReportRequest> {
         /**
          * Get if it's a community or user feed & get the name of the id (forms the /u/SHO url)
          */
-        fun getFeedData(feed: String): Pair<String, String> {
+        suspend fun getFeedData(feed: String): Pair<String, String> {
             return if (feed.startsWith("cf_")) {
                 val id = feed.removePrefix("cf_").toLong()
 
@@ -176,7 +176,7 @@ object ReportHandler {
         /**
          * Get the URL of the post/comment/account & get the target user's username (post author etc)
          */
-        fun getUrlAndTarget(report: Report): Pair<String, String> {
+        suspend fun getUrlAndTarget(report: Report): Pair<String, String> {
             when (report.target.type) {
                 TargetType.POST -> {
                     val post = PostManager.getPost(report.target.id)
@@ -202,7 +202,7 @@ object ReportHandler {
             }
         }
 
-        fun getReportee(report: Report): String {
+        suspend fun getReportee(report: Report): String {
             return UserManager.getUser(report.reportee).username
         }
 

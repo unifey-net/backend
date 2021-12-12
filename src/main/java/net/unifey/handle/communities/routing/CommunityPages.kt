@@ -46,18 +46,18 @@ fun Routing.communityPages() {
                 call.checkCaptcha(params)
 
             if (!CommunityManager.canCreate(token.owner))
-                throw Error {
+                throw Error({
                     call.respond(HttpStatusCode.Unauthorized, Response("Your account must be 14 days old and you can't have create a community before!"))
-                }
+                })
 
             val name = params["name"]
             val desc = params["description"]
             val password = params["password"]
 
             if (!BCrypt.checkpw(password, token.getOwner().password))
-                throw Error {
+                throw Error({
                     respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
-                }
+                })
 
             if (name == null || desc == null)
                 throw InvalidArguments("name", "description")

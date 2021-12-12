@@ -102,7 +102,7 @@ object FeedManager {
     /**
      * If [user] can view [feed].
      */
-    fun canViewFeed(feed: Feed, user: Long?): Boolean {
+    suspend fun canViewFeed(feed: Feed, user: Long?): Boolean {
         if (feed.id.startsWith("cf_")) {
             val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
 
@@ -121,7 +121,7 @@ object FeedManager {
     /**
      * If [user] can post to [feed].
      */
-    fun canPostFeed(feed: Feed, user: Long?): Boolean {
+    suspend fun canPostFeed(feed: Feed, user: Long?): Boolean {
         if (user == null)
             return false
 
@@ -137,7 +137,7 @@ object FeedManager {
     /**
      * If [user] can comment on a post in [feed].
      */
-    fun canCommentFeed(feed: Feed, user: Long?): Boolean {
+    suspend fun canCommentFeed(feed: Feed, user: Long?): Boolean {
         if (user == null)
             return false
 

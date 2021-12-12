@@ -20,7 +20,7 @@ fun cosmeticPages(): Route.() -> Unit = {
      * Helper function for cosmetic management calls.
      * Returns the type to the ID.
      */
-    fun ApplicationCall.manageCosmetic(): Triple<Int, String, String?> {
+    suspend fun ApplicationCall.manageCosmetic(): Triple<Int, String, String?> {
         val token = isAuthenticated()
 
         if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)

@@ -1,5 +1,6 @@
 package net.unifey.handle.users
 
+import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.auth.tokens.TokenManager.deleteToken
@@ -48,7 +49,7 @@ object UserManager {
     /**
      * Get a user's ID by their [name].
      */
-    fun getId(name: String): Long {
+    suspend fun getId(name: String): Long {
         val cacheUser = cache
                 .filter { user -> user.value.username.equals(name, true) }
                 .keys
@@ -74,7 +75,7 @@ object UserManager {
      * Get a user by their [id]. Prefers [cache] over database.
      */
     @Throws(NotFound::class)
-    fun getUser(id: Long): User {
+    suspend fun getUser(id: Long): User {
         if (cache.containsKey(id))
             return cache[id]!!
 
