@@ -10,20 +10,21 @@ import net.unifey.handle.SERVER
 import net.unifey.handle.messaging.messageSocketActions
 import net.unifey.handle.notification.notificationSocketActions
 import org.slf4j.ILoggerFactory
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
 /**
  * The version of the backend.
  */
-val VERSION = "0.7.0"
+const val VERSION = "0.8.0"
 
 /**
  * What version is expected of the frontend.
  */
-val FRONTEND_EXPECT = "0.7.0"
+const val FRONTEND_EXPECT = "0.8.0"
 
-val logger = LoggerFactory.getLogger("Unifey")
+val ROOT_LOGGER: Logger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 lateinit var webhook: DiscordWebhook
 lateinit var mongo: String
@@ -39,7 +40,7 @@ var prod = System.getenv("PROD")?.toBoolean() ?: false
 fun main(args: Array<String>) {
     disableLoggers()
 
-
+    ROOT_LOGGER.info("BACKEND - $VERSION")
 
     notificationSocketActions()
     messageSocketActions()

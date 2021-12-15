@@ -17,7 +17,6 @@ import net.unifey.handle.messaging.channels.objects.responses.UserTypingResponse
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.ShortUser
 import net.unifey.handle.users.UserManager
-import net.unifey.logger
 import net.unifey.util.IdGenerator
 import net.unifey.util.toDocument
 import org.bson.Document
