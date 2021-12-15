@@ -90,9 +90,9 @@ suspend fun ApplicationCall.modifyCommunity(
             ?: throw InvalidArguments("password")
 
         if (!BCrypt.checkpw(password, token.getOwner().password))
-            throw Error {
+            throw Error({
                 respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
-            }
+            })
     }
 
     return community to cleanInput(par)
@@ -117,7 +117,7 @@ suspend fun ApplicationCall.modifyRole(): Pair<Community, Int> {
  * Get a rule.
  */
 @Throws(NoPermission::class)
-fun ApplicationCall.getCommunityRule(): Pair<Community, Token> {
+suspend fun ApplicationCall.getCommunityRule(): Pair<Community, Token> {
     val token = isAuthenticated()
 
     val id = parameters["id"]?.toLongOrNull()

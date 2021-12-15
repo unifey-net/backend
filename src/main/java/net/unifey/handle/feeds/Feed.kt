@@ -28,7 +28,7 @@ class Feed(
     /**
      * Get [user]'s permissions for this feed.
      */
-    fun getFeedPermissions(user: User): UserFeedPermissions {
+    suspend fun getFeedPermissions(user: User): UserFeedPermissions {
         return UserFeedPermissions(
             FeedManager.canViewFeed(this, user.id),
             FeedManager.canPostFeed(this, user.id),

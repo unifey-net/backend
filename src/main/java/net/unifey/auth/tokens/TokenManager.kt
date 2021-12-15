@@ -1,9 +1,12 @@
 package net.unifey.auth.tokens
 
 import com.mongodb.client.model.Filters
+import io.ktor.client.request.forms.*
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
 import org.bson.Document
 import java.util.concurrent.ConcurrentHashMap
+import javax.print.Doc
 
 object TokenManager {
     /**
@@ -27,12 +30,7 @@ object TokenManager {
                 .singleOrNull()
 
         return if (doc != null) {
-            val token = Token(
-                    doc.getLong("owner"),
-                    doc.getString("token"),
-                    doc.getList("permissions", String::class.java),
-                    doc.getLong("expires")
-            )
+            val token = formToken(doc)
 
             tokenCache[tokenStr] = token
 
@@ -65,5 +63,47 @@ object TokenManager {
         tokenCache[tokenStr] = token
 
         return token
+    }
+
+    /**
+     * Form a [Token] from a [doc]
+     */
+    private fun formToken(doc: Document): Token {
+        return Token(
+            doc.getLong("owner"),
+            doc.getString("token"),
+            doc.getList("permissions", String::class.java),
+            doc.getLong("expires")
+        )
+    }
+
+    /**
+     * Get all active tokens for [user]
+     */
+    fun getTokensForUser(user: User): List<Token> {
+        val tokens = Mongo.getClient()
+            .getDatabase("users")
+            .getCollection("tokens")
+            .find(Filters.eq("owner", user.id))
+            .filter { doc -> doc.getLong("expires") == -1L || System.currentTimeMillis() > doc.getLong("expires") }
+
+        return tokens.map(::formToken)
+    }
+
+    /**
+     * Delete [token]
+     */
+    fun deleteToken(token: String) {
+        Mongo.getClient()
+            .getDatabase("users")
+            .getCollection("tokens")
+            .deleteOne(Filters.eq("token", token))
+    }
+
+    /**
+     * Delete [token]
+     */
+    fun deleteToken(token: Token) {
+        deleteToken(token.token)
     }
 }

@@ -10,9 +10,12 @@ import io.ktor.response.respondBytes
 import io.ktor.routing.*
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
+import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.live.SocketInteraction
+import net.unifey.handle.notification.NotificationManager
+import net.unifey.handle.users.email.TooManyAttempts
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.friends.friendsPages
@@ -22,8 +25,11 @@ import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.prod
 import net.unifey.response.Response
+import net.unifey.util.FieldChangeLimiter
+import net.unifey.util.RateLimitException
 import net.unifey.util.checkCaptcha
 import org.mindrot.jbcrypt.BCrypt
+import java.util.concurrent.TimeUnit
 
 fun Routing.userPages() {
     route("/user") {
@@ -83,6 +89,10 @@ fun Routing.userPages() {
 
             user.password = BCrypt.hashpw(password, BCrypt.gensalt())
 
+            UserManager.signOutAll(user)
+
+            NotificationManager.postNotification(user.id, "Your password has successfully been changed!"    )
+
             call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }
 
@@ -94,7 +104,14 @@ fun Routing.userPages() {
 
             UserInputRequirements.meets(username, UserInputRequirements.USERNAME_EXISTS)
 
+            val (limited, until) = FieldChangeLimiter.isLimited("USER", user.id, "USERNAME")
+
+            if (limited && until != null)
+                throw RateLimitException(until - System.currentTimeMillis(), until)
+
             user.username = username
+
+            FieldChangeLimiter.createLimit("USER", user.id, "USERNAME", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(31))
 
             call.respond(HttpStatusCode.OK, Response("Username has been updated."))
         }
@@ -175,7 +192,9 @@ fun Routing.userPages() {
             if (username == null || password == null || email == null)
                 throw InvalidArguments("username", "password", "email")
 
-            call.respond(UserManager.createUser(email, username, password))
+            val user = UserManager.createUser(email, username, password)
+
+            call.respond(Authenticator.generate(user.id))
         }
     }
 

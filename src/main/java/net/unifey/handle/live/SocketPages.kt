@@ -7,26 +7,24 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.isActive
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.unifey.FRONTEND_EXPECT
 import net.unifey.VERSION
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
-import net.unifey.handle.socket.WebSocket.authenticateMessage
-import net.unifey.handle.socket.WebSocket.customTypeMessage
-import net.unifey.handle.socket.WebSocket.errorMessage
-import net.unifey.handle.socket.WebSocket.successMessage
+import net.unifey.handle.live.WebSocket.authenticateMessage
+import net.unifey.handle.live.WebSocket.customTypeMessage
+import net.unifey.handle.live.WebSocket.errorMessage
 import net.unifey.response.Response
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.system.measureTimeMillis
 
 /**
  * The logger for the socket.
  */
-val socketLogger = LoggerFactory.getLogger("SOCKET")
+val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 /**
  * This is the websocket implementation as well as the REST implementation.
@@ -40,22 +38,22 @@ fun Routing.liveSocket() {
 
         webSocket {
             var token: Token? = null
+            var channel = Channel<Live.LiveObject>()
 
             launch {
-                while (!Live.CHANNEL.isClosedForReceive) {
-                    val (type, user, data) = Live.CHANNEL.receive()
+                while (!channel.isClosedForReceive) {
+                    val (type, user, data) = channel.receive()
 
-                    if (Live.getOnlineUsers().contains(user) && token?.owner == user) {
-                        socketLogger.info("SEND $user: LIVE $type ($data)")
-                        customTypeMessage(type, data)
-                    }
+                    socketLogger.info("SEND $user: LIVE $type ($data)")
+                    customTypeMessage(type, data)
                 }
             }
 
-            customTypeMessage("init", jsonObjectOf(
-                "version" to "Unifey Backend $VERSION",
-                "frontend" to FRONTEND_EXPECT
-            ))
+            customTypeMessage("init",
+                JSONObject()
+                    .put("frontend", FRONTEND_EXPECT)
+                    .put("version", "Unifey Backend $VERSION")
+            )
 
             for (frame in incoming) {
                 when (frame) {
@@ -72,12 +70,22 @@ fun Routing.liveSocket() {
                                     if (tokenObj == null) {
                                         errorMessage("Invalid token.")
                                     } else {
-                                        token = tokenObj
+                                        if (TokenManager.isTokenExpired(tokenObj)) {
+                                            close(CloseReason(4011, "Your token was expired!"))
+                                        } else {
+                                            token = tokenObj
 
-                                        socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
+                                                socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
 
-                                        Live.userOnline(tokenObj.owner)
-                                        authenticateMessage()
+                                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                            } else {
+                                                socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
+
+                                                Live.userOnline(tokenObj.owner, channel)
+                                                authenticateMessage()
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -131,7 +139,7 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     if (page != null)
         page.run {
             var success = false
-            val time = measureTimeMillis { success = receive(user, json) }
+            val time = measureTimeMillis { success = SocketSession(this@handleIncoming, json, user).receive() }
 
             socketLogger.info("${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
         }

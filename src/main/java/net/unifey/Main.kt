@@ -2,22 +2,26 @@ package net.unifey
 
 import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
+import com.sendgrid.*
 import dev.shog.lib.discord.DiscordWebhook
 import dev.shog.lib.discord.WebhookUser
 import io.ktor.locations.*
 import net.unifey.handle.SERVER
+import net.unifey.handle.messaging.messageSocketActions
 import net.unifey.handle.notification.notificationSocketActions
+import org.slf4j.ILoggerFactory
 import org.slf4j.LoggerFactory
+import java.io.IOException
 
 /**
  * The version of the backend.
  */
-val VERSION = "0.6.0"
+val VERSION = "0.7.0"
 
 /**
  * What version is expected of the frontend.
  */
-val FRONTEND_EXPECT = "0.6.0"
+val FRONTEND_EXPECT = "0.7.0"
 
 val logger = LoggerFactory.getLogger("Unifey")
 
@@ -35,7 +39,10 @@ var prod = System.getenv("PROD")?.toBoolean() ?: false
 fun main(args: Array<String>) {
     disableLoggers()
 
+
+
     notificationSocketActions()
+    messageSocketActions()
 
     mongo = System.getenv("MONGO")
     webhook = DiscordWebhook(

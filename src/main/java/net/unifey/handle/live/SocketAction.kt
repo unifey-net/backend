@@ -9,7 +9,7 @@ import org.json.JSONObject
  */
 interface SocketAction {
     /**
-     * When a action receives an invoke.
+     * When an action receives an invoke.
      */
-    suspend fun WebSocketSession.receive(auth: Token, data: JSONObject): Boolean
+    suspend fun SocketSession.receive(): Boolean
 }

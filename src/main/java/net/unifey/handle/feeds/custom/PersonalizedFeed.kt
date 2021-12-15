@@ -20,7 +20,7 @@ object PersonalizedFeed {
     /**
      * Get [user]'s personalized feed. This is a combination of [user]'s subscribed feeds.
      */
-    fun getUsersFeed(user: User, page: Int, method: String): GetLimitedFeedResponse {
+    suspend fun getUsersFeed(user: User, page: Int, method: String): GetLimitedFeedResponse {
         val feeds = user.member.getMembers()
             .map { id -> CommunityManager.getCommunityById(id) }
             .map { community -> community.getFeed() }

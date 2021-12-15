@@ -5,5 +5,5 @@ import net.unifey.handle.users.friends.FriendRequest
 
 data class ReceivedFriendRequestResponse(
     val friendRequest: FriendRequest,
-    val receivedFrom: User
+    val sentFrom: User
 )

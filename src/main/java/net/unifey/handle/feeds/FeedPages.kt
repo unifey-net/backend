@@ -23,7 +23,7 @@ import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
-fun ApplicationCall.getFeed(
+suspend fun ApplicationCall.getFeed(
         requireView: Boolean = false,
         requirePost: Boolean = false,
         requireComment: Boolean = false
@@ -222,7 +222,7 @@ fun Routing.feedPages() {
                 call.respond(GetFeedResponse(
                     feed,
                     response,
-                    feed.getFeedPermissions(token?.getOwner()!!)
+                    if (token != null) feed.getFeedPermissions(token.getOwner()) else null
                 ))
             }
 

@@ -13,36 +13,50 @@ import net.unifey.handle.users.responses.ReceivedFriendRequestResponse
 import net.unifey.handle.users.responses.SentFriendRequestResponse
 import net.unifey.response.Response
 import org.json.JSONObject
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
+val friendOnlineStatus: Logger = LoggerFactory.getLogger("FRIEND STATUS")
+
+/**
+ * When [userLive] goes online, notify their friends that they've gone online.
+ */
 suspend fun updateFriendOnline(userLive: Long) {
+    friendOnlineStatus.debug("ONLINE $userLive")
+
     val usersOnline = Live.getOnlineUsers()
 
     UserManager.getUser(userLive)
         .getFriends()
-        .filter { friend -> usersOnline.contains(friend.id) }
+        .filter { friend -> usersOnline.keys.contains(friend.id) }
         .forEach { friend ->
             val message = JSONObject()
-                .put("friend", UserManager.getUser(friend.id).username)
-                .put("id", friend.id)
+                .put("friend", UserManager.getUser(userLive).username)
+                .put("id", userLive)
                 .put("online", FriendManager.getOnlineFriendCount(friend.id))
 
-            Live.CHANNEL.send(Live.LiveObject("FRIEND_ONLINE", friend.id, message))
+            Live.sendUpdate(Live.LiveObject("FRIEND_ONLINE", friend.id, message))
         }
 }
 
+/**
+ * When [userLive] goes offline, notify their friends that they've gone offline.
+ */
 suspend fun updateFriendOffline(userLive: Long) {
+    friendOnlineStatus.debug("OFFLINE $userLive")
+
     val usersOnline = Live.getOnlineUsers()
 
     UserManager.getUser(userLive)
         .getFriends()
-        .filter { friend -> usersOnline.contains(friend.id) }
+        .filter { friend -> usersOnline.keys.contains(friend.id) }
         .forEach { friend ->
             val message = JSONObject()
-                .put("friend", UserManager.getUser(friend.id).username)
-                .put("id", friend.id)
+                .put("friend", UserManager.getUser(userLive).username)
+                .put("id", userLive)
                 .put("online", FriendManager.getOnlineFriendCount(friend.id))
 
-            Live.CHANNEL.send(Live.LiveObject("FRIEND_OFFLINE", friend.id, message))
+            Live.sendUpdate(Live.LiveObject("FRIEND_OFFLINE", friend.id, message))
         }
 }
 
@@ -95,6 +109,20 @@ fun friendsPages(): Route.() -> Unit = {
         )
     }
 
+    get("/search") {
+        val token = call.isAuthenticated()
+
+        val name = call.request.queryParameters["name"]
+            ?: throw InvalidArguments("name")
+
+        call.respond(
+            Response(token.getOwner()
+                .getFriends()
+                .map { friend -> UserManager.getUser(friend.id) }
+                .filter { friend -> friend.username.contains(name) })
+        )
+    }
+
     route("/requests") {
         get {
             val token = call.isAuthenticated()
@@ -102,7 +130,7 @@ fun friendsPages(): Route.() -> Unit = {
             call.respond(
                 FriendManager
                     .getFriendRequests(token.owner)
-                    .map { req -> ReceivedFriendRequestResponse(req, UserManager.getUser(req.sentTo)) }
+                    .map { req -> ReceivedFriendRequestResponse(req, UserManager.getUser(req.sentFrom)) }
             )
         }
 

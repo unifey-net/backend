@@ -5,11 +5,19 @@ import com.mongodb.client.MongoClients
 import kotlinx.coroutines.*
 import net.unifey.mongo
 import net.unifey.prod
+import org.litote.kmongo.coroutine.coroutine
+import org.litote.kmongo.reactivestreams.KMongo
 
 /**
  * Interacts with MongoDB.
  */
 object Mongo {
+    val K_MONGO = KMongo.createClient(if (prod) {
+        "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+    } else {
+        "mongodb://127.0.0.1:27017"
+    }).coroutine
+
     /**
      * The MongoClient.
      */

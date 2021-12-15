@@ -12,14 +12,14 @@ import java.lang.Exception
  */
 class NotFound(private val obj: String = ""): Error({
     respond(HttpStatusCode.BadRequest, Response((obj == "").eitherOr("That could not be found", "That $obj could not be found")))
-})
+}, (obj == "").eitherOr("That could not be found", "That $obj could not be found"))
 
 /**
  * Required [args] for making request.
  */
 class InvalidArguments(private vararg val args: String): Error({
     respond(HttpStatusCode.BadRequest, Response("Required arguments: ${args.joinToString(", ")}"))
-})
+}, "Required arguments: ${args.joinToString(", ")}")
 
 /**
  * [arg] is too large. (over [max])
@@ -40,7 +40,7 @@ class AlreadyExists(val type: String, private val arg: String): Error({
  */
 class NoPermission: Error({
     respond(HttpStatusCode.Unauthorized, Response("You don't have permission for this"))
-})
+}, "You don't have permission for this")
 
 /**
  * An invalid input for an input the user decides.
@@ -77,4 +77,9 @@ class MalformedContent: Error({
     respond(HttpStatusCode.InternalServerError, "There was an issue with internal content.")
 })
 
-open class Error(val response: suspend ApplicationCall.() -> Unit): Throwable()
+/**
+ * An error.
+ * @param response For a regular REST call
+ * @param message Optional websocket support.
+ */
+open class Error(val response: suspend ApplicationCall.() -> Unit, override val message: String = "There was an issue with that request!"): Throwable()

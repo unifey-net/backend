@@ -149,7 +149,7 @@ class Community(
     /**
      * Get [user]'s role.
      */
-    fun getRole(user: Long): Int {
+    suspend fun getRole(user: Long): Int {
         if (user == -1L)
             return CommunityRoles.DEFAULT
 

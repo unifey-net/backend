@@ -168,7 +168,7 @@ object CommunityManager {
      *
      * They must be verified and have their account for over 14 days.
      */
-    fun canCreate(id: Long): Boolean {
+    suspend fun canCreate(id: Long): Boolean {
         val user = UserManager.getUser(id)
 
         return user.verified
@@ -190,7 +190,7 @@ object CommunityManager {
     /**
      * Create a community.
      */
-    fun createCommunity(owner: Long, name: String, desc: String): Community {
+    suspend fun createCommunity(owner: Long, name: String, desc: String): Community {
         val roles = hashMapOf(owner to CommunityRoles.OWNER)
 
         val community = Community(
@@ -276,7 +276,7 @@ object CommunityManager {
                 .getCollection("members")
                 .find(Filters.`in`("notifications", community))
                 .toList()
-                .map { doc -> UserManager.getUser(doc) }
+                .map { doc -> UserManager.getUser(doc.getLong("id")) }
         }
     }
 

@@ -71,7 +71,7 @@ fun Route.commentPages() {
         /**
          * Manage a comment.
          */
-        fun ApplicationCall.manageComment(requireManage: Boolean = true): Triple<Token, Comment, Post> {
+        suspend fun ApplicationCall.manageComment(requireManage: Boolean = true): Triple<Token, Comment, Post> {
             val (token, post) = getPost()
 
             if (token == null)

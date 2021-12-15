@@ -20,10 +20,13 @@ import net.unifey.handle.communities.rules.RuleInputRequirements
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
+import net.unifey.util.FieldChangeLimiter
 import net.unifey.util.PageRateLimit
 import net.unifey.util.clean
 import net.unifey.util.ensureProperImageBody
 import java.time.Duration
+import net.unifey.util.FieldChangeLimiter.checkLimited
+import java.util.concurrent.TimeUnit
 
 val MANAGE_COMMUNITY: Route.() -> Unit = {
     /**
@@ -269,14 +272,23 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
     }
 
     /**
+     * The length between name changes.
+     */
+    val nameChangeLength = TimeUnit.DAYS.toMillis(31)
+
+    /**
      * Change the name.
      */
     put("/name") {
         val (community, name) = call.modifyCommunity("name", CommunityRoles.ADMIN, true)
 
+        checkLimited("COMMUNITY", community.id, "NAME")
+
         CommunityInputRequirements.meets(name, CommunityInputRequirements.NAME)
 
         community.name = name
+
+        FieldChangeLimiter.createLimit("COMMUNITY", community.id, "NAME", System.currentTimeMillis() + nameChangeLength)
 
         call.respond(Response())
     }

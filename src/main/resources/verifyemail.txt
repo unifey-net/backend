@@ -1,0 +1,4 @@
+Verify your Email
+<h1><img width='32' height='32' src='https://unifey.ajkneisl.dev/favicon.png'/> Unifey</h1>
+<p>To confirm this email as yours, please click <a href="{FRONTEND_URL}/settings/verify?verify={VERIFY_CODE}">here</a>.
+<br /><br /> If you didn't request this, please click <a href="{BACKEND_URL}/email/unsubscribe?email={EMAIL}&verify={VERIFY_CODE}">here</a> to remove your email from this account and prevent your email from being used by Unifey in the future.

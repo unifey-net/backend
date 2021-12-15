@@ -14,6 +14,7 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidType
 import net.unifey.prod
 import net.unifey.response.Response
+import org.bson.Document
 import org.jsoup.Jsoup
 import org.jsoup.safety.Whitelist
 import java.io.ByteArrayInputStream
@@ -25,9 +26,17 @@ import javax.imageio.ImageIO
 val URL: String
     get() =
         if (prod) {
-            "https://api.unifey.net"
+            "https://unifeyapi.ajkneisl.dev"
         } else {
             "http://localhost:8077"
+        }
+
+val FRONTEND_URL: String
+    get() =
+        if (prod) {
+            "https://unifey.ajkneisl.dev"
+        } else {
+            "http://localhost:3000"
         }
 
 /**
@@ -76,6 +85,10 @@ fun String?.clean(): String? {
     return cleanInput(this)
 }
 
+fun String.toDocument(): Document {
+    return Document.parse(this)
+}
+
 /**
  * Check the included reCAPTCHA through body parameters
  */
@@ -85,7 +98,7 @@ suspend fun ApplicationCall.checkCaptcha(parameters: Parameters? = null) {
             ?: throw InvalidArguments("captcha")
 
     if (!ReCaptcha.getSuccessAsync(captcha).await())
-        throw Error {
+        throw Error({
             respond(HttpStatusCode.BadRequest, Response("Invalid reCAPTCHA."))
-        }
+        })
 }

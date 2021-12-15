@@ -4,9 +4,10 @@ import dev.shog.lib.util.toJSON
 import io.ktor.http.cio.websocket.*
 import net.unifey.handle.live.SocketActionHandler
 import net.unifey.handle.live.SocketActionHandler.action
-import net.unifey.handle.socket.WebSocket.customTypeMessage
-import net.unifey.handle.socket.WebSocket.errorMessage
-import net.unifey.handle.socket.WebSocket.successMessage
+import net.unifey.handle.live.SocketSession
+import net.unifey.handle.live.WebSocket.customTypeMessage
+import net.unifey.handle.live.WebSocket.errorMessage
+import net.unifey.handle.live.WebSocket.successMessage
 import org.json.JSONObject
 
 /**
@@ -16,7 +17,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Close a notification.
      */
-    action("CLOSE_NOTIFICATION") { token, data ->
+    action("CLOSE_NOTIFICATION") {
         if (!data.has("notification") || data["notification"] !is Long) {
             errorMessage("Missing \"notification\" parameter.")
             return@action false
@@ -45,7 +46,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Delete all notifications
      */
-    action("CLOSE_ALL_NOTIFICATION") { token, _ ->
+    action("CLOSE_ALL_NOTIFICATION") {
         NotificationManager.deleteAllNotifications(token.owner)
 
         successMessage("Successfully deleted all notifications")
@@ -56,7 +57,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Get a notification from [data].
      */
-    suspend fun WebSocketSession.getNotification(data: JSONObject): Notification? {
+    suspend fun SocketSession.getNotification(): Notification? {
         if (!data.has("notification") && data["notification"] !is Long) {
             errorMessage("Missing \"notification\" parameter.")
             return null
@@ -77,8 +78,8 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Read a notification.
      */
-    action("READ_NOTIFICATION") { token, data ->
-        val obj = getNotification(data) ?: return@action false
+    action("READ_NOTIFICATION") {
+        val obj = getNotification() ?: return@action false
 
         if (token.owner == obj.user) {
             NotificationManager.readNotification(obj.id)
@@ -94,8 +95,8 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Un-read a notification
      */
-    action("UN_READ_NOTIFICATION") { token, data ->
-        val obj = getNotification(data) ?: return@action false
+    action("UN_READ_NOTIFICATION") {
+        val obj = getNotification() ?: return@action false
 
         if (token.owner == obj.user) {
             NotificationManager.unReadNotification(obj.id)
@@ -112,7 +113,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Read all notifications.
      */
-    action("READ_ALL_NOTIFICATION") { token, _ ->
+    action("READ_ALL_NOTIFICATION") {
         NotificationManager.readAllNotifications(token.owner)
         successMessage("Successfully read all notifications")
         true
@@ -121,7 +122,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Get all unread notifications and the count.
      */
-    action("GET_ALL_UNREAD_NOTIFICATION") { token, _ ->
+    action("GET_ALL_UNREAD_NOTIFICATION") {
         val (count, notifications) = NotificationManager.getAllUnreadNotifications(token.owner)
 
         customTypeMessage("SUCCESS_RECEIVE_UNREAD",
@@ -136,7 +137,7 @@ fun notificationSocketActions() = SocketActionHandler.socketActions {
     /**
      * Get all notifications.
      */
-    action("GET_ALL_NOTIFICATION") { token, _ ->
+    action("GET_ALL_NOTIFICATION") {
         val notifications = NotificationManager.getNotifications(token.owner)
         
         customTypeMessage("SUCCESS_RECEIVE_ALL_NOTIFICATION", notifications.map { notif -> notif.asJson() }.toJSON())

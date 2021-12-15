@@ -104,10 +104,16 @@ class User(
             FriendManager.getFriends(id)
 
     /**
+     * If the user is friends with [id]
+     */
+    fun hasFriend(id: Long) =
+        getFriends().any { friend -> friend.id == id }
+
+    /**
      * Add [id] to friends.
      */
     @Throws(InvalidArguments::class)
-    fun addFriend(id: Long) {
+    suspend fun addFriend(id: Long) {
         FriendManager.addFriend(this.id, id)
     }
 
