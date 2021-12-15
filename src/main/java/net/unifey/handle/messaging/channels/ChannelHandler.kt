@@ -2,21 +2,22 @@ package net.unifey.handle.messaging.channels
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.mongodb.client.model.Filters
+import kotlinx.coroutines.*
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.AlreadyExists
+import net.unifey.handle.Error
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
 import net.unifey.handle.messaging.MessageHandler
-import net.unifey.handle.messaging.channels.objects.ChannelType
-import net.unifey.handle.messaging.channels.objects.DirectMessageChannel
-import net.unifey.handle.messaging.channels.objects.GroupMessageChannel
-import net.unifey.handle.messaging.channels.objects.MessageChannel
+import net.unifey.handle.messaging.channels.objects.*
 import net.unifey.handle.messaging.channels.objects.responses.GroupChatKickResponse
+import net.unifey.handle.messaging.channels.objects.responses.UserTypingResponse
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.ShortUser
 import net.unifey.handle.users.UserManager
+import net.unifey.logger
 import net.unifey.util.IdGenerator
 import net.unifey.util.toDocument
 import org.bson.Document
@@ -24,11 +25,103 @@ import org.json.JSONObject
 import org.litote.kmongo.*
 import org.slf4j.LoggerFactory
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
 import kotlin.jvm.Throws
 
 object ChannelHandler {
     private val LOGGER = LoggerFactory.getLogger(this::class.java)
+    private val TYPING = ConcurrentHashMap<Long, UserTyping>()
+
+    /**
+     * [user] starts typing in channel.
+     *
+     * Starts a new thread to stop typing after 5 seconds. If another start typing request was sent within
+     * that 5 seconds, it's ignored.
+     *
+     * This is handled mostly by the frontend.
+     */
+    @OptIn(DelicateCoroutinesApi::class)
+    suspend fun startTyping(channel: Long, user: Long) {
+        val userObject = UserManager.getUser(user)
+        val channelObject = getChannel<MessageChannel>(channel)
+        val receivers = getChannelReceivers(getChannel(channel))
+
+        when {
+            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ -> throw NoPermission()
+            TYPING.containsKey(user) -> throw Error({ }, "Already typing!")
+        }
+
+        val typing = UserTyping(user, channel, System.currentTimeMillis())
+        TYPING[user] = typing
+
+        val mapper = jacksonObjectMapper()
+
+        LOGGER.trace("TYPING ($user [$channel] -> START)")
+
+        Live.sendUpdates {
+            users = receivers
+            type = "START_TYPING"
+            data = mapper.writeValueAsString(UserTypingResponse(
+                ShortUser.fromUser(userObject),
+                channelObject
+            ))
+        }
+
+        GlobalScope.launch {
+            delay(5000L)
+
+            val userObj = TYPING[user]
+
+            if (userObj != null) {
+                val difference = System.currentTimeMillis() - userObj.startAt
+                val stillTyping = TYPING.containsKey(user)
+
+                LOGGER.trace("THREAD TYPING CHECK ($stillTyping -> $user [$channel]) -> ${userObj.startAt} (${difference}) ${System.currentTimeMillis()}")
+
+                if (difference >= 5000 && stillTyping)
+                    try {
+                        stopTyping(userObj.channel, userObj.user)
+                    } catch (err: Error) {
+                        LOGGER.trace("THREAD TYPE CHECK FAILED: $user ($channel) -> ${err.message}")
+                    }
+            } else {
+                LOGGER.trace("TYPING CHECK ($user [$channel]) - WAS NULL?")
+            }
+        }
+    }
+
+    /**
+     * Stop [user] typing in [channel].
+     */
+    suspend fun stopTyping(channel: Long, user: Long) {
+        val userObject = UserManager.getUser(user)
+        val channelObject = getChannel<MessageChannel>(channel)
+
+        val receivers = getChannelReceivers(getChannel(channel))
+
+        when {
+            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ -> throw NoPermission()
+            !TYPING.containsKey(user) -> throw Error({ }, "Already stopped typing!")
+        }
+
+        TYPING.remove(user)
+
+        val mapper = jacksonObjectMapper()
+
+        LOGGER.trace("TYPING ($user [$channel] -> STOP)")
+
+        Live.sendUpdates {
+            users = receivers
+            type = "STOP_TYPING"
+            data = mapper.writeValueAsString(
+                UserTypingResponse(
+                    ShortUser.fromUser(userObject),
+                    channelObject
+                )
+            )
+        }
+    }
 
     /**
      * Get [user]'s channels.
@@ -86,12 +179,20 @@ object ChannelHandler {
      * Get the users of a group chat who should receive updates.
      * (ex: new messages)
      */
-    fun getChannelReceivers(channel: MessageChannel): List<Long> {
+    suspend fun getChannelReceivers(channel: MessageChannel): List<Long> {
         return when (channel.type) {
-            ChannelType.GROUP ->
-                (channel as GroupMessageChannel).members
-            ChannelType.DIRECT_MESSAGE ->
-                (channel as DirectMessageChannel).users
+            ChannelType.GROUP -> {
+                if (channel !is GroupMessageChannel)
+                    getChannel<GroupMessageChannel>(channel.id).members
+                else
+                    channel.members
+            }
+            ChannelType.DIRECT_MESSAGE -> {
+                if (channel !is DirectMessageChannel)
+                    getChannel<DirectMessageChannel>(channel.id).users
+                else
+                    channel.users
+            }
         }
     }
 

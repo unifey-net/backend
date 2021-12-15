@@ -9,6 +9,7 @@ import io.ktor.locations.*
 import net.unifey.handle.SERVER
 import net.unifey.handle.messaging.messageSocketActions
 import net.unifey.handle.notification.notificationSocketActions
+import org.slf4j.ILoggerFactory
 import org.slf4j.LoggerFactory
 import java.io.IOException
 
@@ -37,6 +38,8 @@ var prod = System.getenv("PROD")?.toBoolean() ?: false
 @KtorExperimentalLocationsAPI
 fun main(args: Array<String>) {
     disableLoggers()
+
+
 
     notificationSocketActions()
     messageSocketActions()

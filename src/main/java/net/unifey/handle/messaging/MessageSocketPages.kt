@@ -116,10 +116,14 @@ fun messageSocketActions() = SocketActionHandler.socketActions {
     action("START_TYPING") {
         checkArguments("channel" to Long::class)
 
+        ChannelHandler.startTyping(data["channel"] as Long, token.owner)
+
         true
     }
     action("STOP_TYPING") {
         checkArguments("channel" to Long::class)
+
+        ChannelHandler.stopTyping(data["channel"] as Long, token.owner)
 
         true
     }

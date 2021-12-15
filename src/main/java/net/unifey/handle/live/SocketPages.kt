@@ -24,7 +24,7 @@ import kotlin.system.measureTimeMillis
 /**
  * The logger for the socket.
  */
-val socketLogger = LoggerFactory.getLogger("SOCKET")
+val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 /**
  * This is the websocket implementation as well as the REST implementation.

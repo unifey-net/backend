@@ -59,8 +59,9 @@ object MessageHandler {
 
         val mapper = jacksonObjectMapper()
 
+        val receivers = ChannelHandler.getChannelReceivers(channelObject)
         Live.sendUpdates {
-            users = ChannelHandler.getChannelReceivers(channelObject)
+            users = receivers
             type = "INCOMING_MESSAGE" // make silent
             data = mapper.writeValueAsString(response)
         }
@@ -104,8 +105,9 @@ object MessageHandler {
 
         val mapper = jacksonObjectMapper()
 
+        val receivers = ChannelHandler.getChannelReceivers(channelObject).filter { id -> id != user.owner }
         Live.sendUpdates {
-            users = ChannelHandler.getChannelReceivers(channelObject).filter { id -> id != user.owner }
+            users = receivers
             type = "INCOMING_MESSAGE"
             data = mapper.writeValueAsString(response)
         }

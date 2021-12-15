@@ -28,7 +28,7 @@ object Live {
      * Send [obj] to a user on a socket.
      */
     suspend fun sendUpdate(obj: LiveObject) {
-        socketLogger.debug("SEND ${obj.user} (ATTEMPT): ${obj.type} (${obj.data})")
+        socketLogger.trace("SEND ${obj.user} (ATTEMPT): ${obj.type} (${obj.data})")
 
         USERS_ONLINE[obj.user]?.send(obj)
     }
