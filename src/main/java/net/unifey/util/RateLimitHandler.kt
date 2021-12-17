@@ -4,16 +4,21 @@ import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
 import io.github.bucket4j.Bucket4j
 import io.github.bucket4j.Refill
+import io.ktor.application.*
+import io.ktor.features.*
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.header
 import io.ktor.response.respond
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.Error
 import net.unifey.response.Response
+import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import kotlin.jvm.Throws
+
+private val LOGGER = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 val DEFAULT_PAGE_RATE_LIMIT = PageRateLimit(Bandwidth.classic(
         50, Refill.greedy(1, Duration.ofSeconds(2))
@@ -48,6 +53,22 @@ class PageRateLimit(val bandwidth: Bandwidth) {
             Bucket4j.builder()
                     .addLimit(bandwidth)
                     .build()
+}
+
+/**
+ * Check a user's rate limit using their remoteHost. This isn't very secure :(
+ */
+fun ApplicationCall.checkIpRateLimit(pageRateLimit: PageRateLimit): Long {
+    val remoteHost = request.origin.remoteHost
+
+    val bucket = pageRateLimit.getBucket(remoteHost)
+
+    LOGGER.trace("RATE LIMIT: $remoteHost -> $bucket")
+
+    val probe = bucket.tryConsumeAndReturnRemaining(1)
+    if (!probe.isConsumed)
+        throw RateLimitException(probe.nanosToWaitForRefill)
+    else return probe.remainingTokens
 }
 
 /**

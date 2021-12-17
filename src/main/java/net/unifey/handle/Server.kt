@@ -12,6 +12,7 @@ import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import net.unifey.auth.isAuthenticated
+import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
@@ -104,6 +105,8 @@ val SERVER = embeddedServer(Netty, 8077) {
         communityPages()
         reportPages()
         liveSocket()
+
+        betaPages()
 
         get("/") {
             call.respond(Response("unifey :)"))
