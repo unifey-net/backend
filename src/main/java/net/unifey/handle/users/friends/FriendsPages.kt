@@ -22,7 +22,7 @@ val friendOnlineStatus: Logger = LoggerFactory.getLogger("FRIEND STATUS")
  * When [userLive] goes online, notify their friends that they've gone online.
  */
 suspend fun updateFriendOnline(userLive: Long) {
-    friendOnlineStatus.debug("ONLINE $userLive")
+    friendOnlineStatus.trace("ONLINE $userLive")
 
     val usersOnline = Live.getOnlineUsers()
 
@@ -43,7 +43,7 @@ suspend fun updateFriendOnline(userLive: Long) {
  * When [userLive] goes offline, notify their friends that they've gone offline.
  */
 suspend fun updateFriendOffline(userLive: Long) {
-    friendOnlineStatus.debug("OFFLINE $userLive")
+    friendOnlineStatus.trace("OFFLINE $userLive")
 
     val usersOnline = Live.getOnlineUsers()
 

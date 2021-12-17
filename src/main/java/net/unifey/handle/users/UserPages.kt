@@ -2,12 +2,14 @@ package net.unifey.handle.users
 
 import io.ktor.application.ApplicationCall
 import io.ktor.application.call
+import io.ktor.features.*
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.response.respondBytes
 import io.ktor.routing.*
+import net.unifey.auth.AuthenticationException
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.TokenManager
@@ -15,6 +17,7 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.live.SocketInteraction
 import net.unifey.handle.notification.NotificationManager
+import net.unifey.handle.users.connections.ConnectionManager
 import net.unifey.handle.users.email.TooManyAttempts
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
@@ -201,22 +204,39 @@ fun Routing.userPages() {
     /**
      * Authenticate. Input a username and password in return for a token
      */
-    post("/authenticate") {
-        val params = call.receiveParameters()
+    route("/authenticate") {
+        route("/connections") {
+            post("/google") {
+                val params = call.receiveParameters()
 
-        // only check for captcha in production
-        if (prod)
-            call.checkCaptcha(params)
+                val accessToken = params["token"] ?: throw InvalidArguments("token")
 
-        val username = params["username"]
-        val password = params["password"]
-        val remember = params["remember"]?.toBoolean()
+                val connection = ConnectionManager.findConnection(ConnectionManager.Type.GOOGLE, ConnectionManager.Google.getServiceIdFromAccessToken(accessToken))
 
-        if (username == null || password == null || remember == null)
-            throw InvalidArguments("username", "password", "remember")
+                if (connection != null)
+                    call.respond(AuthenticateResponse(Authenticator.generate(connection.user), UserManager.getUser(connection.user)))
+                else
+                    throw AuthenticationException("Invalid access token")
+            }
+        }
 
-        val auth = Authenticator.generateIfCorrect(username, password, remember)
+        post {
+            val params = call.receiveParameters()
 
-        call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
+            // only check for captcha in production
+            if (prod)
+                call.checkCaptcha(params)
+
+            val username = params["username"]
+            val password = params["password"]
+            val remember = params["remember"]?.toBoolean()
+
+            if (username == null || password == null || remember == null)
+                throw InvalidArguments("username", "password", "remember")
+
+            val auth = Authenticator.generateIfCorrect(username, password, remember)
+
+            call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))
+        }
     }
 }

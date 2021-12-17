@@ -1,6 +1,10 @@
 package net.unifey.handle
 
 import io.ktor.application.*
+import io.ktor.client.*
+import io.ktor.client.features.json.*
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.features.logging.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
@@ -11,6 +15,7 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import kotlinx.serialization.json.Json
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
@@ -25,6 +30,19 @@ import net.unifey.response.Response
 import net.unifey.webhook
 import org.slf4j.event.Level
 import java.time.Duration
+
+val HTTP_CLIENT = HttpClient {
+    install(JsonFeature) {
+        serializer = KotlinxSerializer(kotlinx.serialization.json.Json { ignoreUnknownKeys = true })
+        acceptContentTypes = acceptContentTypes + ContentType.Any
+
+    }
+
+    install(Logging) {
+        logger = Logger.DEFAULT
+        level = LogLevel.INFO
+    }
+}
 
 /**
  * the actual server, localhost:8077 :)
