@@ -1,36 +1,33 @@
 package net.unifey.handle.users
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.features.*
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.request.receiveParameters
-import io.ktor.response.respond
-import io.ktor.response.respondBytes
+import dev.shog.lib.util.ifSo
+import io.ktor.application.*
+import io.ktor.http.*
+import io.ktor.request.*
+import io.ktor.response.*
 import io.ktor.routing.*
 import net.unifey.auth.AuthenticationException
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
-import net.unifey.auth.tokens.TokenManager
+import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.S3ImageHandler
-import net.unifey.handle.live.SocketInteraction
 import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.connections.ConnectionManager
-import net.unifey.handle.users.email.TooManyAttempts
+import net.unifey.handle.users.connections.connectionPages
+import net.unifey.handle.users.connections.handlers.Google
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.friends.friendsPages
 import net.unifey.handle.users.profile.cosmetics.cosmeticPages
 import net.unifey.handle.users.profile.profilePages
-import net.unifey.util.ensureProperImageBody
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.prod
 import net.unifey.response.Response
 import net.unifey.util.FieldChangeLimiter
 import net.unifey.util.RateLimitException
 import net.unifey.util.checkCaptcha
+import net.unifey.util.ensureProperImageBody
 import org.mindrot.jbcrypt.BCrypt
 import java.util.concurrent.TimeUnit
 
@@ -39,6 +36,7 @@ fun Routing.userPages() {
         route("/cosmetic", cosmeticPages())
         route("/friends", friendsPages())
         route("/profile", profilePages())
+        route("/connections", connectionPages())
 
         /**
          * Get your own user data.
@@ -178,6 +176,34 @@ fun Routing.userPages() {
             }
         }
 
+        @Throws(InvalidArguments::class, AlreadyExists::class)
+        suspend fun useAutoConnect(params: Parameters): Triple<ConnectionManager.Type, String, String>? {
+            val autoConType = try {
+                ConnectionManager.Type.valueOf(params["autoConType"] ?: "")
+            } catch (ex: Exception) {
+                null
+            }
+            val autoConToken = params["autoConToken"]
+
+            if (autoConType != null && autoConToken != null) {
+                val serviceId = autoConType.handler.getServiceId(autoConToken)
+                    ?: throw InvalidArguments("autoConToken")
+
+                val connection = ConnectionManager.findConnection(autoConType, serviceId)
+
+                if (connection != null)
+                    throw AlreadyExists("connection", "token")
+                else {
+                    val email = autoConType.handler.getEmail(autoConToken)
+                        ?: throw InvalidArguments("autoConToken")
+
+                    return Triple(autoConType, serviceId, email)
+                }
+            }
+
+            return null
+        }
+
         /**
          * Register an account
          */
@@ -195,7 +221,16 @@ fun Routing.userPages() {
             if (username == null || password == null || email == null)
                 throw InvalidArguments("username", "password", "email")
 
-            val user = UserManager.createUser(email, username, password)
+            val autoCon = useAutoConnect(params)
+            val verified = autoCon != null && autoCon.third.equals(email, true) // if they're using a connection & the inputted is same as service, auto verify
+
+            val user = UserManager.createUser(email, username, password, verified = verified)
+
+            if (autoCon != null) {
+                val (type, id) = autoCon
+
+                ConnectionManager.createConnection(type, user.id, id)
+            }
 
             call.respond(Authenticator.generate(user.id))
         }
@@ -211,7 +246,11 @@ fun Routing.userPages() {
 
                 val accessToken = params["token"] ?: throw InvalidArguments("token")
 
-                val connection = ConnectionManager.findConnection(ConnectionManager.Type.GOOGLE, ConnectionManager.Google.getServiceIdFromAccessToken(accessToken))
+                val connection = ConnectionManager.findConnection(
+                    ConnectionManager.Type.GOOGLE,
+                    Google.getServiceId(accessToken)
+                        ?: throw InvalidArguments("token")
+                )
 
                 if (connection != null)
                     call.respond(AuthenticateResponse(Authenticator.generate(connection.user), UserManager.getUser(connection.user)))

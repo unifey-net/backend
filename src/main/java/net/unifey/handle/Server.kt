@@ -111,7 +111,7 @@ val SERVER = embeddedServer(Netty, 8077) {
         method(HttpMethod.Patch)
 
         header("Authorization")
-        allowCredentials = true
+
         allowNonSimpleContentTypes = true
     }
 

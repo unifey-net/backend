@@ -94,7 +94,7 @@ object UserManager {
      * Create an account with [email], [username] and [password].
      */
     @Throws(InvalidVariableInput::class)
-    suspend fun createUser(email: String, username: String, password: String): User {
+    suspend fun createUser(email: String, username: String, password: String, verified: Boolean = false): User {
         UserInputRequirements.allMeets(username, password, email)
 
         val id = IdGenerator.getId()
@@ -105,7 +105,7 @@ object UserManager {
                 "password" to BCrypt.hashpw(password, BCrypt.gensalt()),
                 "email" to email,
                 "created_at" to System.currentTimeMillis(),
-                "verified" to false,
+                "verified" to verified,
                 "role" to 0
         ))
 
@@ -116,9 +116,10 @@ object UserManager {
 
         FeedManager.createFeedForUser(id)
 
-        UserEmailManager.sendVerify(id, email)
-
-        NotificationManager.postNotification(id, "A verification link has been sent to your email. If you can't see it, visit your settings to resend.")
+        if (!verified) {
+            UserEmailManager.sendVerify(id, email)
+            NotificationManager.postNotification(id, "A verification link has been sent to your email. If you can't see it, visit your settings to resend.")
+        }
 
         return getUser(id)
     }

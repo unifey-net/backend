@@ -9,7 +9,7 @@ plugins {
 group 'net.unifey'
 version '0.8.0'
 
-ext.ktor_version = '1.6.4'
+ext.ktor_version = '1.6.7'
 
 mainClassName = "net.unifey.MainKt"
 
@@ -19,9 +19,6 @@ repositories {
 }
 
 dependencies {
-    implementation "io.ktor:ktor-client-logging:$ktor_version"
-    implementation "io.ktor:ktor-client-jackson:$ktor_version"
-    implementation "io.ktor:ktor-client-serialization:$ktor_version"
     implementation platform('software.amazon.awssdk:bom:2.13.26')
     implementation 'software.amazon.awssdk:s3:2.17.81'
     implementation 'software.amazon.awssdk:rds:2.17.81'
@@ -30,16 +27,22 @@ dependencies {
     implementation 'com.sendgrid:sendgrid-java:4.8.0'
     implementation 'commons-codec:commons-codec:1.5'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.0'
-    implementation "io.ktor:ktor-server-netty:$ktor_version"
-    implementation "io.ktor:ktor-jackson:$ktor_version"
-    implementation "io.ktor:ktor-auth:$ktor_version"
-    implementation "io.ktor:ktor-locations:$ktor_version"
     implementation 'org.litote.kmongo:kmongo-coroutine:4.4.0'
+
     implementation "io.ktor:ktor-auth:$ktor_version"
     implementation "io.ktor:ktor-websockets:$ktor_version"
     implementation "io.ktor:ktor-client-auth-jvm:$ktor_version"
     implementation "io.ktor:ktor-client-cio:$ktor_version"
     implementation "io.ktor:ktor-serialization:$ktor_version"
+    implementation "io.ktor:ktor-client-logging:$ktor_version"
+    implementation "io.ktor:ktor-client-jackson:$ktor_version"
+    implementation "io.ktor:ktor-client-serialization:$ktor_version"
+    implementation "io.ktor:ktor-server-netty:$ktor_version"
+    implementation "io.ktor:ktor-jackson:$ktor_version"
+    implementation "io.ktor:ktor-auth:$ktor_version"
+    implementation "io.ktor:ktor-locations:$ktor_version"
+    implementation "io.ktor:ktor-websockets:$ktor_version"
+
     implementation 'ch.qos.logback:logback-classic:1.2.7'
     implementation("org.json:json:20210307")
     implementation 'com.konghq:unirest-java:3.13.3'
@@ -51,7 +54,6 @@ dependencies {
     implementation 'org.jsoup:jsoup:1.14.3'
     implementation('org.reflections:reflections:0.10.2')
     implementation('org.jetbrains.kotlin:kotlin-reflect:1.6.0')
-    implementation "io.ktor:ktor-websockets:$ktor_version"
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0'
 }
 compileKotlin {
