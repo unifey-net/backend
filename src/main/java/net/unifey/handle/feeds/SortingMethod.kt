@@ -1,8 +1,8 @@
 package net.unifey.handle.feeds
 
-/**
- * Methods to sort a feed.
- */
+/** Methods to sort a feed. */
 enum class SortingMethod {
-    NEW, TOP, OLD
+    NEW,
+    TOP,
+    OLD
 }

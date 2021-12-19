@@ -7,9 +7,7 @@ import net.unifey.handle.AlreadyExists
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.mongo.Mongo
-import org.bson.Document
 
 /**
  * @param id The user's ID.
@@ -17,91 +15,62 @@ import org.bson.Document
  * @param notifications The communities the user has notifications on for.
  */
 class Member(
-        @JsonIgnore
-        val id: Long,
-        private val member: MutableList<Long>,
-        private val notifications: MutableList<Long>
+    @JsonIgnore val id: Long,
+    private val member: MutableList<Long>,
+    private val notifications: MutableList<Long>
 ) {
-    /**
-     * If user is a member of [community].
-     */
-    fun isMemberOf(community: Long): Boolean =
-            member.contains(community)
+    /** If user is a member of [community]. */
+    fun isMemberOf(community: Long): Boolean = member.contains(community)
 
-    /**
-     * Get the membership to communities
-     */
-    fun getMembers(): List<Long> =
-            member
+    /** Get the membership to communities */
+    fun getMembers(): List<Long> = member
 
-    /**
-     * Join a [community]
-     */
+    /** Join a [community] */
     fun join(community: Long) {
-        if (member.contains(community))
-            throw AlreadyExists("community", community.toString())
+        if (member.contains(community)) throw AlreadyExists("community", community.toString())
 
         member.add(community)
 
         update()
     }
 
-    /**
-     * Leave a [community]
-     */
+    /** Leave a [community] */
     fun leave(community: Long) {
-        if (!member.contains(community))
-            throw NotFound("community")
+        if (!member.contains(community)) throw NotFound("community")
 
         member.remove(community)
         notifications.remove(community)
 
-        CommunityManager
-                .getCommunityById(community)
-                .removeRole(id)
+        CommunityManager.getCommunityById(community).removeRole(id)
 
         update()
     }
 
-    /**
-     * Enable notifications for [community]. They must be joined.
-     */
+    /** Enable notifications for [community]. They must be joined. */
     fun enableNotifications(community: Long) {
-        if (!member.contains(community))
-            throw NoPermission()
+        if (!member.contains(community)) throw NoPermission()
 
         notifications.add(community)
     }
 
-    /**
-     * Disable notifications for [community].
-     */
+    /** Disable notifications for [community]. */
     fun disableNotifications(community: Long) {
-        if (!notifications.contains(community))
-            throw NotFound("community")
+        if (!notifications.contains(community)) throw NotFound("community")
 
         notifications.remove(community)
     }
 
-    /**
-     * Get the notification subscribed communities
-     */
-    fun getNotifications(): List<Long> =
-        notifications
+    /** Get the notification subscribed communities */
+    fun getNotifications(): List<Long> = notifications
 
-    /**
-     * If the user has notifications enabled for [community].
-     */
-    fun hasNotificationsEnabled(community: Long): Boolean =
-        getNotifications().contains(community)
+    /** If the user has notifications enabled for [community]. */
+    fun hasNotificationsEnabled(community: Long): Boolean = getNotifications().contains(community)
 
-    /**
-     * Update [member] in the database.
-     */
+    /** Update [member] in the database. */
     private fun update() {
         Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("members")
-                .updateOne(Filters.eq("id", id), Updates.set("member", member))
+            .getDatabase("users")
+            .getCollection("members")
+            .updateOne(Filters.eq("id", id), Updates.set("member", member))
     }
 }

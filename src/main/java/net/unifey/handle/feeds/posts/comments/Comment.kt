@@ -5,7 +5,6 @@ import com.mongodb.client.model.Updates
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostAttributes
 import net.unifey.handle.mongo.Mongo
-import org.bson.Document
 
 /**
  * A comment. This could be on an actual [Post] or on another [Comment]. This depends on [level].
@@ -22,78 +21,64 @@ import org.bson.Document
  * @param downvotes The downvotes.
  */
 class Comment(
-        val parent: Long,
-        val post: Long,
-        val level: Int,
-        val id: Long,
-        val createdAt: Long,
-        val authorId: Long,
-        val feed: String,
-        content: String,
-        upvotes: Long,
-        downvotes: Long
+    val parent: Long,
+    val post: Long,
+    val level: Int,
+    val id: Long,
+    val createdAt: Long,
+    val authorId: Long,
+    val feed: String,
+    content: String,
+    upvotes: Long,
+    downvotes: Long
 ) {
-    /**
-     * The comment's attributes.
-     */
+    /** The comment's attributes. */
     private val attributes = PostAttributes(id, "comments")
 
-    /**
-     * If the post is pinned.
-     */
+    /** If the post is pinned. */
     var pinned: Boolean
         get() = attributes.getAttribute("pinned", false)
         set(value) = attributes.setAttribute("pinned", value)
 
-    /**
-     * If the post is hidden.
-     */
+    /** If the post is hidden. */
     var hidden: Boolean
         get() = attributes.getAttribute("hidden", false)
         set(value) = attributes.setAttribute("hidden", value)
 
-    /**
-     * If this comment has been previously edited.
-     */
+    /** If this comment has been previously edited. */
     var edited: Boolean
         get() = attributes.getAttribute("edited", false)
         set(value) = attributes.setAttribute("edited", value)
 
-    /**
-     * Change a post's content
-     */
+    /** Change a post's content */
     var content = content
         set(value) {
             Mongo.getClient()
-                    .getDatabase("feeds")
-                    .getCollection("comments")
-                    .updateOne(Filters.eq("id", id), Updates.set("content", value))
+                .getDatabase("feeds")
+                .getCollection("comments")
+                .updateOne(Filters.eq("id", id), Updates.set("content", value))
 
             field = value
         }
 
-    /**
-     * A post's upvotes
-     */
+    /** A post's upvotes */
     var upvotes = upvotes
         set(value) {
             Mongo.getClient()
-                    .getDatabase("feeds")
-                    .getCollection("comments")
-                    .updateOne(Filters.eq("id", id), Updates.set("vote.upvotes", value))
+                .getDatabase("feeds")
+                .getCollection("comments")
+                .updateOne(Filters.eq("id", id), Updates.set("vote.upvotes", value))
 
             field = value
         }
 
-    /**
-     * A post's downvotes
-     */
+    /** A post's downvotes */
     var downvotes = downvotes
         set(value) {
             Mongo.getClient()
-                    .getDatabase("feeds")
-                    .getCollection("comments")
-                    .updateOne(Filters.eq("id", id), Updates.set("vote.downvotes", value))
+                .getDatabase("feeds")
+                .getCollection("comments")
+                .updateOne(Filters.eq("id", id), Updates.set("vote.downvotes", value))
 
             field = value
         }

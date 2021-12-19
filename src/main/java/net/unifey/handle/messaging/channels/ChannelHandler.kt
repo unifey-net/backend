@@ -2,6 +2,10 @@ package net.unifey.handle.messaging.channels
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.mongodb.client.model.Filters
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.collections.ArrayList
+import kotlin.jvm.Throws
 import kotlinx.coroutines.*
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.AlreadyExists
@@ -20,13 +24,8 @@ import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
 import net.unifey.util.toDocument
 import org.bson.Document
-import org.json.JSONObject
 import org.litote.kmongo.*
 import org.slf4j.LoggerFactory
-import java.util.*
-import java.util.concurrent.ConcurrentHashMap
-import kotlin.collections.ArrayList
-import kotlin.jvm.Throws
 
 object ChannelHandler {
     private val LOGGER = LoggerFactory.getLogger(this::class.java)
@@ -35,8 +34,8 @@ object ChannelHandler {
     /**
      * [user] starts typing in channel.
      *
-     * Starts a new thread to stop typing after 5 seconds. If another start typing request was sent within
-     * that 5 seconds, it's ignored.
+     * Starts a new thread to stop typing after 5 seconds. If another start typing request was sent
+     * within that 5 seconds, it's ignored.
      *
      * This is handled mostly by the frontend.
      */
@@ -47,8 +46,9 @@ object ChannelHandler {
         val receivers = getChannelReceivers(getChannel(channel))
 
         when {
-            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ -> throw NoPermission()
-            TYPING.containsKey(user) -> throw Error({ }, "Already typing!")
+            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ ->
+                throw NoPermission()
+            TYPING.containsKey(user) -> throw Error({}, "Already typing!")
         }
 
         val typing = UserTyping(user, channel, System.currentTimeMillis())
@@ -61,10 +61,9 @@ object ChannelHandler {
         Live.sendUpdates {
             users = receivers
             type = "START_TYPING"
-            data = mapper.writeValueAsString(UserTypingResponse(
-                ShortUser.fromUser(userObject),
-                channelObject
-            ))
+            data =
+                mapper.writeValueAsString(
+                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject))
         }
 
         GlobalScope.launch {
@@ -76,7 +75,8 @@ object ChannelHandler {
                 val difference = System.currentTimeMillis() - userObj.startAt
                 val stillTyping = TYPING.containsKey(user)
 
-                LOGGER.trace("THREAD TYPING CHECK ($stillTyping -> $user [$channel]) -> ${userObj.startAt} (${difference}) ${System.currentTimeMillis()}")
+                LOGGER.trace(
+                    "THREAD TYPING CHECK ($stillTyping -> $user [$channel]) -> ${userObj.startAt} (${difference}) ${System.currentTimeMillis()}")
 
                 if (difference >= 5000 && stillTyping)
                     try {
@@ -90,9 +90,7 @@ object ChannelHandler {
         }
     }
 
-    /**
-     * Stop [user] typing in [channel].
-     */
+    /** Stop [user] typing in [channel]. */
     suspend fun stopTyping(channel: Long, user: Long) {
         val userObject = UserManager.getUser(user)
         val channelObject = getChannel<MessageChannel>(channel)
@@ -100,8 +98,9 @@ object ChannelHandler {
         val receivers = getChannelReceivers(getChannel(channel))
 
         when {
-            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ -> throw NoPermission()
-            !TYPING.containsKey(user) -> throw Error({ }, "Already stopped typing!")
+            !receivers.contains(user) /* if they aren't receiver, they aren't in channel */ ->
+                throw NoPermission()
+            !TYPING.containsKey(user) -> throw Error({}, "Already stopped typing!")
         }
 
         TYPING.remove(user)
@@ -113,47 +112,45 @@ object ChannelHandler {
         Live.sendUpdates {
             users = receivers
             type = "STOP_TYPING"
-            data = mapper.writeValueAsString(
-                UserTypingResponse(
-                    ShortUser.fromUser(userObject),
-                    channelObject
-                )
-            )
+            data =
+                mapper.writeValueAsString(
+                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject))
         }
     }
 
-    /**
-     * Get [user]'s channels.
-     */
+    /** Get [user]'s channels. */
     suspend fun getUserChannels(user: Token): List<MessageChannel> {
         return getUserDirectMessageChannels(user.owner)
             .plus(getGroupMessageChannelByMember(user.owner))
     }
 
-    /**
-     * Get all of the group chats that [user] is in.
-     */
+    /** Get all of the group chats that [user] is in. */
     private suspend fun getGroupMessageChannelByMember(user: Long): List<GroupMessageChannel> {
         return Mongo.K_MONGO
             .getDatabase("messages")
             .getCollection<GroupMessageChannel>("channels")
-            .find(and(GroupMessageChannel::type eq ChannelType.GROUP, GroupMessageChannel::members contains user))
+            .find(
+                and(
+                    GroupMessageChannel::type eq ChannelType.GROUP,
+                    GroupMessageChannel::members contains user))
             .toList()
     }
 
-    /**
-     * Get all of the direct message channels that [user] is in.
-     */
+    /** Get all of the direct message channels that [user] is in. */
     private suspend fun getUserDirectMessageChannels(user: Long): List<DirectMessageChannel> {
         return Mongo.K_MONGO
             .getDatabase("messages")
             .getCollection<DirectMessageChannel>("channels")
-            .find(and(DirectMessageChannel::type eq ChannelType.DIRECT_MESSAGE, DirectMessageChannel::users contains user))
+            .find(
+                and(
+                    DirectMessageChannel::type eq ChannelType.DIRECT_MESSAGE,
+                    DirectMessageChannel::users contains user))
             .toList()
     }
 
     /**
-     * Get a message channel by it's [id]. [T] should follow either [GroupMessageChannel] or [DirectMessageChannel].
+     * Get a message channel by it's [id]. [T] should follow either [GroupMessageChannel] or
+     * [DirectMessageChannel].
      */
     @Throws(NotFound::class)
     suspend inline fun <reified T : MessageChannel> getChannel(id: Long): T {
@@ -165,39 +162,30 @@ object ChannelHandler {
             ?: throw NotFound("channel")
     }
 
-    /**
-     * Get a [T] from a [id].
-     */
+    /** Get a [T] from a [id]. */
     inline fun <reified T : MessageChannel> getChannel(document: Document): T {
         val mapper = jacksonObjectMapper()
 
         return mapper.readValue(document.toJson(), T::class.java)
     }
 
-    /**
-     * Get the users of a group chat who should receive updates.
-     * (ex: new messages)
-     */
+    /** Get the users of a group chat who should receive updates. (ex: new messages) */
     suspend fun getChannelReceivers(channel: MessageChannel): List<Long> {
         return when (channel.type) {
             ChannelType.GROUP -> {
                 if (channel !is GroupMessageChannel)
                     getChannel<GroupMessageChannel>(channel.id).members
-                else
-                    channel.members
+                else channel.members
             }
             ChannelType.DIRECT_MESSAGE -> {
                 if (channel !is DirectMessageChannel)
                     getChannel<DirectMessageChannel>(channel.id).users
-                else
-                    channel.users
+                else channel.users
             }
         }
     }
 
-    /**
-     * Check if [id] exists.
-     */
+    /** Check if [id] exists. */
     suspend fun channelExists(id: Long): Boolean {
         return try {
             getChannel<MessageChannel>(id)
@@ -215,19 +203,18 @@ object ChannelHandler {
      */
     @Throws(NotFound::class)
     fun getDirectMessageChannelId(userOne: Long, userTwo: Long): Long {
-        val channel = Mongo.getClient()
-            .getDatabase("messages")
-            .getCollection("channels")
-            .find(Filters.and(Filters.`in`("users", userOne), Filters.`in`("users", userTwo)))
-            .firstOrNull()
-            ?: throw NotFound("channel")
+        val channel =
+            Mongo.getClient()
+                .getDatabase("messages")
+                .getCollection("channels")
+                .find(Filters.and(Filters.`in`("users", userOne), Filters.`in`("users", userTwo)))
+                .firstOrNull()
+                ?: throw NotFound("channel")
 
         return channel.getLong("id")
     }
 
-    /**
-     * Generate a unique ID for the channel.
-     */
+    /** Generate a unique ID for the channel. */
     private suspend fun generateIdentifier(): Long {
         return IdGenerator.getSuspensefulId { id ->
             try {
@@ -243,24 +230,24 @@ object ChannelHandler {
      * Create a group chat with [users].
      *
      * [users] must be:
-     *  - 1 or more people.
-     *  - all be friends with [creator].
+     * - 1 or more people.
+     * - all be friends with [creator].
      *
-     *  @throws NoPermission If [creator] doesn't have all [users]'s friended.
+     * @throws NoPermission If [creator] doesn't have all [users]'s friended.
      */
     @Throws(NoPermission::class)
     suspend fun createGroupChat(creator: Long, users: ArrayList<Long>) {
         val user = UserManager.getUser(creator)
 
-        val friends = user.getFriends()
-            .map { friend -> friend.id }
+        val friends = user.getFriends().map { friend -> friend.id }
 
-        if (!friends.containsAll(users))
-            throw NoPermission()
+        if (!friends.containsAll(users)) throw NoPermission()
 
         users.add(creator)
 
-        val channel = GroupMessageChannel(generateIdentifier(), "${user.username}'s group chat", ":)", users, creator)
+        val channel =
+            GroupMessageChannel(
+                generateIdentifier(), "${user.username}'s group chat", ":)", users, creator)
 
         val mapper = jacksonObjectMapper()
 
@@ -288,7 +275,6 @@ object ChannelHandler {
             !user.hasFriend(userTwo) -> {
                 throw NoPermission()
             }
-
             try {
                 getDirectMessageChannelId(userOne, userTwo)
 
@@ -312,14 +298,10 @@ object ChannelHandler {
         LOGGER.info("New Channel - DM (${channel.id}): ${user.id} -> $userTwo")
     }
 
-    /**
-     * The range of the name of the group chats name lengths.
-     */
+    /** The range of the name of the group chats name lengths. */
     private val GROUP_CHAT_NAME_LENGTH = 32 downTo 1
 
-    /**
-     * The range of the description of the group chats description lengths.
-     */
+    /** The range of the description of the group chats description lengths. */
     private val GROUP_CHAT_DESCRIPTION_LENGTH = 256 downTo 1
 
     /**
@@ -334,9 +316,7 @@ object ChannelHandler {
         val channel = getChannel<GroupMessageChannel>(id)
 
         when {
-            channel.owner != token.owner ->
-                throw NoPermission()
-
+            channel.owner != token.owner -> throw NoPermission()
             !GROUP_CHAT_NAME_LENGTH.contains(name.length) ->
                 throw InvalidVariableInput("name", "Must be within $GROUP_CHAT_NAME_LENGTH")
         }
@@ -367,17 +347,18 @@ object ChannelHandler {
         val channel = getChannel<GroupMessageChannel>(id)
 
         when {
-            channel.owner != token.owner ->
-                throw NoPermission()
-
+            channel.owner != token.owner -> throw NoPermission()
             !GROUP_CHAT_DESCRIPTION_LENGTH.contains(description.length) ->
-                throw InvalidVariableInput("description", "Must be within $GROUP_CHAT_DESCRIPTION_LENGTH")
+                throw InvalidVariableInput(
+                    "description", "Must be within $GROUP_CHAT_DESCRIPTION_LENGTH")
         }
 
         Mongo.K_MONGO
             .getDatabase("messages")
             .getCollection<GroupMessageChannel>("channels")
-            .updateOne(GroupMessageChannel::id eq id, setValue(GroupMessageChannel::description, description))
+            .updateOne(
+                GroupMessageChannel::id eq id,
+                setValue(GroupMessageChannel::description, description))
 
         MessageHandler.sendSystemMessage("The description of the group chat has been updated!", id)
 
@@ -399,14 +380,9 @@ object ChannelHandler {
         val channel = getChannel<GroupMessageChannel>(id)
 
         when {
-            channel.owner != token.owner ->
-                throw NoPermission()
-
-            token.owner == user ->
-                throw NoPermission()
-
-            !channel.members.contains(user) ->
-                throw NotFound("user")
+            channel.owner != token.owner -> throw NoPermission()
+            token.owner == user -> throw NoPermission()
+            !channel.members.contains(user) -> throw NotFound("user")
         }
 
         channel.members.remove(user) // so it doesn't show up in response
@@ -434,8 +410,6 @@ object ChannelHandler {
      */
     fun deleteChannel(id: Long): Unit = TODO()
 
-    /**
-     * Change ownership of [id] to [newOwner]. [id] MUST be a group chat.
-     */
+    /** Change ownership of [id] to [newOwner]. [id] MUST be a group chat. */
     fun changeOwnership(id: Long, newOwner: Long): Unit = TODO()
 }

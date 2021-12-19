@@ -2,19 +2,14 @@ package net.unifey.handle.users.connections
 
 import io.ktor.client.*
 import io.ktor.client.request.*
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
-import net.unifey.handle.HTTP_CLIENT
+import kotlin.system.measureTimeMillis
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.connections.handlers.ConnectionHandler
 import net.unifey.handle.users.connections.handlers.Google
-import org.json.JSONObject
 import org.litote.kmongo.and
 import org.litote.kmongo.eq
-import org.litote.kmongo.reactivestreams.KMongo
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import kotlin.system.measureTimeMillis
 
 object ConnectionManager {
     val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
@@ -23,9 +18,7 @@ object ConnectionManager {
         GOOGLE(Google)
     }
 
-    /**
-     * A connection between an account and another service.
-     */
+    /** A connection between an account and another service. */
     data class Connection(val user: Long, val type: Type, val serviceId: String)
 
     /**
@@ -37,11 +30,12 @@ object ConnectionManager {
         var search: Connection?
 
         val time = measureTimeMillis {
-            search = Mongo.K_MONGO
-                .getDatabase("users")
-                .getCollection<Connection>("connections")
-                .find(and(Connection::serviceId eq serviceId, Connection::type eq type))
-                .first()
+            search =
+                Mongo.K_MONGO
+                    .getDatabase("users")
+                    .getCollection<Connection>("connections")
+                    .find(and(Connection::serviceId eq serviceId, Connection::type eq type))
+                    .first()
         }
 
         LOGGER.trace("Search Connection: $type -> $serviceId (service id); Took ${time}ms")
@@ -58,11 +52,12 @@ object ConnectionManager {
         var search: Connection?
 
         val time = measureTimeMillis {
-            search = Mongo.K_MONGO
-                .getDatabase("users")
-                .getCollection<Connection>("connections")
-                .find(and(Connection::user eq id, Connection::type eq type))
-                .first()
+            search =
+                Mongo.K_MONGO
+                    .getDatabase("users")
+                    .getCollection<Connection>("connections")
+                    .find(and(Connection::user eq id, Connection::type eq type))
+                    .first()
         }
 
         LOGGER.trace("Search Connection: $type -> $id (user); Took ${time}ms")
@@ -70,9 +65,7 @@ object ConnectionManager {
         return search
     }
 
-    /**
-     * Create a connection for [id] with [type] to [serviceId]
-     */
+    /** Create a connection for [id] with [type] to [serviceId] */
     suspend fun createConnection(type: Type, id: Long, serviceId: String) {
         LOGGER.trace("New Connection: $serviceId ($type) -> $id")
 

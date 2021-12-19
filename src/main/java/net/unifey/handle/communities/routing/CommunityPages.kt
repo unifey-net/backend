@@ -8,10 +8,8 @@ import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
-import net.unifey.handle.NoPermission
 import net.unifey.handle.communities.CommunityInputRequirements
 import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.users.UserManager
 import net.unifey.prod
 import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
@@ -22,32 +20,29 @@ fun Routing.communityPages() {
         route("/manage", MANAGE_SUBSCRIBED)
         route("/{id}", MANAGE_COMMUNITY)
 
-        /**
-         * Get a community by it's name.
-         */
+        /** Get a community by it's name. */
         get("/name/{name}") {
-            val name = call.parameters["name"]
-                    ?: throw InvalidArguments("p_name")
+            val name = call.parameters["name"] ?: throw InvalidArguments("p_name")
 
             val community = CommunityManager.getCommunityByName(name)
 
             call.respondCommunity(community)
         }
 
-        /**
-         * Create a community
-         */
+        /** Create a community */
         put {
             val token = call.isAuthenticated()
             val params = call.receiveParameters()
 
             // only check for captcha in production
-            if (prod)
-                call.checkCaptcha(params)
+            if (prod) call.checkCaptcha(params)
 
             if (!CommunityManager.canCreate(token.owner))
                 throw Error({
-                    call.respond(HttpStatusCode.Unauthorized, Response("Your account must be 14 days old and you can't have create a community before!"))
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        Response(
+                            "Your account must be 14 days old and you can't have create a community before!"))
                 })
 
             val name = params["name"]
@@ -55,24 +50,19 @@ fun Routing.communityPages() {
             val password = params["password"]
 
             if (!BCrypt.checkpw(password, token.getOwner().password))
-                throw Error({
-                    respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
-                })
+                throw Error({ respond(HttpStatusCode.Unauthorized, Response("Invalid password!")) })
 
-            if (name == null || desc == null)
-                throw InvalidArguments("name", "description")
+            if (name == null || desc == null) throw InvalidArguments("name", "description")
 
-            CommunityInputRequirements.meets(listOf(
+            CommunityInputRequirements.meets(
+                listOf(
                     name to CommunityInputRequirements.NAME,
-                    desc to CommunityInputRequirements.DESCRIPTION
-            ))
+                    desc to CommunityInputRequirements.DESCRIPTION))
 
             call.respond(CommunityManager.createCommunity(token.owner, name, desc))
         }
 
-        /**
-         * Get all communities
-         */
+        /** Get all communities */
         get {
             val params = call.request.queryParameters
 

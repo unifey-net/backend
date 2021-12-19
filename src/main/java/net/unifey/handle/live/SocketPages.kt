@@ -6,6 +6,7 @@ import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
@@ -19,22 +20,15 @@ import net.unifey.handle.live.WebSocket.errorMessage
 import net.unifey.response.Response
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
-import kotlin.system.measureTimeMillis
 
-/**
- * The logger for the socket.
- */
+/** The logger for the socket. */
 val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
-/**
- * This is the websocket implementation as well as the REST implementation.
- */
+/** This is the websocket implementation as well as the REST implementation. */
 @OptIn(ExperimentalCoroutinesApi::class)
 fun Routing.liveSocket() {
     route("/live") {
-        get("/count") {
-            call.respond(Response(Live.getOnlineUsers().size))
-        }
+        get("/count") { call.respond(Response(Live.getOnlineUsers().size)) }
 
         webSocket {
             var token: Token? = null
@@ -49,11 +43,11 @@ fun Routing.liveSocket() {
                 }
             }
 
-            customTypeMessage("init",
+            customTypeMessage(
+                "init",
                 JSONObject()
                     .put("frontend", FRONTEND_EXPECT)
-                    .put("version", "Unifey Backend $VERSION")
-            )
+                    .put("version", "Unifey Backend $VERSION"))
 
             for (frame in incoming) {
                 when (frame) {
@@ -75,10 +69,16 @@ fun Routing.liveSocket() {
                                         } else {
                                             token = tokenObj
 
-                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
-                                                socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
+                                            if (Live.getOnlineUsers()
+                                                .keys
+                                                .contains(tokenObj.owner)) {
+                                                socketLogger.info(
+                                                    "AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
 
-                                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                                close(
+                                                    CloseReason(
+                                                        CloseReason.Codes.VIOLATED_POLICY,
+                                                        "You're already logged in somewhere else!"))
                                             } else {
                                                 socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
@@ -89,11 +89,9 @@ fun Routing.liveSocket() {
                                     }
                                 }
                             }
-
                             data.startsWith("ping") -> {
                                 customTypeMessage("PONG", jsonObjectOf())
                             }
-
                             token != null -> {
                                 try {
                                     handleIncoming(token, data)
@@ -102,18 +100,14 @@ fun Routing.liveSocket() {
                                     close(ex.reason)
                                 }
                             }
-
-                            else ->
-                                errorMessage("Not authenticated.")
+                            else -> errorMessage("Not authenticated.")
                         }
-                        }
-
+                    }
                     else -> errorMessage("Unexpected frame.")
                 }
             }
 
-            if (token != null)
-                Live.userOffline(token.owner)
+            if (token != null) Live.userOffline(token.owner)
         }
     }
 }
@@ -125,11 +119,12 @@ fun Routing.liveSocket() {
  */
 @Throws(SocketError::class)
 private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
-    val json = try {
-        JSONObject(data)
-    } catch (ex: Exception) {
-        throw SocketError(400, "Invalid data type, expects JSON.")
-    }
+    val json =
+        try {
+            JSONObject(data)
+        } catch (ex: Exception) {
+            throw SocketError(400, "Invalid data type, expects JSON.")
+        }
 
     if (!json.has("action") || json["action"] !is String)
         throw SocketError(400, "JSON doesn't contain \"action\" parameter.")
@@ -139,9 +134,12 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     if (page != null)
         page.run {
             var success = false
-            val time = measureTimeMillis { success = SocketSession(this@handleIncoming, json, user).receive() }
+            val time = measureTimeMillis {
+                success = SocketSession(this@handleIncoming, json, user).receive()
+            }
 
-            socketLogger.info("${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
+            socketLogger.info(
+                "${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
         }
     else {
         errorMessage("That page could not be found.")
@@ -150,8 +148,7 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
 
 private fun findPage(action: String): SocketAction? {
     SocketActionHandler.socketActions.forEach { (name, page) ->
-        if (action.equals(name, true))
-            return page
+        if (action.equals(name, true)) return page
     }
 
     return null

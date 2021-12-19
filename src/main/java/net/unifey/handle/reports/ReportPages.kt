@@ -25,9 +25,10 @@ private fun getTarget(params: Parameters): Target {
 }
 
 private fun getReason(params: Parameters): ReportType {
-    return ReportType.values()
-            .singleOrNull { reportType -> reportType.toString().equals(params["reason"], true) }
-            ?: throw InvalidArguments("reason")
+    return ReportType.values().singleOrNull { reportType ->
+        reportType.toString().equals(params["reason"], true)
+    }
+        ?: throw InvalidArguments("reason")
 }
 
 private fun getReasonText(params: Parameters): String {
@@ -52,13 +53,11 @@ private suspend fun ensureExists(target: Target, reason: ReportType): String? {
 
             return post.feed
         }
-
         TargetType.COMMENT -> {
             val comment = CommentManager.getCommentById(id)
 
             return comment.feed
         }
-
         TargetType.ACCOUNT -> {
             UserManager.getUser(id)
 
@@ -69,15 +68,14 @@ private suspend fun ensureExists(target: Target, reason: ReportType): String? {
 
 fun Routing.reportPages() {
     route("/report") {
-        /**
-         * Create a report.
-         */
+        /** Create a report. */
         put {
             val token = call.isAuthenticated()
 
             if (ReportHandler.getReportsToday(token.owner) > ReportHandler.MAX_REPORT_PER_PERSON)
                 throw Error({
-                    respond(HttpStatusCode.BadRequest, Response("You can only report 3 times per day!"))
+                    respond(
+                        HttpStatusCode.BadRequest, Response("You can only report 3 times per day!"))
                 })
 
             val params = call.receiveParameters()
@@ -87,29 +85,18 @@ fun Routing.reportPages() {
 
             val feed = ensureExists(target, reason)
 
-            ReportHandler.addReport(
-                    target,
-                    reason,
-                    feed,
-                    token.owner,
-                    getReasonText(params)
-            )
+            ReportHandler.addReport(target, reason, feed, token.owner, getReasonText(params))
 
             call.respond(Response())
         }
 
-        /**
-         * Get all reports for feed.
-         */
+        /** Get all reports for feed. */
         route("/{feed}") {
-            /**
-             * Get all reports intended for a feed.
-             */
+            /** Get all reports intended for a feed. */
             get {
                 val token = call.isAuthenticated()
 
-                val feedId = call.parameters["feed"]
-                        ?: throw InvalidArguments("p_feed")
+                val feedId = call.parameters["feed"] ?: throw InvalidArguments("p_feed")
 
                 val feed = FeedManager.getFeed(feedId)
 
@@ -120,35 +107,29 @@ fun Routing.reportPages() {
 
                     if (community.getRole(token.owner) < CommunityRoles.MODERATOR)
                         throw NoPermission()
-                } else if (!feed.moderators.contains(token.owner))
-                    throw NoPermission()
+                } else if (!feed.moderators.contains(token.owner)) throw NoPermission()
 
-                call.respond(ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id)))
+                call.respond(
+                    ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id)))
             }
 
-            /**
-             * Delete a report in a feed.
-             */
+            /** Delete a report in a feed. */
             delete("/{id}") {
                 val token = call.isAuthenticated()
 
-                val feedId = call.parameters["feed"]
-                        ?: throw InvalidArguments("p_feed")
+                val feedId = call.parameters["feed"] ?: throw InvalidArguments("p_feed")
 
                 val feed = FeedManager.getFeed(feedId)
 
                 // they must be moderator to delete reports.
-                if (!feed.moderators.contains(token.owner))
-                    throw NoPermission()
+                if (!feed.moderators.contains(token.owner)) throw NoPermission()
 
-                val id = call.parameters["id"]?.toLongOrNull()
-                        ?: throw InvalidArguments("id")
+                val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
                 // get the report and make sure it's from the same feed
                 val report = ReportHandler.getReportById(id)
 
-                if (report.feed != feed.id)
-                    throw NoPermission()
+                if (report.feed != feed.id) throw NoPermission()
 
                 ReportHandler.deleteReport(id)
 
@@ -156,34 +137,26 @@ fun Routing.reportPages() {
             }
         }
 
-        /**
-         * Get all reports intended for Unifey.
-         */
+        /** Get all reports intended for Unifey. */
         get {
             val token = call.isAuthenticated()
 
-            if (GlobalRoles.STAFF > token.getOwner().role)
-                throw NoPermission()
+            if (GlobalRoles.STAFF > token.getOwner().role) throw NoPermission()
 
             call.respond(ReportHandler.asReportRequest(ReportHandler.getReportsForUnifey()))
         }
 
-        /**
-         * Delete a report intended for Unifey
-         */
+        /** Delete a report intended for Unifey */
         delete("/{id}") {
             val token = call.isAuthenticated()
 
-            if (GlobalRoles.STAFF > token.getOwner().role)
-                throw NoPermission()
+            if (GlobalRoles.STAFF > token.getOwner().role) throw NoPermission()
 
-            val id = call.parameters["id"]?.toLongOrNull()
-                    ?: throw InvalidArguments("id")
+            val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
             val report = ReportHandler.getReportById(id)
 
-            if (report.feed != null)
-                throw NoPermission()
+            if (report.feed != null) throw NoPermission()
 
             ReportHandler.deleteReport(id)
 

@@ -9,19 +9,13 @@ import io.ktor.locations.*
 import net.unifey.handle.SERVER
 import net.unifey.handle.messaging.messageSocketActions
 import net.unifey.handle.notification.notificationSocketActions
-import org.slf4j.ILoggerFactory
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import java.io.IOException
 
-/**
- * The version of the backend.
- */
+/** The version of the backend. */
 const val VERSION = "0.8.0"
 
-/**
- * What version is expected of the frontend.
- */
+/** What version is expected of the frontend. */
 const val FRONTEND_EXPECT = "0.8.0"
 
 val ROOT_LOGGER: Logger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
@@ -46,18 +40,15 @@ fun main(args: Array<String>) {
     messageSocketActions()
 
     mongo = System.getenv("MONGO")
-    webhook = DiscordWebhook(
-        System.getenv("WEBHOOK"),
-        WebhookUser("Unifey", "https://unifey.net/favicon.png")
-    )
+    webhook =
+        DiscordWebhook(
+            System.getenv("WEBHOOK"), WebhookUser("Unifey", "https://unifey.net/favicon.png"))
     System.getenv("RECAPTCHA") // to ensure exists.
 
     SERVER.start(true)
 }
 
-/**
- * Disable the loggers that like to talk a lot :D
- */
+/** Disable the loggers that like to talk a lot :D */
 fun disableLoggers() {
     val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
     val rootLogger = loggerContext.getLogger("org.mongodb.driver")

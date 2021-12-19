@@ -15,6 +15,7 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import java.time.Duration
 import kotlinx.serialization.json.Json
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
@@ -29,13 +30,11 @@ import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.webhook
 import org.slf4j.event.Level
-import java.time.Duration
 
 val HTTP_CLIENT = HttpClient {
     install(JsonFeature) {
         serializer = KotlinxSerializer(kotlinx.serialization.json.Json { ignoreUnknownKeys = true })
         acceptContentTypes = acceptContentTypes + ContentType.Any
-
     }
 
     install(Logging) {
@@ -44,98 +43,83 @@ val HTTP_CLIENT = HttpClient {
     }
 }
 
-/**
- * the actual server, localhost:8077 :)
- */
-val SERVER = embeddedServer(Netty, 8077) {
-    install(ContentNegotiation) {
-        jackson {
+/** the actual server, localhost:8077 :) */
+val SERVER =
+    embeddedServer(Netty, 8077) {
+        install(ContentNegotiation) {
+            jackson {}
+
+            register(ContentType.Application.Json, JacksonConverter())
+
+            json(contentType = ContentType.Application.Json)
         }
 
-        register(ContentType.Application.Json, JacksonConverter())
+        install(io.ktor.websocket.WebSockets) { timeout = Duration.ofSeconds(15) }
 
-        json(
-            contentType = ContentType.Application.Json
-        )
-    }
+        install(Locations)
 
-    install(io.ktor.websocket.WebSockets) {
-        timeout = Duration.ofSeconds(15)
-    }
+        install(CallLogging) { level = Level.INFO }
 
-    install(Locations)
+        install(DefaultHeaders) { header("Server", "Unifey") }
 
-    install(CallLogging) {
-        level = Level.INFO
-    }
+        install(AutoHeadResponse)
 
-    install(DefaultHeaders) {
-        header("Server", "Unifey")
-    }
+        install(StatusPages) {
+            exception<Error> { it.response.invoke(call) }
 
-    install(AutoHeadResponse)
+            /** Error 404 */
+            status(HttpStatusCode.NotFound) {
+                call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
+            }
 
-    install(StatusPages) {
-        exception<Error> {
-            it.response.invoke(call)
+            /** Error 401 */
+            status(HttpStatusCode.Unauthorized) {
+                call.respond(HttpStatusCode.Unauthorized, Response("You are not authorized."))
+            }
+
+            exception<Throwable> {
+                it.printStackTrace()
+                webhook.sendBigMessage(
+                    it.stackTrace.joinToString("\n"), "Unifey Error: ${it.message}")
+
+                call.respond(
+                    HttpStatusCode.InternalServerError,
+                    Response("There was an internal error processing that request."))
+            }
         }
 
-        /**
-         * Error 404
-         */
-        status(HttpStatusCode.NotFound) {
-            call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
+        install(CORS) {
+            anyHost()
+
+            method(HttpMethod.Options)
+            method(HttpMethod.Put)
+            method(HttpMethod.Delete)
+            method(HttpMethod.Patch)
+
+            header("Authorization")
+
+            allowNonSimpleContentTypes = true
         }
 
-        /**
-         * Error 401
-         */
-        status(HttpStatusCode.Unauthorized) {
-            call.respond(HttpStatusCode.Unauthorized, Response("You are not authorized."))
-        }
+        routing {
+            emotePages()
+            emailPages()
+            feedPages()
+            userPages()
+            communityPages()
+            reportPages()
+            liveSocket()
 
-        exception<Throwable> {
-            it.printStackTrace()
-            webhook.sendBigMessage(it.stackTrace.joinToString("\n"), "Unifey Error: ${it.message}")
+            betaPages()
 
-            call.respond(HttpStatusCode.InternalServerError, Response("There was an internal error processing that request."))
-        }
-    }
+            get("/") { call.respond(Response("unifey :)")) }
 
-    install(CORS) {
-        anyHost()
+            get("/debug-notif") {
+                val token = call.isAuthenticated()
 
-        method(HttpMethod.Options)
-        method(HttpMethod.Put)
-        method(HttpMethod.Delete)
-        method(HttpMethod.Patch)
+                token.getOwner().postNotification("Debug notification")
 
-        header("Authorization")
-
-        allowNonSimpleContentTypes = true
-    }
-
-    routing {
-        emotePages()
-        emailPages()
-        feedPages()
-        userPages()
-        communityPages()
-        reportPages()
-        liveSocket()
-
-        betaPages()
-
-        get("/") {
-            call.respond(Response("unifey :)"))
-        }
-
-        get("/debug-notif") {
-            val token = call.isAuthenticated()
-
-            token.getOwner().postNotification("Debug notification")
-
-            call.respond(Response("OK"))
+                call.respond(Response("OK"))
+            }
         }
     }
-}

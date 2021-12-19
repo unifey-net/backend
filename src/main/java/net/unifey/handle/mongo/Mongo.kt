@@ -8,19 +8,18 @@ import net.unifey.prod
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
 
-/**
- * Interacts with MongoDB.
- */
+/** Interacts with MongoDB. */
 object Mongo {
-    val K_MONGO = KMongo.createClient(if (prod) {
-        "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
-    } else {
-        "mongodb://127.0.0.1:27017"
-    }).coroutine
+    val K_MONGO =
+        KMongo.createClient(
+                if (prod) {
+                    "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+                } else {
+                    "mongodb://127.0.0.1:27017"
+                })
+            .coroutine
 
-    /**
-     * The MongoClient.
-     */
+    /** The MongoClient. */
     private var client: MongoClient? = null
 
     /**
@@ -29,35 +28,26 @@ object Mongo {
      * This sets [client].
      */
     private fun makeClient() {
-        client = if (prod) {
-            MongoClients.create("mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority")
-        } else {
-            MongoClients.create("mongodb://127.0.0.1:27017") // local testing mongodb server
-        }
+        client =
+            if (prod) {
+                MongoClients.create(
+                    "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority")
+            } else {
+                MongoClients.create("mongodb://127.0.0.1:27017") // local testing mongodb server
+            }
     }
 
     suspend fun <T> useJob(func: suspend MongoClient.() -> T): Job {
-        return coroutineScope {
-            launch {
-                func.invoke(getClient())
-            }
-        }
+        return coroutineScope { launch { func.invoke(getClient()) } }
     }
 
     suspend fun <T> useAsync(func: suspend MongoClient.() -> T): Deferred<T> {
-        return coroutineScope {
-            async(Dispatchers.Default) {
-                func.invoke(getClient())
-            }
-        }
+        return coroutineScope { async(Dispatchers.Default) { func.invoke(getClient()) } }
     }
 
-    /**
-     * Get [client] and assure it's not null.
-     */
+    /** Get [client] and assure it's not null. */
     fun getClient(): MongoClient {
-        if (client == null)
-            makeClient()
+        if (client == null) makeClient()
 
         return client ?: throw Exception("Failed to load Mongo Client")
     }

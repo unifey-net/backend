@@ -10,138 +10,122 @@ import net.unifey.handle.live.WebSocket.errorMessage
 import net.unifey.handle.live.WebSocket.successMessage
 import org.json.JSONObject
 
-/**
- * Socket actions for notifications.
- */
-fun notificationSocketActions() = SocketActionHandler.socketActions {
-    /**
-     * Close a notification.
-     */
-    action("CLOSE_NOTIFICATION") {
-        if (!data.has("notification") || data["notification"] !is Long) {
-            errorMessage("Missing \"notification\" parameter.")
-            return@action false
+/** Socket actions for notifications. */
+fun notificationSocketActions() =
+    SocketActionHandler.socketActions {
+        /** Close a notification. */
+        action("CLOSE_NOTIFICATION") {
+            if (!data.has("notification") || data["notification"] !is Long) {
+                errorMessage("Missing \"notification\" parameter.")
+                return@action false
+            }
+
+            val notification = data.getLong("notification")
+
+            val obj = NotificationManager.getNotification(notification)
+
+            if (obj == null) {
+                errorMessage("That notification couldn't be found.")
+                return@action false
+            }
+
+            if (token.owner == obj.user) {
+                NotificationManager.deleteNotification(notification)
+
+                successMessage("Successfully deleted notification.")
+                return@action true
+            } else {
+                errorMessage("You don't have permission with this notification!")
+                return@action false
+            }
         }
 
-        val notification = data.getLong("notification")
+        /** Delete all notifications */
+        action("CLOSE_ALL_NOTIFICATION") {
+            NotificationManager.deleteAllNotifications(token.owner)
 
-        val obj = NotificationManager.getNotification(notification)
+            successMessage("Successfully deleted all notifications")
 
-        if (obj == null) {
-            errorMessage("That notification couldn't be found.")
-            return@action false
+            true
         }
 
-        if (token.owner == obj.user) {
-            NotificationManager.deleteNotification(notification)
+        /** Get a notification from [data]. */
+        suspend fun SocketSession.getNotification(): Notification? {
+            if (!data.has("notification") && data["notification"] !is Long) {
+                errorMessage("Missing \"notification\" parameter.")
+                return null
+            }
 
-            successMessage("Successfully deleted notification.")
-            return@action true
-        } else {
-            errorMessage("You don't have permission with this notification!")
-            return@action false
-        }
-    }
+            val notification = data.getLong("notification")
 
-    /**
-     * Delete all notifications
-     */
-    action("CLOSE_ALL_NOTIFICATION") {
-        NotificationManager.deleteAllNotifications(token.owner)
+            val obj = NotificationManager.getNotification(notification)
 
-        successMessage("Successfully deleted all notifications")
+            if (obj == null) {
+                errorMessage("That notification couldn't be found.")
+                return null
+            }
 
-        true
-    }
-
-    /**
-     * Get a notification from [data].
-     */
-    suspend fun SocketSession.getNotification(): Notification? {
-        if (!data.has("notification") && data["notification"] !is Long) {
-            errorMessage("Missing \"notification\" parameter.")
-            return null
+            return obj
         }
 
-        val notification = data.getLong("notification")
+        /** Read a notification. */
+        action("READ_NOTIFICATION") {
+            val obj = getNotification() ?: return@action false
 
-        val obj = NotificationManager.getNotification(notification)
+            if (token.owner == obj.user) {
+                NotificationManager.readNotification(obj.id)
 
-        if (obj == null) {
-            errorMessage("That notification couldn't be found.")
-            return null
+                successMessage("Successfully read notification.")
+                return@action true
+            } else {
+                errorMessage("You don't have permission with this notification!")
+                return@action false
+            }
         }
 
-        return obj
-    }
+        /** Un-read a notification */
+        action("UN_READ_NOTIFICATION") {
+            val obj = getNotification() ?: return@action false
 
-    /**
-     * Read a notification.
-     */
-    action("READ_NOTIFICATION") {
-        val obj = getNotification() ?: return@action false
+            if (token.owner == obj.user) {
+                NotificationManager.unReadNotification(obj.id)
 
-        if (token.owner == obj.user) {
-            NotificationManager.readNotification(obj.id)
+                successMessage("Notification successfully unread.")
+                return@action true
+            } else {
+                errorMessage("You don't have permission with this notification!")
+                return@action true
+            }
+        }
 
-            successMessage("Successfully read notification.")
-            return@action true
-        } else {
-            errorMessage("You don't have permission with this notification!")
-            return@action false
+        /** Read all notifications. */
+        action("READ_ALL_NOTIFICATION") {
+            NotificationManager.readAllNotifications(token.owner)
+            successMessage("Successfully read all notifications")
+            true
+        }
+
+        /** Get all unread notifications and the count. */
+        action("GET_ALL_UNREAD_NOTIFICATION") {
+            val (count, notifications) = NotificationManager.getAllUnreadNotifications(token.owner)
+
+            customTypeMessage(
+                "SUCCESS_RECEIVE_UNREAD",
+                JSONObject()
+                    .put("notifications", notifications.map { notifs -> notifs.asJson() }.toJSON())
+                    .put("count", count))
+
+            true
+        }
+
+        /** Get all notifications. */
+        action("GET_ALL_NOTIFICATION") {
+            val notifications = NotificationManager.getNotifications(token.owner)
+
+            customTypeMessage(
+                "SUCCESS_RECEIVE_ALL_NOTIFICATION",
+                notifications.map { notif -> notif.asJson() }.toJSON())
+
+            true
         }
     }
-
-    /**
-     * Un-read a notification
-     */
-    action("UN_READ_NOTIFICATION") {
-        val obj = getNotification() ?: return@action false
-
-        if (token.owner == obj.user) {
-            NotificationManager.unReadNotification(obj.id)
-
-            successMessage("Notification successfully unread.")
-            return@action true
-        } else {
-            errorMessage("You don't have permission with this notification!")
-            return@action true
-        }
-    }
-
-
-    /**
-     * Read all notifications.
-     */
-    action("READ_ALL_NOTIFICATION") {
-        NotificationManager.readAllNotifications(token.owner)
-        successMessage("Successfully read all notifications")
-        true
-    }
-
-    /**
-     * Get all unread notifications and the count.
-     */
-    action("GET_ALL_UNREAD_NOTIFICATION") {
-        val (count, notifications) = NotificationManager.getAllUnreadNotifications(token.owner)
-
-        customTypeMessage("SUCCESS_RECEIVE_UNREAD",
-            JSONObject()
-                .put("notifications", notifications.map { notifs -> notifs.asJson() }.toJSON())
-                .put("count", count)
-        )
-
-        true
-    }
-
-    /**
-     * Get all notifications.
-     */
-    action("GET_ALL_NOTIFICATION") {
-        val notifications = NotificationManager.getNotifications(token.owner)
-        
-        customTypeMessage("SUCCESS_RECEIVE_ALL_NOTIFICATION", notifications.map { notif -> notif.asJson() }.toJSON())
-
-        true
-    }
-}

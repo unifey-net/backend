@@ -14,11 +14,11 @@ import net.unifey.handle.reports.Target
  * @param date The date the report occurred
  */
 data class Report(
-        val id: Long,
-        val feed: String?,
-        val reportee: Long,
-        val target: Target,
-        val reportType: ReportType,
-        val reason: String,
-        val date: Long
+    val id: Long,
+    val feed: String?,
+    val reportee: Long,
+    val target: Target,
+    val reportType: ReportType,
+    val reason: String,
+    val date: Long
 )

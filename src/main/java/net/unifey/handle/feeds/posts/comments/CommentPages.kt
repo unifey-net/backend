@@ -18,67 +18,57 @@ import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
-/**
- * Managing comments on a post.
- */
+/** Managing comments on a post. */
 fun Route.commentPages() {
     @Throws(InvalidArguments::class)
     suspend fun ApplicationCall.createComment(): Triple<Token, Post, String> {
         val (token, post) = getPost(requirePost = true)
 
-        val content = receiveParameters()["content"]
-                ?: throw InvalidArguments("content")
+        val content = receiveParameters()["content"] ?: throw InvalidArguments("content")
 
         // token should never be null. it will always have thrown a NoPermission before.
         return Triple(token ?: throw MalformedContent(), post, cleanInput(content))
     }
 
-    /**
-     * Get a comment.
-     */
+    /** Get a comment. */
     get {
         val (token, post) = call.getPost()
 
-        val page = call.request.queryParameters["page"]?.toIntOrNull()
-                ?: 1
+        val page = call.request.queryParameters["page"]?.toIntOrNull() ?: 1
 
-        val sort = try {
-            val sortString = call.request.queryParameters["sort"] ?: "new"
+        val sort =
+            try {
+                val sortString = call.request.queryParameters["sort"] ?: "new"
 
-            SortingMethod.valueOf(sortString.toUpperCase())
-        } catch (ex: Exception) {
-            throw InvalidArguments("sort")
-        }
+                SortingMethod.valueOf(sortString.toUpperCase())
+            } catch (ex: Exception) {
+                throw InvalidArguments("sort")
+            }
 
         call.respond(CommentManager.getPostCommentData(post, page, sort, token?.owner))
     }
 
-    /**
-     * Create a comment.
-     */
+    /** Create a comment. */
     put {
         val (token, post, content) = call.createComment()
 
-        CommentManager.createComment(post.id, null, post.feed, UserManager.getUser(token.owner), content)
+        CommentManager.createComment(
+            post.id, null, post.feed, UserManager.getUser(token.owner), content)
 
         call.respond(Response())
     }
 
-    /**
-     * Manage comments.
-     */
+    /** Manage comments. */
     route("/{comment}") {
-        /**
-         * Manage a comment.
-         */
-        suspend fun ApplicationCall.manageComment(requireManage: Boolean = true): Triple<Token, Comment, Post> {
+        /** Manage a comment. */
+        suspend fun ApplicationCall.manageComment(
+            requireManage: Boolean = true
+        ): Triple<Token, Comment, Post> {
             val (token, post) = getPost()
 
-            if (token == null)
-                throw NoPermission()
+            if (token == null) throw NoPermission()
 
-            val comment = parameters["comment"]?.toLongOrNull()
-                    ?: throw InvalidArguments("comment")
+            val comment = parameters["comment"]?.toLongOrNull() ?: throw InvalidArguments("comment")
 
             val obj = CommentManager.getCommentById(comment)
 
@@ -88,29 +78,23 @@ fun Route.commentPages() {
             return Triple(token, obj, post)
         }
 
-        /**
-         * Get all comments on the included comments.
-         */
+        /** Get all comments on the included comments. */
         get {
             val (token) = call.getPost()
 
-            val comment = call.parameters["comment"]?.toLongOrNull()
-                    ?: throw InvalidArguments("comment")
+            val comment =
+                call.parameters["comment"]?.toLongOrNull() ?: throw InvalidArguments("comment")
 
-            val page = call.request.queryParameters["id"]?.toIntOrNull()
-                    ?: 1
+            val page = call.request.queryParameters["id"]?.toIntOrNull() ?: 1
 
             val obj = CommentManager.getCommentById(comment)
 
-            if (obj.level == 2)
-                throw InvalidArguments("comment")
+            if (obj.level == 2) throw InvalidArguments("comment")
 
             call.respond(CommentManager.getCommentData(obj, page, SortingMethod.OLD, token?.owner))
         }
 
-        /**
-         * Delete a comment.
-         */
+        /** Delete a comment. */
         delete {
             val (_, obj) = call.manageComment()
 
@@ -119,69 +103,57 @@ fun Route.commentPages() {
             call.respond(Response())
         }
 
-        /**
-         * Manage content
-         */
+        /** Manage content */
         post("/content") {
             val (token, obj) = call.manageComment()
 
             // must be owner to change content.
-            if (token.owner != obj.authorId)
-                throw NoPermission()
+            if (token.owner != obj.authorId) throw NoPermission()
 
-            var content = call.receiveParameters()["content"]
-                    ?: throw InvalidArguments("content")
+            var content = call.receiveParameters()["content"] ?: throw InvalidArguments("content")
 
             content = cleanInput(content)
 
-            if (content.length > CommentLimits.MAX_COMMENT_LEN)
-                throw InvalidArguments("content")
+            if (content.length > CommentLimits.MAX_COMMENT_LEN) throw InvalidArguments("content")
 
             obj.content = content
 
             call.respond(Response())
         }
 
-        /**
-         * Manage your own vote.
-         */
+        /** Manage your own vote. */
         post("/vote") {
             val (token, _) = call.getPost()
 
-            if (token == null)
-                throw NoPermission()
+            if (token == null) throw NoPermission()
 
-            val comment = call.parameters["comment"]?.toLongOrNull()
-                    ?: throw InvalidArguments("comment")
+            val comment =
+                call.parameters["comment"]?.toLongOrNull() ?: throw InvalidArguments("comment")
 
             val obj = CommentManager.getCommentById(comment)
 
             val params = call.receiveParameters()
-            val vote = params["vote"]?.toIntOrNull()
-                    ?: throw InvalidArguments("vote")
+            val vote = params["vote"]?.toIntOrNull() ?: throw InvalidArguments("vote")
 
             VoteManager.setCommentVote(obj.id, token.owner, vote)
 
             call.respond(Response())
         }
 
-        /**
-         * Comment on a comment.
-         */
+        /** Comment on a comment. */
         put {
             call.getFeed(requireComment = true)
 
             val (token, obj, post) = call.manageComment(false)
 
-            if (obj.level == 2)
-                throw InvalidArguments("comments")
+            if (obj.level == 2) throw InvalidArguments("comments")
 
-            var content = call.receiveParameters()["content"]
-                    ?: throw InvalidArguments("content")
+            var content = call.receiveParameters()["content"] ?: throw InvalidArguments("content")
 
             content = cleanInput(content)
 
-            CommentManager.createComment(post.id, obj.id, obj.feed, UserManager.getUser(token.owner), content)
+            CommentManager.createComment(
+                post.id, obj.id, obj.feed, UserManager.getUser(token.owner), content)
 
             call.respond(Response())
         }

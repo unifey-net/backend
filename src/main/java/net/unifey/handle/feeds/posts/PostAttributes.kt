@@ -7,41 +7,32 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
 import org.bson.Document
 
-/**
- * Post attributes for [id].
- */
+/** Post attributes for [id]. */
 class PostAttributes(val id: Long, private val collection: String = "posts") {
     private val store: MutableMap<String, Any> by lazy {
-        val doc = Mongo.getClient()
+        val doc =
+            Mongo.getClient()
                 .getDatabase("feeds")
                 .getCollection(collection)
                 .find(Filters.eq("id", id))
                 .firstOrNull()
                 ?: throw NotFound("post")
 
-        val store = doc["attributes"] as? Document
-                ?: throw MalformedContent()
+        val store = doc["attributes"] as? Document ?: throw MalformedContent()
 
-        store
-                .toMap()
-                .toMutableMap()
+        store.toMap().toMutableMap()
     }
 
-    /**
-     * Set [attr] to [value]
-     */
+    /** Set [attr] to [value] */
     fun setAttribute(attr: String, value: Any) {
         Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection(collection)
-                .updateOne(Filters.eq("id"), Updates.set("attributes.$attr", value))
+            .getDatabase("feeds")
+            .getCollection(collection)
+            .updateOne(Filters.eq("id"), Updates.set("attributes.$attr", value))
 
         store[attr] = value
     }
 
-    /**
-     * Get [attr] as [T]
-     */
-    fun <T> getAttribute(attr: String, default: T): T =
-            store[attr] as? T ?: default
+    /** Get [attr] as [T] */
+    fun <T> getAttribute(attr: String, default: T): T = store[attr] as? T ?: default
 }

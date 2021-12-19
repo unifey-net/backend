@@ -7,7 +7,6 @@ package net.unifey.handle.messaging.channels.objects
  * @param members The members of the group chat.
  * @param owner The owner of the group chat. This user can kick and invite people.
  * @param description The description of the group chat. This is changeable by [owner].
- *
  */
 data class GroupMessageChannel(
     override val id: Long,

@@ -12,11 +12,12 @@ import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
 fun profilePages(): Route.() -> Unit = {
-    /**
-     * Get [paramName] for a profile action.
-     */
+    /** Get [paramName] for a profile action. */
     @Throws(InvalidArguments::class)
-    suspend fun ApplicationCall.profileInput(paramName: String, maxLength: Int): Pair<User, String> {
+    suspend fun ApplicationCall.profileInput(
+        paramName: String,
+        maxLength: Int
+    ): Pair<User, String> {
         val token = isAuthenticated()
 
         val params = receiveParameters()
@@ -31,9 +32,7 @@ fun profilePages(): Route.() -> Unit = {
         return UserManager.getUser(token.owner) to param
     }
 
-    /**
-     * Change the description
-     */
+    /** Change the description */
     put("/description") {
         val (user, desc) = call.profileInput("description", Profile.MAX_DESC_LEN)
 
@@ -42,9 +41,7 @@ fun profilePages(): Route.() -> Unit = {
         call.respond(Response())
     }
 
-    /**
-     * Change the location
-     */
+    /** Change the location */
     put("/location") {
         val (user, loc) = call.profileInput("location", Profile.MAX_LOC_LEN)
 
@@ -53,9 +50,7 @@ fun profilePages(): Route.() -> Unit = {
         call.respond(Response())
     }
 
-    /**
-     * Change the discord
-     */
+    /** Change the discord */
     put("/discord") {
         val (user, disc) = call.profileInput("discord", Profile.MAX_DISC_LEN)
 

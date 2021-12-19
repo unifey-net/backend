@@ -1,11 +1,11 @@
 package net.unifey.handle.users
 
-import dev.shog.lib.util.ifSo
 import io.ktor.application.*
 import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import java.util.concurrent.TimeUnit
 import net.unifey.auth.AuthenticationException
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
@@ -29,7 +29,6 @@ import net.unifey.util.RateLimitException
 import net.unifey.util.checkCaptcha
 import net.unifey.util.ensureProperImageBody
 import org.mindrot.jbcrypt.BCrypt
-import java.util.concurrent.TimeUnit
 
 fun Routing.userPages() {
     route("/user") {
@@ -38,25 +37,20 @@ fun Routing.userPages() {
         route("/profile", profilePages())
         route("/connections", connectionPages())
 
-        /**
-         * Get your own user data.
-         */
+        /** Get your own user data. */
         get {
             val token = call.isAuthenticated()
 
             call.respond(Response(UserManager.getUser(token.owner)))
         }
 
-        /**
-         * Change a user using [param]
-         */
+        /** Change a user using [param] */
         @Throws(Unverified::class, InvalidArguments::class)
         suspend fun ApplicationCall.changeUser(param: String): Pair<User, String> {
             val token = isAuthenticated()
             val user = UserManager.getUser(token.owner)
 
-            if (!user.verified)
-                throw Unverified()
+            if (!user.verified) throw Unverified()
 
             val params = receiveParameters()
             val par = params[param] ?: throw InvalidArguments(param)
@@ -64,9 +58,7 @@ fun Routing.userPages() {
             return user to par
         }
 
-        /**
-         * Change your own email
-         */
+        /** Change your own email */
         put("/email") {
             val (user, email) = call.changeUser("email")
 
@@ -80,9 +72,7 @@ fun Routing.userPages() {
             call.respond(HttpStatusCode.OK, Response("Changed email."))
         }
 
-        /**
-         * Change your own password.
-         */
+        /** Change your own password. */
         put("/password") {
             val (user, password) = call.changeUser("password")
 
@@ -92,14 +82,13 @@ fun Routing.userPages() {
 
             UserManager.signOutAll(user)
 
-            NotificationManager.postNotification(user.id, "Your password has successfully been changed!"    )
+            NotificationManager.postNotification(
+                user.id, "Your password has successfully been changed!")
 
             call.respond(HttpStatusCode.OK, Response("Password has been updated."))
         }
 
-        /**
-         * Change your own name.
-         */
+        /** Change your own name. */
         put("/name") {
             val (user, username) = call.changeUser("username")
 
@@ -112,14 +101,16 @@ fun Routing.userPages() {
 
             user.username = username
 
-            FieldChangeLimiter.createLimit("USER", user.id, "USERNAME", System.currentTimeMillis() + TimeUnit.DAYS.toMillis(31))
+            FieldChangeLimiter.createLimit(
+                "USER",
+                user.id,
+                "USERNAME",
+                System.currentTimeMillis() + TimeUnit.DAYS.toMillis(31))
 
             call.respond(HttpStatusCode.OK, Response("Username has been updated."))
         }
 
-        /**
-         * Change your own picture;.
-         */
+        /** Change your own picture;. */
         put("/picture") {
             val token = call.isAuthenticated()
 
@@ -130,72 +121,70 @@ fun Routing.userPages() {
             call.respond(HttpStatusCode.PayloadTooLarge, Response("Image type is not JPEG!"))
         }
 
-        /**
-         * Manage other users using usernames.
-         */
+        /** Manage other users using usernames. */
         route("/name/{name}") {
-            /**
-             * Get a user's data.
-             */
+            /** Get a user's data. */
             get {
                 val name = call.parameters["name"]
 
                 if (name == null)
                     call.respond(HttpStatusCode.BadRequest, Response("No name parameter"))
-                else
-                    call.respond(Response(UserManager.getId(name)))
+                else call.respond(Response(UserManager.getId(name)))
             }
 
-            /**
-             * Get a user's picture.
-             */
+            /** Get a user's picture. */
             get("/picture") {
-                val name = call.parameters["name"]
-                        ?: throw InvalidArguments("name")
+                val name = call.parameters["name"] ?: throw InvalidArguments("name")
 
-                call.respondBytes(S3ImageHandler.getPicture("pfp/${UserManager.getId(name)}.jpg", "pfp/default.jpg"), ContentType.Image.JPEG)
+                call.respondBytes(
+                    S3ImageHandler.getPicture(
+                        "pfp/${UserManager.getId(name)}.jpg", "pfp/default.jpg"),
+                    ContentType.Image.JPEG)
             }
         }
 
-        /**
-         * Manage other users using IDs.
-         */
+        /** Manage other users using IDs. */
         route("/id/{id}") {
             get {
-                val id = call.parameters["id"]?.toLongOrNull()
-                        ?: throw InvalidArguments("id")
+                val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
                 call.respond(UserManager.getUser(id))
             }
 
             get("/picture") {
-                val id = call.parameters["id"]?.toLongOrNull()
-                        ?: throw InvalidArguments("id")
+                val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
-                call.respondBytes(S3ImageHandler.getPicture("pfp/${UserManager.getUser(id).id}.jpg", "pfp/default.jpg"), ContentType.Image.JPEG)
+                call.respondBytes(
+                    S3ImageHandler.getPicture(
+                        "pfp/${UserManager.getUser(id).id}.jpg", "pfp/default.jpg"),
+                    ContentType.Image.JPEG)
             }
         }
 
         @Throws(InvalidArguments::class, AlreadyExists::class)
-        suspend fun useAutoConnect(params: Parameters): Triple<ConnectionManager.Type, String, String>? {
-            val autoConType = try {
-                ConnectionManager.Type.valueOf(params["autoConType"] ?: "")
-            } catch (ex: Exception) {
-                null
-            }
+        suspend fun useAutoConnect(
+            params: Parameters
+        ): Triple<ConnectionManager.Type, String, String>? {
+            val autoConType =
+                try {
+                    ConnectionManager.Type.valueOf(params["autoConType"] ?: "")
+                } catch (ex: Exception) {
+                    null
+                }
             val autoConToken = params["autoConToken"]
 
             if (autoConType != null && autoConToken != null) {
-                val serviceId = autoConType.handler.getServiceId(autoConToken)
-                    ?: throw InvalidArguments("autoConToken")
+                val serviceId =
+                    autoConType.handler.getServiceId(autoConToken)
+                        ?: throw InvalidArguments("autoConToken")
 
                 val connection = ConnectionManager.findConnection(autoConType, serviceId)
 
-                if (connection != null)
-                    throw AlreadyExists("connection", "token")
+                if (connection != null) throw AlreadyExists("connection", "token")
                 else {
-                    val email = autoConType.handler.getEmail(autoConToken)
-                        ?: throw InvalidArguments("autoConToken")
+                    val email =
+                        autoConType.handler.getEmail(autoConToken)
+                            ?: throw InvalidArguments("autoConToken")
 
                     return Triple(autoConType, serviceId, email)
                 }
@@ -204,15 +193,12 @@ fun Routing.userPages() {
             return null
         }
 
-        /**
-         * Register an account
-         */
+        /** Register an account */
         put("/register") {
             val params = call.receiveParameters()
 
             // only check for captcha in production
-            if (prod)
-                call.checkCaptcha(params)
+            if (prod) call.checkCaptcha(params)
 
             val username = params["username"]
             val password = params["password"]
@@ -222,7 +208,12 @@ fun Routing.userPages() {
                 throw InvalidArguments("username", "password", "email")
 
             val autoCon = useAutoConnect(params)
-            val verified = autoCon != null && autoCon.third.equals(email, true) // if they're using a connection & the inputted is same as service, auto verify
+            val verified =
+                autoCon != null &&
+                    autoCon.third.equals(
+                        email,
+                        true) // if they're using a connection & the inputted is same as service,
+            // auto verify
 
             val user = UserManager.createUser(email, username, password, verified = verified)
 
@@ -236,9 +227,7 @@ fun Routing.userPages() {
         }
     }
 
-    /**
-     * Authenticate. Input a username and password in return for a token
-     */
+    /** Authenticate. Input a username and password in return for a token */
     route("/authenticate") {
         route("/connections") {
             post("/google") {
@@ -246,16 +235,17 @@ fun Routing.userPages() {
 
                 val accessToken = params["token"] ?: throw InvalidArguments("token")
 
-                val connection = ConnectionManager.findConnection(
-                    ConnectionManager.Type.GOOGLE,
-                    Google.getServiceId(accessToken)
-                        ?: throw InvalidArguments("token")
-                )
+                val connection =
+                    ConnectionManager.findConnection(
+                        ConnectionManager.Type.GOOGLE,
+                        Google.getServiceId(accessToken) ?: throw InvalidArguments("token"))
 
                 if (connection != null)
-                    call.respond(AuthenticateResponse(Authenticator.generate(connection.user), UserManager.getUser(connection.user)))
-                else
-                    throw AuthenticationException("Invalid access token")
+                    call.respond(
+                        AuthenticateResponse(
+                            Authenticator.generate(connection.user),
+                            UserManager.getUser(connection.user)))
+                else throw AuthenticationException("Invalid access token")
             }
         }
 
@@ -263,8 +253,7 @@ fun Routing.userPages() {
             val params = call.receiveParameters()
 
             // only check for captcha in production
-            if (prod)
-                call.checkCaptcha(params)
+            if (prod) call.checkCaptcha(params)
 
             val username = params["username"]
             val password = params["password"]

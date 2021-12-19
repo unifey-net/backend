@@ -4,31 +4,22 @@ import net.unifey.handle.users.email.UserEmailRequest
 import net.unifey.util.FRONTEND_URL
 import net.unifey.util.URL
 
-/**
- * An email body.
- */
+/** An email body. */
 interface Email {
-    /**
-     * Create the subject of the email based off a [request].
-     */
+    /** Create the subject of the email based off a [request]. */
     fun getSubject(request: UserEmailRequest): String
 
-    /**
-     * Create the body of the email based off a [request].
-     */
+    /** Create the body of the email based off a [request]. */
     fun getBody(request: UserEmailRequest): String
 
     companion object {
-        /**
-         * Get a [Email] object from file (resources folder)
-         */
+        /** Get a [Email] object from file (resources folder) */
         fun from(name: String): Email {
             val stream = this::class.java.classLoader.getResourceAsStream(name) ?: throw Exception()
 
-            val lines = stream.reader()
-                .readLines()
+            val lines = stream.reader().readLines()
 
-            return object: Email {
+            return object : Email {
                 override fun getSubject(request: UserEmailRequest): String {
                     return lines[0]
                 }

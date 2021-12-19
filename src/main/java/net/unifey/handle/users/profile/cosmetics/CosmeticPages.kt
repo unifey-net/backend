@@ -16,44 +16,38 @@ import net.unifey.util.cleanInput
 import net.unifey.util.ensureProperImageBody
 
 fun cosmeticPages(): Route.() -> Unit = {
-    /**
-     * Helper function for cosmetic management calls.
-     * Returns the type to the ID.
-     */
+    /** Helper function for cosmetic management calls. Returns the type to the ID. */
     suspend fun ApplicationCall.manageCosmetic(): Triple<Int, String, String?> {
         val token = isAuthenticated()
 
-        if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)
-            throw NoPermission()
+        if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN) throw NoPermission()
 
         val params = request.queryParameters
 
         val id = params["id"]
         val type = params["type"]?.toIntOrNull()
 
-        if (id == null || type == null)
-            throw InvalidArguments("type", "id")
+        if (id == null || type == null) throw InvalidArguments("type", "id")
 
         return Triple(type, cleanInput(id), params["desc"])
     }
 
-    /**
-     * Get an image cosmetic's image.
-     */
+    /** Get an image cosmetic's image. */
     get("/viewer") {
         val params = call.request.queryParameters
 
         val type = params["type"]?.toIntOrNull()
         val id = params["id"]
 
-        if (type == null || id == null)
-            throw InvalidArguments("type", "id")
+        if (type == null || id == null) throw InvalidArguments("type", "id")
 
-        call.respondBytes(S3ImageHandler.getPicture("cosmetics/$type.$id.jpg", "cosmetics/default.jpg"))
+        call.respondBytes(
+            S3ImageHandler.getPicture("cosmetics/$type.$id.jpg", "cosmetics/default.jpg"))
     }
 
     /**
-     * Get all cosmetics, or select by type or id. To access a user's cosmetics, get their profile which contains their cosmetics.
+     * Get all cosmetics, or select by type or id. To access a user's cosmetics, get their profile
+     * which contains their cosmetics.
      */
     get {
         val params = call.request.queryParameters
@@ -61,25 +55,23 @@ fun cosmeticPages(): Route.() -> Unit = {
         val id = params["id"]
         val type = params["type"]?.toIntOrNull()
 
-        val cosmetics = when {
-            id != null && type != null -> Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) && cos.type == type }
-            id != null -> Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) }
-            type != null -> Cosmetics.getAll().filter { cos -> cos.type == type }
-
-            else -> Cosmetics.getAll()
-        }
+        val cosmetics =
+            when {
+                id != null && type != null ->
+                    Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) && cos.type == type }
+                id != null -> Cosmetics.getAll().filter { cos -> cos.id.equals(id, true) }
+                type != null -> Cosmetics.getAll().filter { cos -> cos.type == type }
+                else -> Cosmetics.getAll()
+            }
 
         call.respond(cosmetics)
     }
 
-    /**
-     * Toggle a cosmetic for a user.
-     */
+    /** Toggle a cosmetic for a user. */
     post {
         val token = call.isAuthenticated()
 
-        if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN)
-            throw NoPermission()
+        if (UserManager.getUser(token.owner).role != GlobalRoles.ADMIN) throw NoPermission()
 
         val params = call.receiveParameters()
 
@@ -87,35 +79,32 @@ fun cosmeticPages(): Route.() -> Unit = {
         val id = params["id"]
         val type = params["type"]?.toIntOrNull()
 
-        if (id == null || type == null || user == null)
-            throw InvalidArguments("type", "id", "user")
+        if (id == null || type == null || user == null) throw InvalidArguments("type", "id", "user")
 
         val userObj = UserManager.getUser(user)
 
-        val retrieved = Cosmetics.getAll()
-            .firstOrNull { cosmetic -> cosmetic.type == type && cosmetic.id.equals(id, true) }
-            ?: throw NotFound("cosmetic")
+        val retrieved =
+            Cosmetics.getAll().firstOrNull { cosmetic ->
+                cosmetic.type == type && cosmetic.id.equals(id, true)
+            }
+                ?: throw NotFound("cosmetic")
 
         val newCosmetics = userObj.profile.cosmetics.toMutableList()
 
         if (newCosmetics.any { cos -> cos.id.equals(id, true) && cos.type == type })
             newCosmetics.removeIf { cos -> cos.id.equals(id, true) && cos.type == type }
-        else
-            newCosmetics.add(retrieved)
+        else newCosmetics.add(retrieved)
 
         userObj.profile.cosmetics = newCosmetics
 
         call.respond(Response())
     }
 
-    /**
-     * Create a cosmetic
-     */
+    /** Create a cosmetic */
     put {
         val (type, id, desc) = call.manageCosmetic()
 
-        if (desc == null)
-            throw InvalidArguments("desc")
+        if (desc == null) throw InvalidArguments("desc")
 
         when (type) {
             0 -> {
@@ -130,9 +119,7 @@ fun cosmeticPages(): Route.() -> Unit = {
         call.respond(Response())
     }
 
-    /**
-     * Delete a cosmetic
-     */
+    /** Delete a cosmetic */
     delete {
         val (type, id) = call.manageCosmetic()
 

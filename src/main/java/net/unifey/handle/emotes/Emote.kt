@@ -1,7 +1,5 @@
 package net.unifey.handle.emotes
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-
 /**
  * An emote.
  *
@@ -12,10 +10,10 @@ import com.fasterxml.jackson.annotation.JsonIgnore
  * @param date The date the emote was uploaded.
  */
 data class Emote(
-        val url: String,
-        val id: Long,
-        val parent: Long,
-        val name: String,
-        val uploadedBy: Long,
-        val date: Long
+    val url: String,
+    val id: Long,
+    val parent: Long,
+    val name: String,
+    val uploadedBy: Long,
+    val date: Long
 )
