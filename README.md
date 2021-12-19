@@ -1,6 +1,5 @@
 ![Total Lines](https://img.shields.io/tokei/lines/github/unifey-net/backend) ![Issues](https://img.shields.io/github/issues/unifey-net/backend)
 <h1 align="center">Unifey Backend</h1>
-<hr>
 
 ## Style / Format
 
