@@ -1,6 +1,6 @@
 package net.unifey.handle.notification
 
-import dev.shog.lib.util.toJSON
+import dev.ajkneisl.lib.util.toJSON
 import io.ktor.http.cio.websocket.*
 import net.unifey.handle.live.SocketActionHandler
 import net.unifey.handle.live.SocketActionHandler.action

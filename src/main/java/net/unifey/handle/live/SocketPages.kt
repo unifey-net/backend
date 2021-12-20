@@ -1,6 +1,6 @@
 package net.unifey.handle.live
 
-import dev.shog.lib.util.jsonObjectOf
+import dev.ajkneisl.lib.util.jsonObjectOf
 import io.ktor.application.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.response.*

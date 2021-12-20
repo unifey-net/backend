@@ -48,7 +48,6 @@ object BetaHandler {
             .getCollection<Request>("beta_requests")
             .insertOne(Request(name, authorized, type, message))
 
-        webhook.sendBigMessage(
-            message, "**BETA REQUEST**: [__${type}__, from __${name}__ ($authorized)]")
+        webhook.sendMessage("**BETA REQUEST**: [__${type}__, from __${name}__ ($authorized)]\n\n```$message```")
     }
 }

@@ -83,6 +83,6 @@ suspend fun ApplicationCall.checkCaptcha(parameters: Parameters? = null) {
     val params = parameters ?: receiveParameters()
     val captcha = params["captcha"] ?: throw InvalidArguments("captcha")
 
-    if (!ReCaptcha.getSuccessAsync(captcha).await())
+    if (!ReCaptcha.getSuccessAsync(captcha))
         throw Error({ respond(HttpStatusCode.BadRequest, Response("Invalid reCAPTCHA.")) })
 }

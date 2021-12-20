@@ -1,6 +1,6 @@
 package net.unifey.handle
 
-import dev.shog.lib.util.eitherOr
+import dev.ajkneisl.lib.util.eitherOr
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond

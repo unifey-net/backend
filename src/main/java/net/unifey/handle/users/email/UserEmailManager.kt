@@ -8,7 +8,7 @@ import com.sendgrid.Request
 import com.sendgrid.SendGrid
 import com.sendgrid.helpers.mail.Mail
 import com.sendgrid.helpers.mail.objects.Content
-import dev.shog.lib.util.currentTimeMillis
+import dev.ajkneisl.lib.util.currentTimeMillis
 import io.ktor.http.*
 import io.ktor.response.*
 import java.io.IOException
@@ -200,17 +200,6 @@ object UserEmailManager {
         unsubscribed.add(email to time)
     }
 
-    /** Handle a bounce request */
-    fun handleBounce(bounce: String) {
-        val obj = JSONObject(bounce)
-        val destinations = obj.getJSONArray("destination")
-
-        for (i in 0 until destinations.length()) unSubscribe(destinations.getString(i))
-
-        webhook.sendBigMessage(
-            bounce, "A bounce has occurred when sending an email to $destinations")
-    }
-
     /** Resend an email */
     @Throws(TooManyAttempts::class, InvalidArguments::class)
     suspend fun resendEmail(id: Long, type: Int) {
@@ -230,7 +219,7 @@ object UserEmailManager {
 
     /** Resend an email. */
     @Throws(TooManyAttempts::class)
-    fun resendEmail(request: UserEmailRequest) {
+    suspend fun resendEmail(request: UserEmailRequest) {
         val type = EmailTypes.values().single { type -> type.id == request.type }
 
         sendEmail(request, type.default)
@@ -239,7 +228,7 @@ object UserEmailManager {
     val EMAIL_LOGGER: Logger = LoggerFactory.getLogger(this::class.java)
 
     /** Send an email. */
-    private fun sendEmail(request: UserEmailRequest, email: Email) {
+    private suspend fun sendEmail(request: UserEmailRequest, email: Email) {
         val from = com.sendgrid.helpers.mail.objects.Email("unifey@ajkneisl.dev")
         val subject = email.getSubject(request)
         val to = com.sendgrid.helpers.mail.objects.Email(request.email)
@@ -259,12 +248,7 @@ object UserEmailManager {
         } catch (ex: IOException) {
             EMAIL_LOGGER.error(
                 "An email (${request.id} - ${request.type}) could not be sent to ${request.email}.")
-            webhook.sendMessage(
-                "There was an issue sending an email to ${request.id} (${request.email})")
-
-            val error = StringWriter()
-            ex.printStackTrace(PrintWriter(error))
-            webhook.sendBigMessage(error.toString(), System.getenv("SENDGRID_API_KEY"))
+            webhook.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
         }
     }
 }

@@ -3,7 +3,7 @@ package net.unifey.handle.communities
 import com.fasterxml.jackson.annotation.JsonIgnore
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
-import dev.shog.lib.util.eitherOr
+import dev.ajkneisl.lib.util.eitherOr
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager

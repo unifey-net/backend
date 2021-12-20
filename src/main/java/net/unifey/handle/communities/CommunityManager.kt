@@ -2,7 +2,7 @@ package net.unifey.handle.communities
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
-import dev.shog.lib.util.getAge
+import dev.ajkneisl.lib.util.getAge
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import kotlinx.coroutines.Deferred

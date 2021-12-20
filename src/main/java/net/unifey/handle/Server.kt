@@ -30,6 +30,7 @@ import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import net.unifey.webhook
 import org.slf4j.event.Level
+import java.io.File
 
 val HTTP_CLIENT = HttpClient {
     install(JsonFeature) {
@@ -79,8 +80,6 @@ val SERVER =
 
             exception<Throwable> {
                 it.printStackTrace()
-                webhook.sendBigMessage(
-                    it.stackTrace.joinToString("\n"), "Unifey Error: ${it.message}")
 
                 call.respond(
                     HttpStatusCode.InternalServerError,

@@ -3,8 +3,7 @@ package net.unifey
 import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
 import com.sendgrid.*
-import dev.shog.lib.discord.DiscordWebhook
-import dev.shog.lib.discord.WebhookUser
+import dev.ajkneisl.lib.discord.DiscordWebhook
 import io.ktor.locations.*
 import net.unifey.handle.SERVER
 import net.unifey.handle.messaging.messageSocketActions
@@ -40,9 +39,7 @@ fun main(args: Array<String>) {
     messageSocketActions()
 
     mongo = System.getenv("MONGO")
-    webhook =
-        DiscordWebhook(
-            System.getenv("WEBHOOK"), WebhookUser("Unifey", "https://unifey.net/favicon.png"))
+    webhook = DiscordWebhook(System.getenv("WEBHOOK"))
     System.getenv("RECAPTCHA") // to ensure exists.
 
     SERVER.start(true)
