@@ -1,12 +1,14 @@
 package net.unifey.handle.notification
 
-import com.mongodb.client.model.Filters
-import com.mongodb.client.model.Updates
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.util.IdGenerator
-import org.bson.Document
+import org.litote.kmongo.and
+import org.litote.kmongo.eq
+import org.litote.kmongo.setValue
 
 object NotificationManager {
     /** Post a notification with [message] for a [User]. */
@@ -18,58 +20,37 @@ object NotificationManager {
 
         val notification = Notification(id, user, message, System.currentTimeMillis(), false)
 
-        Mongo.getClient()
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .insertOne(
-                Document(
-                    mapOf(
-                        "user" to user,
-                        "id" to id,
-                        "message" to message,
-                        "date" to System.currentTimeMillis(),
-                        "read" to false)))
+            .getCollection<Notification>("notifications")
+            .insertOne(notification)
 
-        Live.sendUpdate(Live.LiveObject("NOTIFICATION", user, notification.asJson()))
-    }
-
-    /** Form a BSON [doc] into a [Notification] object. */
-    private fun formNotificationObject(doc: Document): Notification {
-        return Notification(
-            doc.getLong("id"),
-            doc.getLong("user"),
-            doc.getString("message"),
-            doc.getLong("date"),
-            doc.getBoolean("read"))
+        Live.sendUpdate(Live.LiveObject("NOTIFICATION", user, Json.encodeToString(notification)))
     }
 
     /** Get a [Notification] by it's [id]. */
-    fun getNotification(id: Long): Notification? {
-        val find =
-            Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("notifications")
-                .find(Filters.eq("id", id))
-                .first()
-
-        return if (find == null) null else formNotificationObject(find)
+    suspend fun getNotification(id: Long): Notification? {
+        return Mongo.K_MONGO
+            .getDatabase("users")
+            .getCollection<Notification>("notifications")
+            .find(Notification::id eq id)
+            .first()
     }
 
     /**
      * Get all of [user]'s notifications. Any notifications over 50 are cut off, and can be
      * requested after the initial are closed.
      */
-    fun getNotifications(user: Long): List<Notification> {
-        val find =
-            Mongo.getClient()
+    suspend fun getNotifications(user: Long): List<Notification> {
+        val notifs =
+            Mongo.K_MONGO
                 .getDatabase("users")
-                .getCollection("notifications")
-                .find(Filters.eq("user", user))
+                .getCollection<Notification>("notifications")
+                .find(Notification::user eq user)
+                .toList()
 
-        return if (!find.any()) emptyList()
+        return if (!notifs.any()) emptyList()
         else {
-            val notifs = find.map { doc -> formNotificationObject(doc) }.toList()
-
             if (notifs.size > 50) {
                 notifs.subList(0, 50)
             } else notifs
@@ -77,67 +58,66 @@ object NotificationManager {
     }
 
     /** Delete a [Notification]. */
-    fun deleteNotification(id: Long) {
-        Mongo.getClient()
+    suspend fun deleteNotification(id: Long) {
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .deleteOne(Filters.eq("id", id))
+            .getCollection<Notification>("notifications")
+            .deleteOne(Notification::id eq id)
     }
 
     /** Delete all of a [User]'s notifications */
-    fun User.deleteAllNotifications() = deleteAllNotifications(this.id)
+    suspend fun User.deleteAllNotifications() = deleteAllNotifications(this.id)
 
     /** Delete all of [user]'s notifications. */
-    fun deleteAllNotifications(user: Long) {
-        Mongo.getClient()
+    suspend fun deleteAllNotifications(user: Long) {
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .deleteMany(Filters.eq("user", user))
+            .getCollection<Notification>("notifications")
+            .deleteOne(Notification::user eq user)
     }
 
     /** Mark a notification as read. */
-    fun readNotification(id: Long) {
-        Mongo.getClient()
+    suspend fun readNotification(id: Long) {
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .updateOne(Filters.eq("id", id), Updates.set("read", true))
+            .getCollection<Notification>("notifications")
+            .updateOne(Notification::id eq id, setValue(Notification::read, true))
     }
 
     /** Mark a notification as unread. */
-    fun unReadNotification(id: Long) {
-        Mongo.getClient()
+    suspend fun unReadNotification(id: Long) {
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .updateOne(Filters.eq("id", id), Updates.set("read", false))
+            .getCollection<Notification>("notifications")
+            .updateOne(Notification::id eq id, setValue(Notification::read, false))
     }
 
     /** Read all [User]'s notifications. */
-    fun User.readAllNotifications() = readAllNotifications(this.id)
+    suspend fun User.readAllNotifications() = readAllNotifications(this.id)
 
     /** Mark all notifications as read. */
-    fun readAllNotifications(user: Long) {
-        Mongo.getClient()
+    suspend fun readAllNotifications(user: Long) {
+        Mongo.K_MONGO
             .getDatabase("users")
-            .getCollection("notifications")
-            .updateMany(Filters.eq("user", user), Updates.set("read", true))
+            .getCollection<Notification>("notifications")
+            .updateMany(Notification::user eq user, setValue(Notification::read, false))
     }
 
     /** Get a [User]'s unread notifications. */
-    fun User.getAllUnreadNotifications(): Pair<Int, List<Notification>> =
+    suspend fun User.getAllUnreadNotifications(): Pair<Int, List<Notification>> =
         getAllUnreadNotifications(this.id)
 
     /** Get all unread notifications for [user]. */
-    fun getAllUnreadNotifications(user: Long): Pair<Int, List<Notification>> {
-        val find =
-            Mongo.getClient()
+    suspend fun getAllUnreadNotifications(user: Long): Pair<Int, List<Notification>> {
+        val notifs =
+            Mongo.K_MONGO
                 .getDatabase("users")
-                .getCollection("notifications")
-                .find(Filters.and(Filters.eq("user", user), Filters.eq("read", false)))
+                .getCollection<Notification>("notifications")
+                .find(and(Notification::user eq user, Notification::read eq false))
+                .toList()
 
-        return if (!find.any()) 0 to emptyList()
+        return if (!notifs.any()) 0 to emptyList()
         else {
-            val notifs = find.map { doc -> formNotificationObject(doc) }.toList()
-
             if (notifs.size > 50) {
                 notifs.size to notifs.subList(0, 50)
             } else notifs.size to notifs

@@ -2,6 +2,8 @@ package net.unifey.handle.notification
 
 import dev.ajkneisl.lib.util.toJSON
 import io.ktor.http.cio.websocket.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import net.unifey.handle.live.SocketActionHandler
 import net.unifey.handle.live.SocketActionHandler.action
 import net.unifey.handle.live.SocketSession
@@ -112,7 +114,9 @@ fun notificationSocketActions() =
             customTypeMessage(
                 "SUCCESS_RECEIVE_UNREAD",
                 JSONObject()
-                    .put("notifications", notifications.map { notifs -> notifs.asJson() }.toJSON())
+                    .put(
+                        "notifications",
+                        notifications.map { notifs -> Json.encodeToString(notifs) }.toJSON())
                     .put("count", count))
 
             true
@@ -124,7 +128,7 @@ fun notificationSocketActions() =
 
             customTypeMessage(
                 "SUCCESS_RECEIVE_ALL_NOTIFICATION",
-                notifications.map { notif -> notif.asJson() }.toJSON())
+                notifications.map { notif -> Json.encodeToString(notif) }.toJSON())
 
             true
         }
