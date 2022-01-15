@@ -13,10 +13,12 @@ class NotFound(private val obj: String = "") :
             respond(
                 HttpStatusCode.BadRequest,
                 Response(
-                    (obj == "").eitherOr(
-                        "That could not be found", "That $obj could not be found")))
+                    (obj == "").eitherOr("That could not be found", "That $obj could not be found")
+                )
+            )
         },
-        (obj == "").eitherOr("That could not be found", "That $obj could not be found"))
+        (obj == "").eitherOr("That could not be found", "That $obj could not be found")
+    )
 
 /** Required [args] for making request. */
 class InvalidArguments(private vararg val args: String) :
@@ -24,9 +26,11 @@ class InvalidArguments(private vararg val args: String) :
         {
             respond(
                 HttpStatusCode.BadRequest,
-                Response("Required arguments: ${args.joinToString(", ")}"))
+                Response("Required arguments: ${args.joinToString(", ")}")
+            )
         },
-        "Required arguments: ${args.joinToString(", ")}")
+        "Required arguments: ${args.joinToString(", ")}"
+    )
 
 /** [arg] is too large. (over [max]) */
 class ArgumentTooLarge(private val arg: String, private val max: Int) :
@@ -42,7 +46,8 @@ class AlreadyExists(val type: String, private val arg: String) :
 class NoPermission :
     Error(
         { respond(HttpStatusCode.Unauthorized, Response("You don't have permission for this")) },
-        "You don't have permission for this")
+        "You don't have permission for this"
+    )
 
 /** An invalid input for an input the user decides. */
 class InvalidVariableInput(val type: String, val issue: String) :

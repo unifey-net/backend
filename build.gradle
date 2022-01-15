@@ -15,7 +15,7 @@ version '0.8.0'
 
 ext.ktor_version = '1.6.7'
 
-mainClassName = "net.unifey.MainKt"
+mainClassName = "net.unifey.Unifey"
 
 repositories {
     mavenCentral()
@@ -23,7 +23,7 @@ repositories {
 }
 
 ktfmt {
-    dropboxStyle()
+    kotlinLangStyle()
 }
 
 dependencies {
@@ -36,33 +36,34 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.5'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.0'
     implementation 'org.litote.kmongo:kmongo-coroutine:4.4.0'
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1"
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2'
 
     implementation "io.ktor:ktor-auth:$ktor_version"
     implementation "io.ktor:ktor-websockets:$ktor_version"
     implementation "io.ktor:ktor-client-auth-jvm:$ktor_version"
     implementation "io.ktor:ktor-client-cio:$ktor_version"
-    implementation "io.ktor:ktor-serialization:$ktor_version"
+
     implementation "io.ktor:ktor-client-logging:$ktor_version"
     implementation "io.ktor:ktor-client-jackson:$ktor_version"
     implementation "io.ktor:ktor-client-serialization:$ktor_version"
+
+    implementation "io.ktor:ktor-serialization:$ktor_version"
     implementation "io.ktor:ktor-server-netty:$ktor_version"
-    implementation "io.ktor:ktor-jackson:$ktor_version"
     implementation "io.ktor:ktor-auth:$ktor_version"
     implementation "io.ktor:ktor-locations:$ktor_version"
     implementation "io.ktor:ktor-websockets:$ktor_version"
 
-    implementation 'ch.qos.logback:logback-classic:1.2.8'
+    implementation 'ch.qos.logback:logback-classic:1.2.10'
     implementation('org.json:json:20211205')
     implementation 'com.github.ajkneisl:lib:2.1'
-    implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:6.4.1'
+    implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.0.0'
     implementation 'com.sun.mail:javax.mail:1.6.2'
     implementation 'org.mindrot:jbcrypt:0.4'
-    implementation 'org.mongodb:mongodb-driver-sync:4.4.0'
+    implementation 'org.mongodb:mongodb-driver-sync:4.4.1'
     implementation 'org.jsoup:jsoup:1.14.3'
-    implementation('org.reflections:reflections:0.10.2')
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation 'org.apache.commons:commons-lang3:3.12.0'
     implementation('org.jetbrains.kotlin:kotlin-reflect:1.6.0')
-    implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.13.0'
 }
 compileKotlin {
     kotlinOptions {

@@ -15,6 +15,7 @@ import net.unifey.handle.NoPermission
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.getRole
 import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.ensureProperImageBody
@@ -64,13 +65,13 @@ fun Routing.emotePages() {
             when {
                 parent == -1L && user.role != 2 -> throw NoPermission()
                 parent != -1L &&
-                    CommunityManager.getCommunityById(parent).getRole(token.owner)
-                        ?: CommunityRoles.DEFAULT < CommunityRoles.ADMIN -> throw NoPermission()
+                    CommunityManager.getCommunityById(parent).getRole(token.owner) <
+                        CommunityRoles.ADMIN -> throw NoPermission()
             }
 
             EmoteHandler.createEmote(name, parent, token.owner, imageBytes)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 }

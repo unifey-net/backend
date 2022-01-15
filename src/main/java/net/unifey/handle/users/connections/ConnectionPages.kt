@@ -36,6 +36,6 @@ fun connectionPages(): Route.() -> Unit = {
 
         ConnectionManager.createConnection(ConnectionManager.Type.GOOGLE, token.owner, googleUser)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 }

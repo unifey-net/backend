@@ -1,20 +1,18 @@
 package net.unifey.handle.users.profile.cosmetics
 
 import com.mongodb.client.model.Filters
+import kotlinx.serialization.Serializable
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
 import net.unifey.util.URL
 import org.bson.Document
 
 object Cosmetics {
+    @Serializable
     sealed class Cosmetic {
         abstract val type: Int
         abstract val id: String
         abstract val desc: String
-
-        fun toDocument(): Document {
-            return Document(mapOf("type" to type, "id" to id, "desc" to desc))
-        }
 
         class Badge(override val id: String, override val desc: String) : Cosmetic() {
             override val type: Int = 0
@@ -70,5 +68,9 @@ object Cosmetics {
             .getDatabase("global")
             .getCollection("cosmetics")
             .deleteOne(Filters.and(Filters.eq("type", type), Filters.eq("id", id)))
+    }
+
+    fun List<Cosmetic>.hasCosmetic(id: String, type: Int): Boolean = any { cos ->
+        cos.type == type && id.equals(id, true)
     }
 }

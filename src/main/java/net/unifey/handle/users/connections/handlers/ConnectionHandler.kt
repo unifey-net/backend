@@ -16,7 +16,8 @@ abstract class ConnectionHandler(rateLimit: Bandwidth) {
         val probe = rateLimitBucket.tryConsumeAndReturnRemaining(1)
 
         LOGGER.trace(
-            "Checking rate limit for ${this.javaClass}: ${probe.isConsumed} -> ${probe.nanosToWaitForRefill} (${probe.remainingTokens})")
+            "Checking rate limit for ${this.javaClass}: ${probe.isConsumed} -> ${probe.nanosToWaitForRefill} (${probe.remainingTokens})"
+        )
 
         if (!probe.isConsumed) {
             delay(Duration.ofNanos(probe.nanosToWaitForRefill).toMillis())

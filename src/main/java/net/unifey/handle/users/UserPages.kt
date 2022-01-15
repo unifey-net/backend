@@ -6,6 +6,7 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import java.util.concurrent.TimeUnit
+import net.unifey.Unifey
 import net.unifey.auth.AuthenticationException
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
@@ -22,7 +23,7 @@ import net.unifey.handle.users.friends.friendsPages
 import net.unifey.handle.users.profile.cosmetics.cosmeticPages
 import net.unifey.handle.users.profile.profilePages
 import net.unifey.handle.users.responses.AuthenticateResponse
-import net.unifey.prod
+import net.unifey.handle.users.responses.GetUserResponse.Companion.response
 import net.unifey.response.Response
 import net.unifey.util.FieldChangeLimiter
 import net.unifey.util.RateLimitException
@@ -41,7 +42,7 @@ fun Routing.userPages() {
         get {
             val token = call.isAuthenticated()
 
-            call.respond(Response(UserManager.getUser(token.owner)))
+            call.respond(token.getOwner().response())
         }
 
         /** Change a user using [param] */
@@ -64,12 +65,12 @@ fun Routing.userPages() {
 
             UserInputRequirements.meets(email, UserInputRequirements.EMAIL_EXISTS)
 
-            user.email = email
-            user.verified = false
+            UserManager.changeEmail(user.id, email)
+            UserManager.setVerified(user.id, false)
 
             UserEmailManager.sendVerify(user.id, email)
 
-            call.respond(HttpStatusCode.OK, Response("Changed email."))
+            call.respond(Response("Changed email."))
         }
 
         /** Change your own password. */
@@ -78,14 +79,16 @@ fun Routing.userPages() {
 
             UserInputRequirements.meets(password, UserInputRequirements.PASSWORD)
 
-            user.password = BCrypt.hashpw(password, BCrypt.gensalt())
+            UserManager.changePassword(user.id, BCrypt.hashpw(password, BCrypt.gensalt()))
 
             UserManager.signOutAll(user)
 
             NotificationManager.postNotification(
-                user.id, "Your password has successfully been changed!")
+                user.id,
+                "Your password has successfully been changed!"
+            )
 
-            call.respond(HttpStatusCode.OK, Response("Password has been updated."))
+            call.respond(Response("Password has been updated."))
         }
 
         /** Change your own name. */
@@ -99,15 +102,16 @@ fun Routing.userPages() {
             if (limited && until != null)
                 throw RateLimitException(until - System.currentTimeMillis(), until)
 
-            user.username = username
+            UserManager.changeUsername(user.id, username)
 
             FieldChangeLimiter.createLimit(
                 "USER",
                 user.id,
                 "USERNAME",
-                System.currentTimeMillis() + TimeUnit.DAYS.toMillis(31))
+                System.currentTimeMillis() + TimeUnit.DAYS.toMillis(31)
+            )
 
-            call.respond(HttpStatusCode.OK, Response("Username has been updated."))
+            call.respond(Response("Username has been updated."))
         }
 
         /** Change your own picture;. */
@@ -138,8 +142,11 @@ fun Routing.userPages() {
 
                 call.respondBytes(
                     S3ImageHandler.getPicture(
-                        "pfp/${UserManager.getId(name)}.jpg", "pfp/default.jpg"),
-                    ContentType.Image.JPEG)
+                        "pfp/${UserManager.getId(name)}.jpg",
+                        "pfp/default.jpg"
+                    ),
+                    ContentType.Image.JPEG
+                )
             }
         }
 
@@ -148,7 +155,7 @@ fun Routing.userPages() {
             get {
                 val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
-                call.respond(UserManager.getUser(id))
+                call.respond(UserManager.getUser(id).response())
             }
 
             get("/picture") {
@@ -156,8 +163,11 @@ fun Routing.userPages() {
 
                 call.respondBytes(
                     S3ImageHandler.getPicture(
-                        "pfp/${UserManager.getUser(id).id}.jpg", "pfp/default.jpg"),
-                    ContentType.Image.JPEG)
+                        "pfp/${UserManager.getUser(id).id}.jpg",
+                        "pfp/default.jpg"
+                    ),
+                    ContentType.Image.JPEG
+                )
             }
         }
 
@@ -198,7 +208,7 @@ fun Routing.userPages() {
             val params = call.receiveParameters()
 
             // only check for captcha in production
-            if (prod) call.checkCaptcha(params)
+            if (Unifey.prod) call.checkCaptcha(params)
 
             val username = params["username"]
             val password = params["password"]
@@ -212,7 +222,8 @@ fun Routing.userPages() {
                 autoCon != null &&
                     autoCon.third.equals(
                         email,
-                        true) // if they're using a connection & the inputted is same as service,
+                        true
+                    ) // if they're using a connection & the inputted is same as service,
             // auto verify
 
             val user = UserManager.createUser(email, username, password, verified = verified)
@@ -238,13 +249,16 @@ fun Routing.userPages() {
                 val connection =
                     ConnectionManager.findConnection(
                         ConnectionManager.Type.GOOGLE,
-                        Google.getServiceId(accessToken) ?: throw InvalidArguments("token"))
+                        Google.getServiceId(accessToken) ?: throw InvalidArguments("token")
+                    )
 
                 if (connection != null)
                     call.respond(
                         AuthenticateResponse(
                             Authenticator.generate(connection.user),
-                            UserManager.getUser(connection.user)))
+                            UserManager.getUser(connection.user)
+                        )
+                    )
                 else throw AuthenticationException("Invalid access token")
             }
         }
@@ -253,7 +267,7 @@ fun Routing.userPages() {
             val params = call.receiveParameters()
 
             // only check for captcha in production
-            if (prod) call.checkCaptcha(params)
+            if (Unifey.prod) call.checkCaptcha(params)
 
             val username = params["username"]
             val password = params["password"]

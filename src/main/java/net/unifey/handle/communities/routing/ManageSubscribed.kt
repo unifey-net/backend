@@ -11,6 +11,14 @@ import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.getRole
+import net.unifey.handle.users.member.MemberManager.getMember
+import net.unifey.handle.users.member.MemberManager.hasNotificationsOn
+import net.unifey.handle.users.member.MemberManager.isMemberOf
+import net.unifey.handle.users.member.MemberManager.joinCommunity
+import net.unifey.handle.users.member.MemberManager.joinNotifications
+import net.unifey.handle.users.member.MemberManager.leaveCommunity
+import net.unifey.handle.users.member.MemberManager.leaveNotifications
 import net.unifey.response.Response
 
 val MANAGE_SUBSCRIBED: Route.() -> Unit = {
@@ -18,16 +26,16 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
     get {
         val token = call.isAuthenticated()
 
-        call.respond(token.getOwner().member.getMembers())
+        call.respond(token.getOwner().getMember().member)
     }
 
     /** Join a community. */
     put {
         val (user, community) = call.managePersonalCommunities()
 
-        if (!user.member.isMemberOf(community.id)) {
-            user.member.join(community.id)
-            call.respond(Response())
+        if (!user.isMemberOf(community.id)) {
+            user.joinCommunity(community.id)
+            call.respond(Response("OK"))
         } else throw AlreadyExists("community", community.id.toString())
     }
 
@@ -38,15 +46,17 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
         if (community.getRole(user.id) == CommunityRoles.OWNER)
             throw Error({
                 call.respond(
-                    HttpStatusCode.Unauthorized, Response("You're the owner of this community!"))
+                    HttpStatusCode.Unauthorized,
+                    Response("You're the owner of this community!")
+                )
             })
 
-        if (user.member.isMemberOf(community.id)) {
-            user.member.leave(community.id)
+        if (user.isMemberOf(community.id)) {
+            user.leaveCommunity(community.id)
 
             CommunityManager.userLeave(community.id, user.id)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         } else throw NotFound("community")
     }
 
@@ -56,17 +66,17 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
         get {
             val token = call.isAuthenticated()
 
-            call.respond(token.getOwner().member.getNotifications())
+            call.respond(token.getOwner().getMember().notifications)
         }
 
         /** Subscribe to notifications for a community. */
         put {
             val (user, community) = call.managePersonalCommunities()
 
-            if (!user.member.hasNotificationsEnabled(community.id)) {
-                user.member.enableNotifications(community.id)
+            if (!user.hasNotificationsOn(community.id)) {
+                user.joinNotifications(community.id)
 
-                call.respond(Response())
+                call.respond(Response("OK"))
             } else throw NoPermission()
         }
 
@@ -74,10 +84,10 @@ val MANAGE_SUBSCRIBED: Route.() -> Unit = {
         delete {
             val (user, community) = call.managePersonalCommunities()
 
-            if (user.member.hasNotificationsEnabled(community.id)) {
-                user.member.disableNotifications(community.id)
+            if (user.hasNotificationsOn(community.id)) {
+                user.leaveNotifications(community.id)
 
-                call.respond(Response())
+                call.respond(Response("OK"))
             } else throw NoPermission()
         }
     }

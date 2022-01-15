@@ -12,8 +12,7 @@ import dev.ajkneisl.lib.util.currentTimeMillis
 import io.ktor.http.*
 import io.ktor.response.*
 import java.io.IOException
-import java.io.PrintWriter
-import java.io.StringWriter
+import net.unifey.Unifey
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
@@ -22,9 +21,7 @@ import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
-import net.unifey.webhook
 import org.bson.Document
-import org.json.JSONObject
 import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -43,7 +40,8 @@ object UserEmailManager {
                     doc.getLong("id"),
                     doc.getString("email"),
                     doc.getString("verify"),
-                    doc.getInteger("type"))
+                    doc.getInteger("type")
+                )
             }
             .toMutableList()
     }
@@ -82,7 +80,7 @@ object UserEmailManager {
             .getCollection("verify")
             .deleteOne(Filters.and(eq("id", id), eq("verify", verify)))
 
-        UserManager.getUser(id).verified = true
+        UserManager.setVerified(id, true)
     }
 
     /** Reset a password. */
@@ -101,7 +99,7 @@ object UserEmailManager {
             .getCollection("verify")
             .deleteOne(Filters.and(eq("id", request.id!!), eq("verify", verify)))
 
-        UserManager.getUser(request.id).password = BCrypt.hashpw(newPassword, BCrypt.gensalt())
+        UserManager.changePassword(request.id, BCrypt.hashpw(newPassword, BCrypt.gensalt()))
     }
 
     /** Send a password reset email for [id] to [email] */
@@ -125,7 +123,9 @@ object UserEmailManager {
                 respond(
                     HttpStatusCode.Companion.BadRequest,
                     Response(
-                        "There's already an outgoing request to reset the password on this account!"))
+                        "There's already an outgoing request to reset the password on this account!"
+                    )
+                )
             })
 
         val doc =
@@ -135,7 +135,9 @@ object UserEmailManager {
                     "verify" to verify,
                     "type" to EmailTypes.VERIFY_PASSWORD_RESET.id,
                     "attempts" to 1,
-                    "email" to user.email))
+                    "email" to user.email
+                )
+            )
 
         Mongo.getClient().getDatabase("email").getCollection("verify").insertOne(doc)
 
@@ -173,7 +175,9 @@ object UserEmailManager {
                     "verify" to verify,
                     "type" to EmailTypes.VERIFY_EMAIL.id,
                     "attempts" to 1,
-                    "email" to email))
+                    "email" to email
+                )
+            )
 
         Mongo.getClient().getDatabase("email").getCollection("verify").insertOne(doc)
 
@@ -244,11 +248,15 @@ object UserEmailManager {
             val response = SEND_GRID.api(sgRequest)
 
             EMAIL_LOGGER.info(
-                "An email (${request.id} - ${request.type}) has been sent to ${request.email}. (${response.statusCode})")
+                "An email (${request.id} - ${request.type}) has been sent to ${request.email}. (${response.statusCode})"
+            )
         } catch (ex: IOException) {
             EMAIL_LOGGER.error(
-                "An email (${request.id} - ${request.type}) could not be sent to ${request.email}.")
-            webhook.sendMessage("There was an issue sending an email to ${request.id} (${request.email})")
+                "An email (${request.id} - ${request.type}) could not be sent to ${request.email}."
+            )
+            Unifey.webhook.sendMessage(
+                "There was an issue sending an email to ${request.id} (${request.email})"
+            )
         }
     }
 }

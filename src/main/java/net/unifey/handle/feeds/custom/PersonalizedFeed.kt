@@ -8,19 +8,19 @@ import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.feeds.responses.GetPostResponse
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.member.MemberManager.getMember
 
 object PersonalizedFeed {
     /** Get the page count and post count from [feeds]. */
     private fun getCounts(feeds: MutableList<Feed>): Pair<Long, Long> {
-        return feeds.map { feed -> feed.pageCount }.sum() to
-            feeds.map { feed -> feed.postCount }.sum()
+        return feeds.sumOf { feed -> feed.pageCount } to feeds.sumOf { feed -> feed.postCount }
     }
 
     /** Get [user]'s personalized feed. This is a combination of [user]'s subscribed feeds. */
     suspend fun getUsersFeed(user: User, page: Int, method: String): GetLimitedFeedResponse {
         val feeds =
-            user.member
-                .getMembers()
+            user.getMember()
+                .member
                 .map { id -> CommunityManager.getCommunityById(id) }
                 .map { community -> community.getFeed() }
                 .toMutableList()
@@ -34,6 +34,7 @@ object PersonalizedFeed {
                     GetPostResponse(post, UserManager.getUser(post.authorId), vote)
                 }
                 .toMutableList(),
-            LimitedFeed(count.first, count.second))
+            LimitedFeed(count.first, count.second)
+        )
     }
 }

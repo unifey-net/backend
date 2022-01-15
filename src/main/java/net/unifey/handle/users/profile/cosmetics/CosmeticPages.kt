@@ -11,6 +11,8 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.users.GlobalRoles
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.profile.ProfileManager
+import net.unifey.handle.users.profile.cosmetics.Cosmetics.hasCosmetic
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 import net.unifey.util.ensureProperImageBody
@@ -42,7 +44,8 @@ fun cosmeticPages(): Route.() -> Unit = {
         if (type == null || id == null) throw InvalidArguments("type", "id")
 
         call.respondBytes(
-            S3ImageHandler.getPicture("cosmetics/$type.$id.jpg", "cosmetics/default.jpg"))
+            S3ImageHandler.getPicture("cosmetics/$type.$id.jpg", "cosmetics/default.jpg")
+        )
     }
 
     /**
@@ -89,15 +92,15 @@ fun cosmeticPages(): Route.() -> Unit = {
             }
                 ?: throw NotFound("cosmetic")
 
-        val newCosmetics = userObj.profile.cosmetics.toMutableList()
+        val cosmetics = ProfileManager.getProfile(userObj.id).cosmetics
 
-        if (newCosmetics.any { cos -> cos.id.equals(id, true) && cos.type == type })
-            newCosmetics.removeIf { cos -> cos.id.equals(id, true) && cos.type == type }
-        else newCosmetics.add(retrieved)
+        if (cosmetics.hasCosmetic(id, type)) {
+            ProfileManager.removeCosmetic(userObj.id, retrieved)
+        } else {
+            ProfileManager.addCosmetic(userObj.id, retrieved)
+        }
 
-        userObj.profile.cosmetics = newCosmetics
-
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Create a cosmetic */
@@ -116,7 +119,7 @@ fun cosmeticPages(): Route.() -> Unit = {
 
         Cosmetics.uploadCosmetic(type, id, desc)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Delete a cosmetic */
@@ -131,6 +134,6 @@ fun cosmeticPages(): Route.() -> Unit = {
 
         Cosmetics.deleteCosmetic(type, id)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 }

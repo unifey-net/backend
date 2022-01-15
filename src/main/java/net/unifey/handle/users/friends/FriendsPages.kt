@@ -4,10 +4,18 @@ import io.ktor.application.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.serialization.encodeToString
+import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
-import net.unifey.handle.live.Live
+import net.unifey.handle.live.*
+import net.unifey.handle.live.SocketActionHandler.action
+import net.unifey.handle.live.objs.ActionHolder
+import net.unifey.handle.live.objs.FindActions
+import net.unifey.handle.live.objs.SocketType
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.friends.FriendManager.getFriends
+import net.unifey.handle.users.friends.FriendManager.removeFriend
 import net.unifey.handle.users.responses.FriendResponse
 import net.unifey.handle.users.responses.ReceivedFriendRequestResponse
 import net.unifey.handle.users.responses.SentFriendRequestResponse
@@ -68,7 +76,7 @@ fun friendsPages(): Route.() -> Unit = {
 
         FriendManager.sendFriendRequest(token.owner, id)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     put("/name") {
@@ -79,7 +87,7 @@ fun friendsPages(): Route.() -> Unit = {
 
         FriendManager.sendFriendRequest(token.owner, UserManager.getId(name))
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     delete("/{id}") {
@@ -88,7 +96,7 @@ fun friendsPages(): Route.() -> Unit = {
         val id = call.parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("p_id")
 
         token.getOwner().removeFriend(id)
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     get {
@@ -97,7 +105,8 @@ fun friendsPages(): Route.() -> Unit = {
         call.respond(
             token.getOwner().getFriends().map { friend ->
                 FriendResponse(friend.id, friend.friendedAt, UserManager.getUser(friend.id))
-            })
+            }
+        )
     }
 
     get("/search") {
@@ -111,7 +120,9 @@ fun friendsPages(): Route.() -> Unit = {
                     .getOwner()
                     .getFriends()
                     .map { friend -> UserManager.getUser(friend.id) }
-                    .filter { friend -> friend.username.contains(name) }))
+                    .filter { friend -> friend.username.contains(name) }
+            )
+        )
     }
 
     route("/requests") {
@@ -121,7 +132,8 @@ fun friendsPages(): Route.() -> Unit = {
             call.respond(
                 FriendManager.getFriendRequests(token.owner).map { req ->
                     ReceivedFriendRequestResponse(req, UserManager.getUser(req.sentFrom))
-                })
+                }
+            )
         }
 
         get("/sent") {
@@ -130,7 +142,8 @@ fun friendsPages(): Route.() -> Unit = {
             call.respond(
                 FriendManager.getPendingFriendRequests(token.owner).map { req ->
                     SentFriendRequestResponse(req, UserManager.getUser(req.sentTo))
-                })
+                }
+            )
         }
 
         /** Delete a sent friend request */
@@ -141,7 +154,7 @@ fun friendsPages(): Route.() -> Unit = {
 
             FriendManager.deleteFriendRequest(token.owner, id)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Deny a friend request */
@@ -152,7 +165,7 @@ fun friendsPages(): Route.() -> Unit = {
 
             FriendManager.deleteFriendRequest(id, token.owner)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Accept a friend request. */
@@ -164,7 +177,27 @@ fun friendsPages(): Route.() -> Unit = {
 
             FriendManager.acceptFriendRequest(id, token.owner)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
+}
+
+enum class FriendsActionsTypes : SocketType {
+    GET_FRIENDS
+}
+
+/** Actions for friends. */
+@FindActions
+object FriendsActions : ActionHolder {
+    override val pages: ArrayList<Pair<SocketType, SocketAction>> =
+        SocketActionHandler.socketActions {
+            action(FriendsActionsTypes.GET_FRIENDS) {
+                val friends =
+                    getFriends(token.owner).map { friend ->
+                        FriendResponse(friend.id, friend.friendedAt, UserManager.getUser(friend.id))
+                    }
+
+                respondSuccess(Unifey.JSON.encodeToString(friends))
+            }
+        }
 }

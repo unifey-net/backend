@@ -32,7 +32,7 @@ object CommunityRoles {
     /** The owner cannot be modified, unless by themselves. */
     const val OWNER = 4
 
-    fun hasPermission(userRole: Int?, role: Int): Boolean = userRole ?: DEFAULT >= role
+    fun hasPermission(userRole: Int?, role: Int): Boolean = (userRole ?: DEFAULT) >= role
 
     fun isValid(role: Int): Boolean = (0..4).contains(role)
 }

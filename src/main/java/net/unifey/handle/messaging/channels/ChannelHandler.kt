@@ -7,6 +7,8 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.collections.ArrayList
 import kotlin.jvm.Throws
 import kotlinx.coroutines.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.Error
@@ -14,14 +16,20 @@ import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
+import net.unifey.handle.messaging.ChannelUpdateTypes
 import net.unifey.handle.messaging.MessageHandler
 import net.unifey.handle.messaging.channels.objects.*
+import net.unifey.handle.messaging.channels.objects.messages.Message
 import net.unifey.handle.messaging.channels.objects.responses.GroupChatKickResponse
+import net.unifey.handle.messaging.channels.objects.responses.GroupChatOwnerResponse
 import net.unifey.handle.messaging.channels.objects.responses.UserTypingResponse
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.ShortUser
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.friends.FriendManager.getFriends
+import net.unifey.handle.users.friends.FriendManager.hasFriend
 import net.unifey.util.IdGenerator
+import net.unifey.util.mention
 import net.unifey.util.toDocument
 import org.bson.Document
 import org.litote.kmongo.*
@@ -63,7 +71,8 @@ object ChannelHandler {
             type = "START_TYPING"
             data =
                 mapper.writeValueAsString(
-                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject))
+                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
+                )
         }
 
         GlobalScope.launch {
@@ -76,7 +85,8 @@ object ChannelHandler {
                 val stillTyping = TYPING.containsKey(user)
 
                 LOGGER.trace(
-                    "THREAD TYPING CHECK ($stillTyping -> $user [$channel]) -> ${userObj.startAt} (${difference}) ${System.currentTimeMillis()}")
+                    "THREAD TYPING CHECK ($stillTyping -> $user [$channel]) -> ${userObj.startAt} (${difference}) ${System.currentTimeMillis()}"
+                )
 
                 if (difference >= 5000 && stillTyping)
                     try {
@@ -114,7 +124,8 @@ object ChannelHandler {
             type = "STOP_TYPING"
             data =
                 mapper.writeValueAsString(
-                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject))
+                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
+                )
         }
     }
 
@@ -131,8 +142,10 @@ object ChannelHandler {
             .getCollection<GroupMessageChannel>("channels")
             .find(
                 and(
-                    GroupMessageChannel::type eq ChannelType.GROUP,
-                    GroupMessageChannel::members contains user))
+                    GroupMessageChannel::channelType eq ChannelType.GROUP,
+                    GroupMessageChannel::members contains user
+                )
+            )
             .toList()
     }
 
@@ -143,8 +156,10 @@ object ChannelHandler {
             .getCollection<DirectMessageChannel>("channels")
             .find(
                 and(
-                    DirectMessageChannel::type eq ChannelType.DIRECT_MESSAGE,
-                    DirectMessageChannel::users contains user))
+                    DirectMessageChannel::channelType eq ChannelType.DIRECT_MESSAGE,
+                    DirectMessageChannel::users contains user
+                )
+            )
             .toList()
     }
 
@@ -171,7 +186,7 @@ object ChannelHandler {
 
     /** Get the users of a group chat who should receive updates. (ex: new messages) */
     suspend fun getChannelReceivers(channel: MessageChannel): List<Long> {
-        return when (channel.type) {
+        return when (channel.channelType) {
             ChannelType.GROUP -> {
                 if (channel !is GroupMessageChannel)
                     getChannel<GroupMessageChannel>(channel.id).members
@@ -247,14 +262,17 @@ object ChannelHandler {
 
         val channel =
             GroupMessageChannel(
-                generateIdentifier(), "${user.username}'s group chat", ":)", users, creator)
-
-        val mapper = jacksonObjectMapper()
+                generateIdentifier(),
+                "${user.username}'s group chat",
+                ":)",
+                users,
+                creator
+            )
 
         Mongo.getClient()
             .getDatabase("messages")
             .getCollection("channels")
-            .insertOne(mapper.writeValueAsString(channel).toDocument())
+            .insertOne(Json.encodeToString(channel).toDocument())
 
         LOGGER.info("New Channel - GROUP (${channel.id}): ${user.id} $users")
     }
@@ -293,7 +311,7 @@ object ChannelHandler {
         Mongo.getClient()
             .getDatabase("messages")
             .getCollection("channels")
-            .insertOne(mapper.writeValueAsString(channel).toDocument())
+            .insertOne(Json.encodeToString(channel).toDocument())
 
         LOGGER.info("New Channel - DM (${channel.id}): ${user.id} -> $userTwo")
     }
@@ -331,7 +349,7 @@ object ChannelHandler {
         Live.sendUpdates {
             users = channel.members
             data = name
-            type = "GROUP_CHAT_CHANGE_NAME"
+            type = ChannelUpdateTypes.GROUP_CHAT_CHANGE_NAME.toString()
         }
     }
 
@@ -350,7 +368,9 @@ object ChannelHandler {
             channel.owner != token.owner -> throw NoPermission()
             !GROUP_CHAT_DESCRIPTION_LENGTH.contains(description.length) ->
                 throw InvalidVariableInput(
-                    "description", "Must be within $GROUP_CHAT_DESCRIPTION_LENGTH")
+                    "description",
+                    "Must be within $GROUP_CHAT_DESCRIPTION_LENGTH"
+                )
         }
 
         Mongo.K_MONGO
@@ -358,14 +378,15 @@ object ChannelHandler {
             .getCollection<GroupMessageChannel>("channels")
             .updateOne(
                 GroupMessageChannel::id eq id,
-                setValue(GroupMessageChannel::description, description))
+                setValue(GroupMessageChannel::description, description)
+            )
 
         MessageHandler.sendSystemMessage("The description of the group chat has been updated!", id)
 
         Live.sendUpdates {
             users = channel.members
             data = description
-            type = "GROUP_CHAT_CHANGE_DESCRIPTION"
+            type = ChannelUpdateTypes.GROUP_CHAT_CHANGE_DESCRIPTION.toString()
         }
     }
 
@@ -399,7 +420,7 @@ object ChannelHandler {
         Live.sendUpdates {
             users = channel.members.filter { member -> member != user }
             data = GroupChatKickResponse(channel, ShortUser.fromUser(userObj))
-            type = "REMOVE_GROUP_CHAT_USER"
+            type = ChannelUpdateTypes.REMOVE_GROUP_CHAT_USER.toString()
         }
     }
 
@@ -408,8 +429,45 @@ object ChannelHandler {
      *
      * This involves deleting all of the messages sent as well.
      */
-    fun deleteChannel(id: Long): Unit = TODO()
+    @Throws(NotFound::class)
+    suspend fun deleteChannel(id: Long) {
+        getChannel<MessageChannel>(id)
+
+        Mongo.K_MONGO
+            .getDatabase("messages")
+            .getCollection<MessageChannel>("channels")
+            .deleteOne(MessageChannel::id eq id)
+
+        Mongo.K_MONGO
+            .getDatabase("messages")
+            .getCollection<Message>("messages")
+            .deleteMany(Message::channel eq id)
+    }
 
     /** Change ownership of [id] to [newOwner]. [id] MUST be a group chat. */
-    fun changeOwnership(id: Long, newOwner: Long): Unit = TODO()
+    suspend fun changeOwnership(id: Long, newOwner: Long) {
+        val channel = getChannel<GroupMessageChannel>(id)
+
+        val newOwnerUser = ShortUser.fromId(newOwner)
+        val oldOwnerUser = ShortUser.fromId(channel.id)
+
+        Mongo.K_MONGO
+            .getDatabase("messages")
+            .getCollection<GroupMessageChannel>("channels")
+            .updateOne(
+                GroupMessageChannel::id eq channel.id,
+                setValue(GroupMessageChannel::owner, newOwner)
+            )
+
+        MessageHandler.sendSystemMessage(
+            "The ownership has changed from ${oldOwnerUser.mention()} to ${newOwnerUser.mention()}!",
+            id
+        )
+
+        Live.sendUpdates {
+            users = channel.members
+            data = GroupChatOwnerResponse(channel, oldOwnerUser, newOwnerUser)
+            type = ChannelUpdateTypes.GROUP_CHAT_CHANGE_OWNER.toString()
+        }
+    }
 }

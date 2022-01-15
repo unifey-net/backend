@@ -1,38 +1,38 @@
 package net.unifey.handle.communities
 
-import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Filters.eq
 import dev.ajkneisl.lib.util.getAge
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.runBlocking
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NotFound
-import net.unifey.handle.communities.rules.CommunityRule
 import net.unifey.handle.feeds.FeedManager
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.member.Member
+import net.unifey.handle.users.member.MemberManager.joinCommunity
 import net.unifey.util.IdGenerator
-import org.bson.Document
+import org.litote.kmongo.*
+import org.litote.kmongo.coroutine.aggregate
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 /** Manage [Community]s */
 object CommunityManager {
-    private val cache: MutableList<Community> = mutableListOf()
+    val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
 
     /**
      * Handle [user] leaving [id]. This removes their role from the data set. This doesn't affect
      * their current posts.
      */
-    fun userLeave(id: Long, user: Long) {
+    suspend fun userLeave(id: Long, user: Long) {
         getCommunityById(id).removeRole(user)
     }
 
     /** Delete a community by it's [id] */
     fun deleteCommunity(id: Long) {
-        cache.removeIf { community -> community.id == id }
-
         Mongo.getClient()
             .getDatabase("communities")
             .getCollection("communities")
@@ -40,78 +40,29 @@ object CommunityManager {
     }
 
     /** Get a [Community] by [name]. */
-    fun getCommunityByName(name: String): Community {
-        val cacheCommunity = cache.singleOrNull { community -> community.name == name }
-
-        if (cacheCommunity != null) return cacheCommunity
-
-        val obj =
-            Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find()
-                .firstOrNull { doc -> doc.getString("name").equals(name, true) }
-                ?: throw NotFound("community")
-
-        return getCommunity(obj)
+    @Throws(NotFound::class)
+    suspend fun getCommunityByName(name: String): Community {
+        return MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .find()
+            .toList()
+            .singleOrNull { community -> community.name.equals(name, true) }
+            ?: throw NotFound("community")
     }
 
     /** Get a [Community] by [id]. */
-    fun getCommunityById(id: Long): Community {
-        val cacheCommunity = cache.singleOrNull { community -> community.id == id }
-
-        if (cacheCommunity != null) return cacheCommunity
-
-        val obj =
-            Mongo.getClient()
-                .getDatabase("communities")
-                .getCollection("communities")
-                .find(eq("id", id))
-                .firstOrNull()
-                ?: throw NotFound("community")
-
-        return getCommunity(obj)
-    }
-
-    /** Parse a [Community] from a bson [doc]. */
-    private fun getCommunity(doc: Document): Community {
-        fun getRules(rulesDoc: Document): List<CommunityRule> {
-            return rulesDoc.keys
-                .map { key -> rulesDoc.get(key, Document::class.java) to key }
-                .map { (doc, key) ->
-                    CommunityRule(key.toLong(), doc.getString("title"), doc.getString("body"))
-                }
-        }
-
-        val roles =
-            doc.get("roles", Document::class.java)
-                .mapKeys { it.key.toLong() }
-                .mapValues { it.value as Int }
-                .toMutableMap()
-
-        val rules = getRules(doc.get("rules", Document::class.java))
-
-        val permissions = doc.get("permissions", Document::class.java)
-
-        val community =
-            Community(
-                doc.getLong("id"),
-                doc.getLong("created_at"),
-                permissions.getInteger("post_role"),
-                permissions.getInteger("view_role"),
-                permissions.getInteger("comment_role"),
-                doc.getString("name"),
-                doc.getString("description"),
-                rules.toMutableList(),
-                roles)
-
-        cache.add(community)
-
-        return community
+    @Throws(NotFound::class)
+    suspend fun getCommunityById(id: Long): Community {
+        return MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .findOne(Community::id eq id)
+            ?: throw NotFound("community")
     }
 
     /** Get a page of communities. */
-    fun getCommunities(page: Int): List<Community> {
+    suspend fun getCommunities(page: Int): List<Community> {
         val size = getCommunitiesSize()
 
         // there's 15 communities to a page.
@@ -122,19 +73,18 @@ object CommunityManager {
         // the amount of documents to skip to get to the proper page.
         val skip = if (page != 1) (page - 1) * 15 else 0
 
-        return Mongo.getClient()
+        LOGGER.trace("Loading communities ($page): ($size -> $skip)")
+
+        return MONGO
             .getDatabase("communities")
-            .getCollection("communities")
-            .find()
-            .skip(skip)
-            .limit(15)
-            .map { doc -> getCommunity(doc) }
+            .getCollection<Community>("communities")
+            .aggregate<Community>(skip(skip), limit(15))
             .toList()
     }
 
     /** Get the amount of communities */
-    private fun getCommunitiesSize(): Long =
-        Mongo.getClient().getDatabase("communities").getCollection("communities").countDocuments()
+    private suspend fun getCommunitiesSize(): Long =
+        MONGO.getDatabase("communities").getCollection<Community>("communities").countDocuments()
 
     /**
      * If [id] can create a community
@@ -150,12 +100,11 @@ object CommunityManager {
     }
 
     /** if [id] has made a community before */
-    private fun hasCreatedCommunityBefore(id: Long): Boolean {
-        return Mongo.getClient()
+    private suspend fun hasCreatedCommunityBefore(id: Long): Boolean {
+        return MONGO
             .getDatabase("communities")
-            .getCollection("communities")
-            .find(eq("roles.${id}", 4))
-            .singleOrNull() != null
+            .getCollection<Community>("communities")
+            .findOne(eq("roles.${id}", 4)) != null
     }
 
     /** Create a community. */
@@ -166,84 +115,80 @@ object CommunityManager {
             Community(
                 IdGenerator.getId(),
                 System.currentTimeMillis(),
-                CommunityRoles.MEMBER,
-                CommunityRoles.DEFAULT,
-                CommunityRoles.MEMBER,
+                CommunityPermissions(
+                    CommunityRoles.MEMBER,
+                    CommunityRoles.DEFAULT,
+                    CommunityRoles.MEMBER
+                ),
                 name,
                 desc,
                 mutableListOf(),
-                roles)
+                roles
+            )
 
-        val communityDoc =
-            Document(
-                mapOf(
-                    "id" to community.id,
-                    "name" to community.name,
-                    "description" to community.description,
-                    "created_at" to community.createdAt,
-                    "permissions" to
-                        Document(
-                            mapOf(
-                                "post_role" to community.postRole,
-                                "view_role" to community.viewRole,
-                                "comment_role" to community.commentRole)),
-                    "roles" to Document(mapOf("$owner" to CommunityRoles.OWNER)),
-                    "rules" to Document()))
-
-        Mongo.getClient()
+        MONGO
             .getDatabase("communities")
-            .getCollection("communities")
-            .insertOne(communityDoc)
+            .getCollection<Community>("communities")
+            .insertOne(community)
 
         FeedManager.createFeedForCommunity(community.id, owner)
 
-        UserManager.getUser(owner).join(community.id)
-
-        cache.add(community)
+        UserManager.getUser(owner).joinCommunity(community.id)
 
         return community
     }
 
     /** If another community has already taken [name]. */
-    suspend fun nameTakenAsync(name: String): Deferred<Boolean> {
-        return Mongo.useAsync {
-            getDatabase("communities").getCollection("communities").find(eq("name", name)).any()
-        }
+    suspend fun nameTaken(name: String): Boolean {
+        return MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .findOne(Community::name eq name) == null
     }
 
     /** Get the member count of a community */
-    suspend fun getMemberCountAsync(community: Long): Deferred<Int> {
-        return Mongo.useAsync {
-            getDatabase("users")
-                .getCollection("members")
-                .find(Filters.`in`("member", community))
-                .toList()
-                .size
-        }
+    suspend fun getMemberCount(community: Long): Int {
+        return MONGO
+            .getDatabase("users")
+            .getCollection<Member>("members")
+            .find(Member::member contains community)
+            .toList()
+            .size
     }
 
-    suspend fun getMembersAsync(community: Long): Deferred<List<User>> {
-        return Mongo.useAsync {
-            getDatabase("users")
-                .getCollection("members")
-                .find(Filters.`in`("member", community))
-                .toList()
-                .map { doc -> UserManager.getUser((doc.getLong("id"))) }
-        }
+    /** Find members of [community] */
+    suspend fun getMembers(community: Long): List<User> {
+        return MONGO
+            .getDatabase("users")
+            .getCollection<Member>("members")
+            .find(Member::member contains community)
+            .toList()
+            .map { member -> UserManager.getUser(member.id) }
     }
 
-    suspend fun getNotificationsAsync(community: Long): Deferred<List<User>> {
-        return Mongo.useAsync {
-            getDatabase("users")
-                .getCollection("members")
-                .find(Filters.`in`("notifications", community))
-                .toList()
-                .map { doc -> UserManager.getUser(doc.getLong("id")) }
-        }
+    /** Find users that have notifications on in [community] */
+    suspend fun getNotifications(community: Long): List<User> {
+        return MONGO
+            .getDatabase("users")
+            .getCollection<Member>("members")
+            .find(Member::notifications contains community)
+            .toList()
+            .map { member -> UserManager.getUser(member.id) }
     }
 
-    /** Get the sync member count. */
-    fun getMemberCount(community: Long): Int {
-        return runBlocking { getMemberCountAsync(community).await() }
+    /** Change a [community]'s [name] */
+    suspend fun changeName(community: Long, name: String) {
+        MONGO
+            .getDatabase("community")
+            .getCollection<Community>("community")
+            .updateOne(Community::id eq community, setValue(Community::name, name))
+    }
+
+    /** Change a [community]'s [description] */
+    suspend fun changeDescription(community: Long, description: String) {
+        MONGO
+            .getDatabase("community")
+            .getCollection<Community>("community")
+            .updateOne(Community::id eq community, setValue(Community::description, description))
     }
 }

@@ -29,9 +29,8 @@ object Google : ConnectionHandler(Bandwidth.classic(10, Refill.greedy(1, Duratio
         return try {
             val response =
                 HTTP_CLIENT.get<UserInfoResponse>(
-                    "https://www.googleapis.com/oauth2/v1/userinfo?alt=json") {
-                    header("Authorization", "Bearer $token")
-                }
+                    "https://www.googleapis.com/oauth2/v1/userinfo?alt=json"
+                ) { header("Authorization", "Bearer $token") }
 
             if (response.verifiedEmail) response.email else null
         } catch (e: ClientRequestException) {

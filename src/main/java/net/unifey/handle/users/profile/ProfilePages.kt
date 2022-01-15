@@ -6,8 +6,6 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
-import net.unifey.handle.users.User
-import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
@@ -17,45 +15,43 @@ fun profilePages(): Route.() -> Unit = {
     suspend fun ApplicationCall.profileInput(
         paramName: String,
         maxLength: Int
-    ): Pair<User, String> {
+    ): Pair<Long, String> {
         val token = isAuthenticated()
 
         val params = receiveParameters()
-
         val param = params[paramName] ?: throw InvalidArguments(paramName)
-
         val properParam = cleanInput(param)
 
         if (properParam.length > maxLength || properParam.isBlank())
             throw InvalidArguments(paramName)
 
-        return UserManager.getUser(token.owner) to param
+        return token.owner to param
     }
 
     /** Change the description */
     put("/description") {
         val (user, desc) = call.profileInput("description", Profile.MAX_DESC_LEN)
 
-        user.profile.description = desc
+        ProfileManager.setDescription(user, desc)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Change the location */
     put("/location") {
         val (user, loc) = call.profileInput("location", Profile.MAX_LOC_LEN)
 
-        user.profile.location = loc
+        ProfileManager.setLocation(user, loc)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Change the discord */
     put("/discord") {
         val (user, disc) = call.profileInput("discord", Profile.MAX_DISC_LEN)
 
-        user.profile.discord = disc
+        ProfileManager.setDiscord(user, disc)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 }

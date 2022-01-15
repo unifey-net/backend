@@ -30,7 +30,8 @@ object EmoteHandler {
                     emote.getLong("parent"),
                     emote.getString("name"),
                     emote.getLong("uploadedBy"),
-                    emote.getLong("date"))
+                    emote.getLong("date")
+                )
             }
             .toMutableList()
     }
@@ -53,7 +54,7 @@ object EmoteHandler {
      * @param image The actual emote.
      */
     @Throws(InvalidArguments::class, AlreadyExists::class, LimitReached::class)
-    fun createEmote(name: String, parent: Long, createdBy: Long, image: ByteArray) {
+    suspend fun createEmote(name: String, parent: Long, createdBy: Long, image: ByteArray) {
         val parsedName = cleanInput(name)
 
         when {
@@ -81,11 +82,14 @@ object EmoteHandler {
                         "parent" to parent,
                         "name" to name,
                         "uploadedBy" to createdBy,
-                        "date" to time)))
+                        "date" to time
+                    )
+                )
+            )
 
         emoteCache.add(
-            Emote(
-                String.format(EMOTE_URL, parent, emoteId), emoteId, parent, name, createdBy, time))
+            Emote(String.format(EMOTE_URL, parent, emoteId), emoteId, parent, name, createdBy, time)
+        )
     }
 
     /** If an emote with this [name] already exists. */

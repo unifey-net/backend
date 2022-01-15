@@ -54,7 +54,8 @@ object ReportHandler {
                     getTarget(doc.get("target", Document::class.java)),
                     ReportType.valueOf(doc.getString("type")),
                     doc.getString("reason"),
-                    doc.getLong("date"))
+                    doc.getLong("date")
+                )
             }
             .toMutableList()
     }
@@ -120,11 +121,16 @@ object ReportHandler {
                             Document(
                                 mapOf(
                                     "id" to report.target.id,
-                                    "type" to report.target.type.toString())),
+                                    "type" to report.target.type.toString()
+                                )
+                            ),
                         "reason" to report.reason,
                         "date" to report.date,
                         "feed" to report.feed,
-                        "type" to report.reportType.toString())))
+                        "type" to report.reportType.toString()
+                    )
+                )
+            )
 
         reportCache.add(report)
     }

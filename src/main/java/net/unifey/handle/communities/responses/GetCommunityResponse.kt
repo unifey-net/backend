@@ -1,5 +1,6 @@
 package net.unifey.handle.communities.responses
 
+import kotlinx.serialization.Serializable
 import net.unifey.handle.communities.Community
 import net.unifey.handle.emotes.Emote
 import net.unifey.handle.feeds.Feed
@@ -12,6 +13,7 @@ import net.unifey.handle.feeds.Feed
  * @param emotes The global and community emotes.
  * @param feed The feed of the community. Used to view the page count.
  */
+@Serializable
 data class GetCommunityResponse(
     val community: Community,
     val selfRole: Int?,

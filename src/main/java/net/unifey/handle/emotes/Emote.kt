@@ -1,5 +1,7 @@
 package net.unifey.handle.emotes
 
+import kotlinx.serialization.Serializable
+
 /**
  * An emote.
  *
@@ -9,6 +11,7 @@ package net.unifey.handle.emotes
  * @param name The name of the emote.
  * @param date The date the emote was uploaded.
  */
+@Serializable
 data class Emote(
     val url: String,
     val id: Long,

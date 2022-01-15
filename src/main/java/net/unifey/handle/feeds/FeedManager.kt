@@ -1,41 +1,39 @@
 package net.unifey.handle.feeds
 
-import com.mongodb.client.FindIterable
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.or
 import com.mongodb.client.model.Sorts
-import java.util.concurrent.ConcurrentHashMap
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.getRole
 import net.unifey.handle.feeds.posts.Post
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import org.bson.Document
+import org.litote.kmongo.coroutine.CoroutineFindPublisher
+import org.litote.kmongo.eq
+import org.litote.kmongo.pull
+import org.litote.kmongo.push
 
 object FeedManager {
-    /** Feed cache */
-    private val cache = ConcurrentHashMap<String, Feed>()
-
     /** A communities feed. */
-    fun getCommunityFeed(community: Community): Feed? = getFeed("cf_${community.id}")
+    @Throws(NotFound::class)
+    suspend fun getCommunityFeed(community: Community): Feed = getFeed("cf_${community.id}")
 
     /** A user's feed's ID is "uf_(user ID)" */
-    fun getUserFeed(user: User): Feed? = getFeed("uf_${user.id}")
+    @Throws(NotFound::class) suspend fun getUserFeed(user: User): Feed = getFeed("uf_${user.id}")
 
     /** Create a feed for [id] community. [owner] is the creator. */
-    fun createFeedForCommunity(id: Long, owner: Long) {
-        val feedDocument =
-            Document(
-                mapOf(
-                    "banned" to arrayListOf<Long>(),
-                    "moderators" to arrayListOf(owner),
-                    "id" to "cf_${id}"))
-
-        Mongo.getClient().getDatabase("feeds").getCollection("feeds").insertOne(feedDocument)
+    suspend fun createFeedForCommunity(id: Long, owner: Long) {
+        MONGO
+            .getDatabase("feeds")
+            .getCollection<Feed>("feeds")
+            .insertOne(Feed("cf_${id}", mutableListOf(), mutableListOf(owner)))
     }
 
     /** Create a feed for [id] user */
@@ -45,36 +43,26 @@ object FeedManager {
                 mapOf(
                     "banned" to mutableListOf<Long>(),
                     "moderators" to mutableListOf(id),
-                    "id" to "uf_${id}"))
+                    "id" to "uf_${id}"
+                )
+            )
 
         Mongo.getClient().getDatabase("feeds").getCollection("feeds").insertOne(feedDocument)
     }
 
     /** Get a feed by it's ID. */
-    fun getFeed(id: String): Feed {
-        if (cache.containsKey(id)) return cache[id]!!
-
-        val document =
-            Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection("feeds")
-                .find(eq("id", id))
-                .firstOrNull()
-                ?: throw NotFound("feed")
-
-        return Feed(
-            document.getString("id"),
-            document["banned"] as MutableList<Long>,
-            document["moderators"] as MutableList<Long>,
-            getPostCount(document.getString("id")))
+    @Throws(NotFound::class)
+    suspend fun getFeed(id: String): Feed {
+        return MONGO.getDatabase("feeds").getCollection<Feed>("feeds").findOne(Feed::id eq id)
+            ?: throw NotFound("feed")
     }
 
     /** Get the amount of posts in a [feed]. */
-    private fun getPostCount(feed: String): Long {
-        return Mongo.getClient()
+    suspend fun getPostCount(feed: String): Long {
+        return MONGO
             .getDatabase("feeds")
-            .getCollection("posts")
-            .countDocuments(eq("feed", feed))
+            .getCollection<Post>("posts")
+            .countDocuments(Post::feed eq feed)
     }
 
     /** If [user] can view [feed]. */
@@ -82,13 +70,19 @@ object FeedManager {
         if (feed.id.startsWith("cf_")) {
             val community =
                 CommunityManager.getCommunityById(
-                    feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id"))
+                    feed.id.removePrefix("cf_").toLongOrNull() ?: throw InvalidArguments("feed id")
+                )
 
-            if (community.viewRole != CommunityRoles.DEFAULT && user == null) return false
+            if (community.permissions.viewRole != CommunityRoles.DEFAULT && user == null)
+                return false
 
             return if (user == null)
-                CommunityRoles.hasPermission(CommunityRoles.DEFAULT, community.viewRole)
-            else CommunityRoles.hasPermission(community.getRole(user), community.viewRole)
+                CommunityRoles.hasPermission(CommunityRoles.DEFAULT, community.permissions.viewRole)
+            else
+                CommunityRoles.hasPermission(
+                    community.getRole(user),
+                    community.permissions.viewRole
+                )
         }
 
         return true
@@ -101,9 +95,9 @@ object FeedManager {
         return if (feed.id.startsWith("cf")) {
             val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLong())
 
-            val role = community.getRole(user) ?: CommunityRoles.DEFAULT
+            val role = community.getRole(user)
 
-            role >= community.postRole && !feed.banned.contains(user)
+            role >= community.permissions.postRole && !feed.banned.contains(user)
         } else !feed.banned.contains(user)
     }
 
@@ -114,9 +108,9 @@ object FeedManager {
         return if (feed.id.startsWith("cf")) {
             val community = CommunityManager.getCommunityById(feed.id.removePrefix("cf_").toLong())
 
-            val role = community.getRole(user) ?: CommunityRoles.DEFAULT
+            val role = community.getRole(user)
 
-            role >= community.commentRole && !feed.banned.contains(user)
+            role >= community.permissions.commentRole && !feed.banned.contains(user)
         } else !feed.banned.contains(user)
     }
 
@@ -131,7 +125,7 @@ object FeedManager {
      * This assumes you've previously checked for permissions. (see if user can view feed)
      */
     @Throws(NoPermission::class, InvalidArguments::class)
-    fun getFeedPosts(feed: Feed, page: Int, method: String): MutableList<Post> {
+    suspend fun getFeedPosts(feed: Feed, page: Int, method: String): MutableList<Post> {
         if (page > feed.pageCount || 0 >= page) throw InvalidArguments("page")
 
         val parsedMethod =
@@ -147,7 +141,11 @@ object FeedManager {
      *
      * This assumes you've previously checked for permissions. (see if user can view feed)
      */
-    fun getFeedsPosts(feeds: MutableList<Feed>, page: Int, method: String): MutableList<Post> {
+    suspend fun getFeedsPosts(
+        feeds: MutableList<Feed>,
+        page: Int,
+        method: String
+    ): MutableList<Post> {
         val pageCount = feeds.asSequence().map { feed -> feed.pageCount }.sum()
 
         if (page > pageCount || 0 >= page) throw InvalidArguments("page")
@@ -162,81 +160,69 @@ object FeedManager {
     const val POSTS_PAGE_SIZE = 50
 
     /** Get a page out of multiple feeds. */
-    private fun getFeedsPages(
+    private suspend fun getFeedsPages(
         feeds: MutableList<Feed>,
         page: Int,
         sortMethod: SortingMethod
     ): MutableList<Post> {
         val startAt = ((page - 1) * POSTS_PAGE_SIZE)
-        val filters = feeds.map { feed -> eq("feed", feed.id) }
+        val filters = feeds.map { feed -> Post::feed eq feed.id }
 
-        val posts = Mongo.getClient().getDatabase("feeds").getCollection("posts").find(or(filters))
+        val posts = MONGO.getDatabase("feeds").getCollection<Post>("posts").find(or(filters))
 
         return formFeeds(posts, startAt, sortMethod)
     }
 
     /** Get a page from a feed. */
-    private fun getFeedPage(feed: Feed, page: Int, sortMethod: SortingMethod): MutableList<Post> {
+    private suspend fun getFeedPage(
+        feed: Feed,
+        page: Int,
+        sortMethod: SortingMethod
+    ): MutableList<Post> {
         val startAt = ((page - 1) * POSTS_PAGE_SIZE)
 
         val posts =
-            Mongo.getClient().getDatabase("feeds").getCollection("posts").find(eq("feed", feed.id))
+            MONGO.getDatabase("feeds").getCollection<Post>("posts").find(Post::feed eq feed.id)
 
         return formFeeds(posts, startAt, sortMethod)
     }
 
     /** Form a request of posts into a properly formed list of posts. */
-    private fun formFeeds(
-        posts: FindIterable<Document>,
+    private suspend fun formFeeds(
+        posts: CoroutineFindPublisher<Post>,
         startAt: Int,
         sortMethod: SortingMethod
     ): MutableList<Post> {
-        val sorted =
+        val sort =
             when (sortMethod) {
-                SortingMethod.NEW -> posts.sort(Sorts.descending("created_at"))
-                SortingMethod.TOP -> posts.sort(Sorts.descending("vote.upvotes"))
-                SortingMethod.OLD -> posts.sort(Sorts.ascending("created_at"))
+                SortingMethod.NEW -> Sorts.descending("created_at")
+                SortingMethod.TOP -> Sorts.descending("vote.upvotes")
+                SortingMethod.OLD -> Sorts.ascending("created_at")
             }
 
-        return sorted
-            .skip(startAt)
-            .take(POSTS_PAGE_SIZE)
-            .map { doc ->
-                val vote = doc.get("vote", Document::class.java)
-
-                Post(
-                    doc.getLong("id"),
-                    doc.getLong("created_at"),
-                    doc.getLong("author_id"),
-                    doc.getString("feed"),
-                    doc.getString("title"),
-                    doc.getString("content"),
-                    vote.getLong("upvotes"),
-                    vote.getLong("downvotes"))
-            }
-            .toMutableList()
+        return posts.sort(sort).skip(startAt).limit(POSTS_PAGE_SIZE).toList().toMutableList()
     }
 
     /** Get a post by it's [id] */
-    fun getPost(id: Long): Post {
-        val doc =
-            Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection("posts")
-                .find(eq("id", id))
-                .firstOrNull()
-                ?: throw NotFound("post")
+    @Throws(NotFound::class)
+    suspend fun getPost(id: Long): Post {
+        return MONGO.getDatabase("feeds").getCollection<Post>("posts").findOne(Post::id eq id)
+            ?: throw NotFound("post")
+    }
 
-        val vote = doc.get("vote", Document::class.java)
+    /** Add [moderator] to [feed] */
+    suspend fun addModerator(feed: String, moderator: Long) {
+        MONGO
+            .getDatabase("feeds")
+            .getCollection<Feed>("feeds")
+            .updateOne(Feed::id eq feed, push(Feed::moderators, moderator))
+    }
 
-        return Post(
-            doc.getLong("id"),
-            doc.getLong("created_at"),
-            doc.getLong("author_id"),
-            doc.getString("feed"),
-            doc.getString("title"),
-            doc.getString("content"),
-            vote.getLong("upvotes"),
-            vote.getLong("downvotes"))
+    /** Remove [moderator] from [feed] */
+    suspend fun removeModerator(feed: String, moderator: Long) {
+        MONGO
+            .getDatabase("feeds")
+            .getCollection<Feed>("feeds")
+            .updateOne(Feed::id eq feed, pull(Feed::moderators, moderator))
     }
 }

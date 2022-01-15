@@ -16,7 +16,8 @@ class Unsubscribed :
     Error({
         respond(
             HttpStatusCode.BadRequest,
-            Response("An email provided has been unsubscribed from Unifey."))
+            Response("An email provided has been unsubscribed from Unifey.")
+        )
     })
 
 /** A resend email has been used to many times. */
@@ -24,7 +25,8 @@ class TooManyAttempts :
     Error({
         respond(
             HttpStatusCode.TooManyRequests,
-            Response("Too many email attempts have been requested."))
+            Response("Too many email attempts have been requested.")
+        )
     })
 
 /** An action that requires verification. */

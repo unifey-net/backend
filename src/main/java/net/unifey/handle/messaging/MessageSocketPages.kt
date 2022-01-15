@@ -1,137 +1,156 @@
 package net.unifey.handle.messaging
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import kotlinx.serialization.modules.subclass
+import net.unifey.handle.live.SocketAction
 import net.unifey.handle.live.SocketActionHandler
 import net.unifey.handle.live.SocketActionHandler.action
 import net.unifey.handle.live.WebSocket.customTypeMessage
+import net.unifey.handle.live.objs.ActionHolder
+import net.unifey.handle.live.objs.FindActions
+import net.unifey.handle.live.objs.SocketType
 import net.unifey.handle.messaging.channels.ChannelHandler
-import net.unifey.handle.messaging.channels.objects.*
+import net.unifey.handle.messaging.channels.objects.ChannelType
+import net.unifey.handle.messaging.channels.objects.DirectMessageChannel
+import net.unifey.handle.messaging.channels.objects.GroupMessageChannel
+import net.unifey.handle.messaging.channels.objects.MessageChannel
 import net.unifey.handle.messaging.channels.objects.responses.ChannelResponse
 
-fun messageSocketActions() =
-    SocketActionHandler.socketActions {
-        action("SEND_MESSAGE") {
-            checkArguments("message" to String::class, "channel" to Long::class)
-
-            val message = data["message"]!! as String
-            val channel = data["channel"]!! as Long
-
-            MessageHandler.sendMessage(token, message, channel)
-
-            true
+val format = Json {
+    serializersModule =
+        SerializersModule {
+            polymorphic(MessageChannel::class) {
+                subclass(DirectMessageChannel::class)
+                subclass(GroupMessageChannel::class)
+            }
         }
+}
 
-        action("MODIFY_GROUP_CHAT") {
-            checkArguments("type" to String::class, "channel" to Long::class)
-            val channel = data["channel"] as Long
+/** All the socket actions for messages and channels. */
+@FindActions
+object MessageSocketPages : ActionHolder {
+    override val pages: ArrayList<Pair<SocketType, SocketAction>> =
+        SocketActionHandler.socketActions {
+            // Send a message to a channel.
+            action(ChannelActions.SEND_MESSAGE) {
+                checkArguments("message" to String::class, "channel" to Long::class)
 
-            when ((data["type"] as String).lowercase()) {
-                "remove_member" -> {
-                    checkArguments("user" to Long::class, "channel" to Long::class)
+                val message = data["message"]!! as String
+                val channel = data["channel"]!! as Long
 
-                    ChannelHandler.removeGroupChatMember(token, channel, data["user"]!! as Long)
-                }
-                "change_name" -> {
-                    checkArguments("name" to String::class)
-
-                    ChannelHandler.changeName(token, channel, data["name"] as String)
-                }
-                "change_description" -> {
-                    checkArguments("description" to String::class)
-
-                    ChannelHandler.changeDescription(token, channel, data["description"] as String)
-                }
-                else -> return@action false
+                MessageHandler.sendMessage(token, message, channel)
             }
 
-            true
-        }
+            // Remove a member, change the name, or change the description of a group chat.
+            action(ChannelActions.MODIFY_GROUP_CHAT) {
+                checkArguments("type" to String::class, "channel" to Long::class)
+                val channel = data["channel"] as Long
 
-        action("GET_CHANNELS") {
-            val mapper = jacksonObjectMapper()
+                when ((data["type"] as String).lowercase()) {
+                    "remove_member" -> {
+                        checkArguments("user" to Long::class, "channel" to Long::class)
 
-            customTypeMessage(
-                "CHANNELS",
-                mapper.writeValueAsString(
+                        ChannelHandler.removeGroupChatMember(token, channel, data["user"]!! as Long)
+                    }
+                    "change_name" -> {
+                        checkArguments("name" to String::class)
+
+                        ChannelHandler.changeName(token, channel, data["name"] as String)
+                    }
+                    "change_description" -> {
+                        checkArguments("description" to String::class)
+
+                        ChannelHandler.changeDescription(
+                            token,
+                            channel,
+                            data["description"] as String
+                        )
+                    }
+                }
+            }
+
+            // Get all the user's channels.
+            action(ChannelActions.GET_CHANNELS) {
+                val channels =
                     ChannelHandler.getUserChannels(token).map { channel ->
                         ChannelResponse(
                             channel,
                             MessageHandler.getPageCount(channel.id),
-                            MessageHandler.getMessageCount(channel.id))
-                    }))
+                            MessageHandler.getMessageCount(channel.id)
+                        )
+                    }
 
-            true
-        }
+                customTypeMessage("CHANNELS", format.encodeToString(channels))
+            }
 
-        action("OPEN_DIRECT_MESSAGE") {
-            checkArguments("receiver" to Long::class)
+            // Open a direct message channel with someone.
+            action(ChannelActions.OPEN_DIRECT_MESSAGE) {
+                checkArguments("receiver" to Long::class)
 
-            ChannelHandler.openDirectMessage(token.owner, data["receiver"]!! as Long)
+                ChannelHandler.openDirectMessage(token.owner, data["receiver"]!! as Long)
+            }
 
-            true
-        }
+            // Create a group chat with a group of other users.
+            action(ChannelActions.CREATE_GROUP_CHAT) {
+                val users = getListArgument<Long>("users")
 
-        action("CREATE_GROUP_CHAT") {
-            val users = getListArgument<Long>("users")
+                ChannelHandler.createGroupChat(token.owner, ArrayList(users))
+            }
 
-            ChannelHandler.createGroupChat(token.owner, ArrayList(users))
+            // Get message history.
+            action(ChannelActions.GET_MESSAGES) {
+                checkArguments("channel" to Long::class, "page" to Int::class)
 
-            true
-        }
+                val messages =
+                    MessageHandler.getMessageHistory(data["channel"] as Long, data["page"] as Int)
 
-        action("GET_MESSAGES") {
-            checkArguments("channel" to Long::class, "page" to Int::class)
-            val mapper = jacksonObjectMapper()
+                customTypeMessage(
+                    ChannelUpdateTypes.MESSAGE_HISTORY.toString(),
+                    Json.encodeToString(messages)
+                )
+            }
 
-            val messages =
-                MessageHandler.getMessageHistory(data["channel"] as Long, data["page"] as Int)
+            // Get a channel by it's ID.
+            action(ChannelActions.GET_CHANNEL) {
+                checkArguments("channel" to Long::class)
 
-            customTypeMessage("MESSAGE_HISTORY", mapper.writeValueAsString(messages))
+                val channel = data["channel"] as Long
+                val channelObj = ChannelHandler.getChannel<MessageChannel>(channel)
 
-            true
-        }
-
-        action("GET_CHANNEL") {
-            checkArguments("channel" to Long::class)
-            val mapper = jacksonObjectMapper()
-
-            val channel = data["channel"] as Long
-            val channelObj = ChannelHandler.getChannel<MessageChannel>(channel)
-
-            customTypeMessage(
-                "GET_CHANNEL",
-                mapper.writeValueAsString(
+                val response =
                     ChannelResponse(
-                        if (channelObj.type == ChannelType.GROUP)
+                        if (channelObj.channelType == ChannelType.GROUP)
                             ChannelHandler.getChannel<GroupMessageChannel>(channel)
                         else ChannelHandler.getChannel<DirectMessageChannel>(channel),
                         MessageHandler.getPageCount(channel),
-                        MessageHandler.getMessageCount(channel))))
+                        MessageHandler.getMessageCount(channel)
+                    )
 
-            true
+                customTypeMessage("GET_CHANNEL", Json.encodeToString(response))
+            }
+
+            // Start typing in a channel.
+            action(ChannelActions.START_TYPING) {
+                checkArguments("channel" to Long::class)
+
+                ChannelHandler.startTyping(data["channel"] as Long, token.owner)
+            }
+
+            // Stop typing in a channel.
+            action(ChannelActions.STOP_TYPING) {
+                checkArguments("channel" to Long::class)
+
+                ChannelHandler.stopTyping(data["channel"] as Long, token.owner)
+            }
+
+            // Delete a message by it's ID
+            action(ChannelActions.DELETE_MESSAGE) {
+                checkArguments("id" to Long::class)
+
+                MessageHandler.deleteMessage(data["id"] as Long, token.owner)
+            }
         }
-
-        action("START_TYPING") {
-            checkArguments("channel" to Long::class)
-
-            ChannelHandler.startTyping(data["channel"] as Long, token.owner)
-
-            true
-        }
-        action("STOP_TYPING") {
-            checkArguments("channel" to Long::class)
-
-            ChannelHandler.stopTyping(data["channel"] as Long, token.owner)
-
-            true
-        }
-
-        action("DELETE_MESSAGE") { true }
-        action("EDIT_MESSAGE") { true }
-
-        action("ADD_REACTION") { true }
-        action("DELETE_REACTION") { true }
-
-        /** View the history of messages. Works by getting X amount of messages before Y message. */
-        action("VIEW_HISTORY") { true }
-    }
+}

@@ -23,7 +23,11 @@ object FieldChangeLimiter {
                 .getCollection("namechange")
                 .find(
                     Filters.and(
-                        Filters.eq("id", id), Filters.eq("type", type), Filters.eq("field", field)))
+                        Filters.eq("id", id),
+                        Filters.eq("type", type),
+                        Filters.eq("field", field)
+                    )
+                )
                 .firstOrNull()
 
         if (find != null) {
@@ -54,14 +58,19 @@ object FieldChangeLimiter {
                 .getCollection("namechange")
                 .updateOne(
                     Filters.and(
-                        Filters.eq("id", id), Filters.eq("type", type), Filters.eq("field", field)),
-                    Updates.set("until", time))
+                        Filters.eq("id", id),
+                        Filters.eq("type", type),
+                        Filters.eq("field", field)
+                    ),
+                    Updates.set("until", time)
+                )
         } else {
             Mongo.getClient()
                 .getDatabase("global")
                 .getCollection("namechange")
                 .insertOne(
-                    Document(mapOf("id" to id, "type" to type, "field" to field, "until" to time)))
+                    Document(mapOf("id" to id, "type" to type, "field" to field, "until" to time))
+                )
         }
     }
 
@@ -72,7 +81,11 @@ object FieldChangeLimiter {
             .getCollection("namechange")
             .deleteOne(
                 Filters.and(
-                    Filters.eq("type", type), Filters.eq("id", id), Filters.eq("field", field)))
+                    Filters.eq("type", type),
+                    Filters.eq("id", id),
+                    Filters.eq("field", field)
+                )
+            )
     }
 
     /**

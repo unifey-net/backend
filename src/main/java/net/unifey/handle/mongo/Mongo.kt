@@ -3,20 +3,23 @@ package net.unifey.handle.mongo
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
 import kotlinx.coroutines.*
-import net.unifey.mongo
-import net.unifey.prod
+import net.unifey.Unifey
 import org.litote.kmongo.coroutine.coroutine
 import org.litote.kmongo.reactivestreams.KMongo
+
+val MONGO
+    get() = Mongo.K_MONGO
 
 /** Interacts with MongoDB. */
 object Mongo {
     val K_MONGO =
         KMongo.createClient(
-                if (prod) {
-                    "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+                if (Unifey.prod) {
+                    "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
                 } else {
                     "mongodb://127.0.0.1:27017"
-                })
+                }
+            )
             .coroutine
 
     /** The MongoClient. */
@@ -29,9 +32,10 @@ object Mongo {
      */
     private fun makeClient() {
         client =
-            if (prod) {
+            if (Unifey.prod) {
                 MongoClients.create(
-                    "mongodb+srv://unify-mongo:${mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority")
+                    "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+                )
             } else {
                 MongoClients.create("mongodb://127.0.0.1:27017") // local testing mongodb server
             }

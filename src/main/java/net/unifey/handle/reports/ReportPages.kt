@@ -11,6 +11,7 @@ import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.getRole
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.comments.CommentManager
@@ -75,7 +76,9 @@ fun Routing.reportPages() {
             if (ReportHandler.getReportsToday(token.owner) > ReportHandler.MAX_REPORT_PER_PERSON)
                 throw Error({
                     respond(
-                        HttpStatusCode.BadRequest, Response("You can only report 3 times per day!"))
+                        HttpStatusCode.BadRequest,
+                        Response("You can only report 3 times per day!")
+                    )
                 })
 
             val params = call.receiveParameters()
@@ -87,7 +90,7 @@ fun Routing.reportPages() {
 
             ReportHandler.addReport(target, reason, feed, token.owner, getReasonText(params))
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Get all reports for feed. */
@@ -110,7 +113,8 @@ fun Routing.reportPages() {
                 } else if (!feed.moderators.contains(token.owner)) throw NoPermission()
 
                 call.respond(
-                    ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id)))
+                    ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id))
+                )
             }
 
             /** Delete a report in a feed. */
@@ -133,7 +137,7 @@ fun Routing.reportPages() {
 
                 ReportHandler.deleteReport(id)
 
-                call.respond(Response())
+                call.respond(Response("OK"))
             }
         }
 
@@ -160,7 +164,7 @@ fun Routing.reportPages() {
 
             ReportHandler.deleteReport(id)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 }
