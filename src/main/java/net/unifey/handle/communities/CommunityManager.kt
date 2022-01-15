@@ -113,17 +113,18 @@ object CommunityManager {
 
         val community =
             Community(
-                IdGenerator.getId(),
-                System.currentTimeMillis(),
-                CommunityPermissions(
-                    CommunityRoles.MEMBER,
-                    CommunityRoles.DEFAULT,
-                    CommunityRoles.MEMBER
-                ),
-                name,
-                desc,
-                mutableListOf(),
-                roles
+                id = IdGenerator.getId(),
+                createdAt = System.currentTimeMillis(),
+                permissions =
+                    CommunityPermissions(
+                        CommunityRoles.MEMBER,
+                        CommunityRoles.DEFAULT,
+                        CommunityRoles.MEMBER
+                    ),
+                name = name,
+                description = desc,
+                rules = mutableListOf(),
+                roles = roles
             )
 
         MONGO

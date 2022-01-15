@@ -33,21 +33,15 @@ object FeedManager {
         MONGO
             .getDatabase("feeds")
             .getCollection<Feed>("feeds")
-            .insertOne(Feed("cf_${id}", mutableListOf(), mutableListOf(owner)))
+            .insertOne(Feed("cf_${id}", listOf(), listOf(owner)))
     }
 
     /** Create a feed for [id] user */
-    fun createFeedForUser(id: Long) {
-        val feedDocument =
-            Document(
-                mapOf(
-                    "banned" to mutableListOf<Long>(),
-                    "moderators" to mutableListOf(id),
-                    "id" to "uf_${id}"
-                )
-            )
-
-        Mongo.getClient().getDatabase("feeds").getCollection("feeds").insertOne(feedDocument)
+    suspend fun createFeedForUser(id: Long) {
+        MONGO
+            .getDatabase("feeds")
+            .getCollection<Feed>("feeds")
+            .insertOne(Feed("uf_${id}", listOf(), listOf(id)))
     }
 
     /** Get a feed by it's ID. */
@@ -126,7 +120,7 @@ object FeedManager {
      */
     @Throws(NoPermission::class, InvalidArguments::class)
     suspend fun getFeedPosts(feed: Feed, page: Int, method: String): MutableList<Post> {
-        if (page > feed.pageCount || 0 >= page) throw InvalidArguments("page")
+        if (page > feed.getPageCount() || 0 >= page) throw InvalidArguments("page")
 
         val parsedMethod =
             SortingMethod.values().firstOrNull { sort -> sort.toString().equals(method, true) }
@@ -146,7 +140,7 @@ object FeedManager {
         page: Int,
         method: String
     ): MutableList<Post> {
-        val pageCount = feeds.asSequence().map { feed -> feed.pageCount }.sum()
+        val pageCount = feeds.sumOf { feed -> feed.getPageCount() }
 
         if (page > pageCount || 0 >= page) throw InvalidArguments("page")
 

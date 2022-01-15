@@ -12,8 +12,9 @@ import net.unifey.handle.users.member.MemberManager.getMember
 
 object PersonalizedFeed {
     /** Get the page count and post count from [feeds]. */
-    private fun getCounts(feeds: MutableList<Feed>): Pair<Long, Long> {
-        return feeds.sumOf { feed -> feed.pageCount } to feeds.sumOf { feed -> feed.postCount }
+    private suspend fun getCounts(feeds: MutableList<Feed>): Pair<Long, Long> {
+        return feeds.sumOf { feed -> feed.getPageCount() } to
+            feeds.sumOf { feed -> feed.getPostCount() }
     }
 
     /** Get [user]'s personalized feed. This is a combination of [user]'s subscribed feeds. */

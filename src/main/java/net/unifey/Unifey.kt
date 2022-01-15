@@ -5,9 +5,11 @@ import ch.qos.logback.classic.LoggerContext
 import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
 import io.ktor.locations.*
+import kotlin.system.exitProcess
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.unifey.handle.SERVER
+import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.live.SocketActionHandler
 import net.unifey.handle.users.UserManager
 import org.reflections.Reflections
@@ -42,7 +44,6 @@ object Unifey {
     @JvmStatic
     fun main(args: Array<String>) {
         disableLoggers()
-
         ROOT_LOGGER.info("BACKEND - $VERSION")
 
         mongo = System.getenv("MONGO")
@@ -53,6 +54,13 @@ object Unifey {
         System.getenv("RECAPTCHA") // to ensure exists.
 
         SocketActionHandler.findActions()
+
+        runBlocking {
+            val community =
+                CommunityManager.createCommunity(10630588113001, "Announcements", "Announcements")
+
+            ROOT_LOGGER.info("{}", community)
+        }
 
         SERVER.start(true)
     }
