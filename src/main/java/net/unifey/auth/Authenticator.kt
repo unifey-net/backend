@@ -53,6 +53,9 @@ object Authenticator {
         val token = IdGenerator.generateToken()
 
         return TokenManager.createToken(
-            token, user, if (remember) -1 else System.currentTimeMillis() + TOKEN_EXPIRE)
+            token,
+            user,
+            if (remember) -1 else System.currentTimeMillis() + TOKEN_EXPIRE
+        )
     }
 }

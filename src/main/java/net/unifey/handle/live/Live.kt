@@ -33,6 +33,7 @@ object Live {
         var user: Long? = null,
         var data: Any? = null
     )
+
     data class MultiLiveObjectBuilder(
         var type: String? = null,
         var users: List<Long>? = null,

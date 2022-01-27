@@ -10,11 +10,13 @@ import io.ktor.request.receiveStream
 import io.ktor.response.respond
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
+import net.unifey.Unifey
 import net.unifey.handle.BodyTooLarge
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidType
-import net.unifey.prod
+import net.unifey.handle.users.ShortUser
+import net.unifey.handle.users.User
 import net.unifey.response.Response
 import org.bson.Document
 import org.jsoup.Jsoup
@@ -23,7 +25,7 @@ import org.jsoup.safety.Whitelist
 /** The API base url. Changes depending on if it's prod or not. */
 val URL: String
     get() =
-        if (prod) {
+        if (Unifey.prod) {
             "https://unifeyapi.ajkneisl.dev"
         } else {
             "http://localhost:8077"
@@ -31,7 +33,7 @@ val URL: String
 
 val FRONTEND_URL: String
     get() =
-        if (prod) {
+        if (Unifey.prod) {
             "https://unifey.ajkneisl.dev"
         } else {
             "http://localhost:3000"
@@ -86,3 +88,9 @@ suspend fun ApplicationCall.checkCaptcha(parameters: Parameters? = null) {
     if (!ReCaptcha.getSuccessAsync(captcha))
         throw Error({ respond(HttpStatusCode.BadRequest, Response("Invalid reCAPTCHA.")) })
 }
+
+/** Create a mention. Recognizable on the frontend. */
+fun User.mention(): String = "@{${id}::${username}}"
+
+/** Create a mention. Recognizable on the frontend. */
+fun ShortUser.mention(): String = "@{${id}::${username}}"

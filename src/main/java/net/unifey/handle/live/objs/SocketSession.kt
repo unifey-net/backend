@@ -1,4 +1,4 @@
-package net.unifey.handle.live
+package net.unifey.handle.live.objs
 
 import io.ktor.http.cio.websocket.*
 import kotlin.jvm.Throws
@@ -8,7 +8,12 @@ import net.unifey.handle.InvalidArguments
 import org.json.JSONArray
 import org.json.JSONObject
 
-data class SocketSession(val session: WebSocketSession, val data: JSONObject, val token: Token) {
+data class SocketSession(
+    val session: WebSocketSession,
+    val data: JSONObject,
+    val token: Token,
+    val type: SocketType
+) {
     /** Check if [data] contains all of [arg] */
     fun checkArguments(vararg arg: Pair<String, KClass<*>>) {
         arg.forEach { pair ->
@@ -18,6 +23,7 @@ data class SocketSession(val session: WebSocketSession, val data: JSONObject, va
         }
     }
 
+    /** Get an argument as a [List]. Ensures elements are [T] */
     @Throws(InvalidArguments::class)
     inline fun <reified T : Any> getListArgument(arg: String): List<T> {
         if (!data.has(arg) || data[arg]::class != JSONArray::class) throw InvalidArguments(arg)

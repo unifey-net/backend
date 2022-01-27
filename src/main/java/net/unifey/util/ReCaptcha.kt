@@ -43,13 +43,16 @@ object ReCaptcha {
                             Parameters.build {
                                 append("secret", SECRET)
                                 append("response", response)
-                            })
+                            }
+                        )
                 }
             } catch (ex: ClientRequestException) {
                 return false
             }
 
-        logger.debug("ReCAPTCHA Check: $response -> ${responseObj.success} (${responseObj.challengeTs})")
+        logger.debug(
+            "ReCAPTCHA Check: $response -> ${responseObj.success} (${responseObj.challengeTs})"
+        )
 
         return responseObj.success
     }

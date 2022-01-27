@@ -46,9 +46,10 @@ fun Routing.emailPages() {
                 "USER",
                 token.owner,
                 "EMAIL_RESEND",
-                System.currentTimeMillis() + 1000 * 60 * 5) // 5 minutes
+                System.currentTimeMillis() + 1000 * 60 * 5
+            ) // 5 minutes
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Forgot password. */
@@ -61,7 +62,7 @@ fun Routing.emailPages() {
 
             UserEmailManager.sendPasswordReset(user)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Change password using forgot token. */
@@ -77,7 +78,7 @@ fun Routing.emailPages() {
 
             UserEmailManager.passwordReset(verify, password)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Verify email */
@@ -90,7 +91,7 @@ fun Routing.emailPages() {
 
             UserEmailManager.verify(id, verify)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Unsubscribe from Unifey and disallow an email from being able to be used again. */
@@ -113,8 +114,8 @@ fun Routing.emailPages() {
                 val user = UserManager.getUser(id)
 
                 if (user.email == email) {
-                    user.verified = false
-                    user.email = ""
+                    UserManager.setVerified(id, false)
+                    UserManager.changeEmail(id, "")
 
                     Mongo.getClient()
                         .getDatabase("email")

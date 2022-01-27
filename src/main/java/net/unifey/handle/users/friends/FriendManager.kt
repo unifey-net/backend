@@ -9,10 +9,20 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.notification.NotificationManager
+import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import org.bson.Document
 
 object FriendManager {
+    /** Get a user's friends,. */
+    fun User.getFriends() = getFriends(id)
+
+    /** Remove a user's [friend]. */
+    fun User.removeFriend(friend: Long) = removeFriend(id, friend)
+
+    /** If [User] has [friend]. */
+    fun User.hasFriend(friend: Long) = getFriends().any { user -> user.id == friend }
+
     /** Get [user]'s online friend count. */
     fun getOnlineFriendCount(user: Long): Int {
         val online = Live.getOnlineUsers()
@@ -38,7 +48,13 @@ object FriendManager {
                                     Document(
                                         mapOf(
                                             "id" to friend,
-                                            "friendedAt" to System.currentTimeMillis()))))))
+                                            "friendedAt" to System.currentTimeMillis()
+                                        )
+                                    )
+                                )
+                        )
+                    )
+                )
         } else {
             val friends = getFriends(id)
 
@@ -64,7 +80,9 @@ object FriendManager {
                     "friends",
                     friends.map { friend ->
                         Document(mapOf("id" to friend.id, "friendedAt" to friend.friendedAt))
-                    }))
+                    }
+                )
+            )
     }
 
     /** Remove [friend] from [id]'s friends. */
@@ -158,7 +176,9 @@ object FriendManager {
         addFriend(to, from)
 
         NotificationManager.postNotification(
-            from, "${UserManager.getUser(to).username} has accepted your friend request!")
+            from,
+            "${UserManager.getUser(to).username} has accepted your friend request!"
+        )
     }
 
     /** Send a friend request. */
@@ -185,9 +205,14 @@ object FriendManager {
                     mapOf(
                         "sentAt" to friendRequestObject.sentAt,
                         "sentTo" to friendRequestObject.sentTo,
-                        "sentFrom" to friendRequestObject.sentFrom)))
+                        "sentFrom" to friendRequestObject.sentFrom
+                    )
+                )
+            )
 
         NotificationManager.postNotification(
-            to, "${UserManager.getUser(from).username} has sent you a friend request!")
+            to,
+            "${UserManager.getUser(from).username} has sent you a friend request!"
+        )
     }
 }

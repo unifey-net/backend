@@ -43,7 +43,7 @@ fun Routing.betaPages() {
 
             BetaHandler.createRequest(type, message, name, token != null)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 }

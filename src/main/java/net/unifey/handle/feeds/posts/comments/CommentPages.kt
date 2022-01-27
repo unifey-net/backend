@@ -53,9 +53,14 @@ fun Route.commentPages() {
         val (token, post, content) = call.createComment()
 
         CommentManager.createComment(
-            post.id, null, post.feed, UserManager.getUser(token.owner), content)
+            post.id,
+            null,
+            post.feed,
+            UserManager.getUser(token.owner),
+            content
+        )
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Manage comments. */
@@ -100,7 +105,7 @@ fun Route.commentPages() {
 
             CommentManager.deleteComment(obj)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Manage content */
@@ -116,9 +121,9 @@ fun Route.commentPages() {
 
             if (content.length > CommentLimits.MAX_COMMENT_LEN) throw InvalidArguments("content")
 
-            obj.content = content
+            CommentManager.setContent(obj.id, content)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Manage your own vote. */
@@ -137,7 +142,7 @@ fun Route.commentPages() {
 
             VoteManager.setCommentVote(obj.id, token.owner, vote)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Comment on a comment. */
@@ -153,9 +158,14 @@ fun Route.commentPages() {
             content = cleanInput(content)
 
             CommentManager.createComment(
-                post.id, obj.id, obj.feed, UserManager.getUser(token.owner), content)
+                post.id,
+                obj.id,
+                obj.feed,
+                UserManager.getUser(token.owner),
+                content
+            )
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 }

@@ -37,7 +37,8 @@ object CommunityRuleManager {
                 .getCollection("communities")
                 .updateOne(
                     Filters.eq("id", community.id),
-                    Updates.set("rules.${id}", Document(mapOf("title" to title, "body" to body))))
+                    Updates.set("rules.${id}", Document(mapOf("title" to title, "body" to body)))
+                )
         }
 
         community.rules.add(CommunityRule(id, title, body))

@@ -8,15 +8,14 @@ import io.ktor.client.features.logging.*
 import io.ktor.features.*
 import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
-import io.ktor.jackson.*
 import io.ktor.locations.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import net.unifey.Unifey
 import java.time.Duration
-import kotlinx.serialization.json.Json
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
@@ -28,9 +27,7 @@ import net.unifey.handle.reports.reportPages
 import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
-import net.unifey.webhook
 import org.slf4j.event.Level
-import java.io.File
 
 val HTTP_CLIENT = HttpClient {
     install(JsonFeature) {
@@ -47,13 +44,7 @@ val HTTP_CLIENT = HttpClient {
 /** the actual server, localhost:8077 :) */
 val SERVER =
     embeddedServer(Netty, 8077) {
-        install(ContentNegotiation) {
-            jackson {}
-
-            register(ContentType.Application.Json, JacksonConverter())
-
-            json(contentType = ContentType.Application.Json)
-        }
+        install(ContentNegotiation) { json(contentType = ContentType.Application.Json) }
 
         install(io.ktor.websocket.WebSockets) { timeout = Duration.ofSeconds(15) }
 
@@ -61,7 +52,7 @@ val SERVER =
 
         install(CallLogging) { level = Level.INFO }
 
-        install(DefaultHeaders) { header("Server", "Unifey") }
+        install(DefaultHeaders) { header("Server", "Unifey v${Unifey.VERSION}") }
 
         install(AutoHeadResponse)
 
@@ -83,7 +74,8 @@ val SERVER =
 
                 call.respond(
                     HttpStatusCode.InternalServerError,
-                    Response("There was an internal error processing that request."))
+                    Response("There was an internal error processing that request.")
+                )
             }
         }
 

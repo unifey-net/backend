@@ -52,7 +52,10 @@ object TokenManager {
                         "token" to token.token,
                         "expires" to token.expires,
                         "permissions" to token.permissions,
-                        "owner" to token.owner)))
+                        "owner" to token.owner
+                    )
+                )
+            )
 
         tokenCache[tokenStr] = token
 
@@ -65,7 +68,8 @@ object TokenManager {
             doc.getLong("owner"),
             doc.getString("token"),
             doc.getList("permissions", String::class.java),
-            doc.getLong("expires"))
+            doc.getLong("expires")
+        )
     }
 
     /** Get all active tokens for [user] */

@@ -1,6 +1,7 @@
 package net.unifey.auth.tokens
 
 import com.fasterxml.jackson.annotation.JsonIgnore
+import kotlinx.serialization.Serializable
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 
@@ -12,6 +13,7 @@ import net.unifey.handle.users.UserManager
  * @param permissions
  * @param expires When the token expires in millis.
  */
+@Serializable
 data class Token(
     val owner: Long,
     val token: String,

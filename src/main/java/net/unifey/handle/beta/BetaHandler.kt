@@ -1,9 +1,9 @@
 package net.unifey.handle.beta
 
+import net.unifey.Unifey
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.UserInputRequirements
-import net.unifey.webhook
 
 /**
  * Handles stuff related to beta.
@@ -41,13 +41,17 @@ object BetaHandler {
 
         if (message.length !in 1029 downTo -1)
             throw InvalidVariableInput(
-                "message", "Message should be between 0 and 1028 characters!")
+                "message",
+                "Message should be between 0 and 1028 characters!"
+            )
 
         Mongo.K_MONGO
             .getDatabase("global")
             .getCollection<Request>("beta_requests")
             .insertOne(Request(name, authorized, type, message))
 
-        webhook.sendMessage("**BETA REQUEST**: [__${type}__, from __${name}__ ($authorized)]\n\n```$message```")
+        Unifey.webhook.sendMessage(
+            "**BETA REQUEST**: [__${type}__, from __${name}__ ($authorized)]\n\n```$message```"
+        )
     }
 }

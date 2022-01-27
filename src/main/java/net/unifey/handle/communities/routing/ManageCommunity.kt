@@ -9,18 +9,18 @@ import io.ktor.response.*
 import io.ktor.routing.*
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import kotlinx.serialization.Serializable
 import net.unifey.auth.AuthenticationException
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.S3ImageHandler
-import net.unifey.handle.communities.CommunityInputRequirements
-import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.*
 import net.unifey.handle.communities.rules.CommunityRuleManager
 import net.unifey.handle.communities.rules.RuleInputRequirements
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.member.MemberManager.isMemberOf
 import net.unifey.response.Response
 import net.unifey.util.FieldChangeLimiter
 import net.unifey.util.FieldChangeLimiter.checkLimited
@@ -40,7 +40,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
     /** Get a communities staff members */
     get("/staff") {
-        data class CommunityStaffResponse(val role: Int, val user: User)
+        @Serializable data class CommunityStaffResponse(val role: Int, val user: User)
 
         val user =
             try {
@@ -53,14 +53,16 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
         val community = CommunityManager.getCommunityById(id)
 
-        if (community.viewRole != CommunityRoles.DEFAULT &&
-            (user == null || community.viewRole > community.getRole(user.owner)))
+        if (community.permissions.viewRole != CommunityRoles.DEFAULT &&
+                (user == null || community.permissions.viewRole > community.getRole(user.owner))
+        )
             throw NoPermission()
 
         call.respond(
             community.roles.map { (id, role) ->
                 CommunityStaffResponse(role, UserManager.getUser(id))
-            })
+            }
+        )
     }
 
     /** Delete a community. */
@@ -75,7 +77,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
         CommunityManager.deleteCommunity(id)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Manage a communities rules. */
@@ -92,7 +94,8 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             if (title == null || body == null) throw InvalidArguments("title", "body")
 
             RuleInputRequirements.meets(
-                listOf(body to RuleInputRequirements.BODY, title to RuleInputRequirements.TITLE))
+                listOf(body to RuleInputRequirements.BODY, title to RuleInputRequirements.TITLE)
+            )
 
             val id = CommunityRuleManager.createRule(title, body, community)
 
@@ -107,7 +110,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             CommunityRuleManager.deleteRule(id, community)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Update the rule's body. */
@@ -125,7 +128,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             CommunityRuleManager.modifyBody(body, id, community)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Update the rule's title. */
@@ -143,7 +146,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             CommunityRuleManager.modifyTitle(title, id, community)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 
@@ -159,10 +162,11 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
         call.respond(
             Response(
-                CommunityManager.getMembersAsync(community.id)
-                    .await()
+                CommunityManager.getMembers(community.id)
                     .singleOrNull { user -> user.username.equals(name, true) }
-                    ?.id))
+                    ?.id
+            )
+        )
     }
 
     val searchBucket = PageRateLimit(Bandwidth.classic(5, Refill.greedy(1, Duration.ofSeconds(5))))
@@ -183,9 +187,10 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
         val name = params["name"] ?: ""
 
         call.respond(
-            CommunityManager.getMembersAsync(community.id).await().filter { user ->
+            CommunityManager.getMembers(community.id).filter { user ->
                 user.username.contains(name, true)
-            })
+            }
+        )
     }
 
     /** Manage a communities' profile picture. */
@@ -217,7 +222,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             S3ImageHandler.upload("community/${community.id}.jpg", image)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 
@@ -231,13 +236,16 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
         checkLimited("COMMUNITY", community.id, "NAME")
 
         CommunityInputRequirements.meets(name, CommunityInputRequirements.NAME)
-
-        community.name = name
+        CommunityManager.changeName(community.id, name)
 
         FieldChangeLimiter.createLimit(
-            "COMMUNITY", community.id, "NAME", System.currentTimeMillis() + nameChangeLength)
+            "COMMUNITY",
+            community.id,
+            "NAME",
+            System.currentTimeMillis() + nameChangeLength
+        )
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Change the description. */
@@ -246,9 +254,9 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
         CommunityInputRequirements.meets(desc, CommunityInputRequirements.DESCRIPTION)
 
-        community.description = desc
+        CommunityManager.changeDescription(community.id, desc)
 
-        call.respond(Response())
+        call.respond(Response("OK"))
     }
 
     /** Manage a communities roles. Also manages post/view permissions. */
@@ -277,27 +285,27 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
         put("/view") {
             val (community, role) = call.modifyRole()
 
-            community.viewRole = role
+            community.setPermissions(viewRole = role)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Change the comment permissions. */
         put("/comment") {
             val (community, role) = call.modifyRole()
 
-            community.commentRole = role
+            community.setPermissions(commentRole = role)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Change the post permissions. */
         put("/post") {
             val (community, role) = call.modifyRole()
 
-            community.postRole = role
+            community.setPermissions(postRole = role)
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
 
         /** Change a user's role. */
@@ -318,7 +326,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             val targetUser = UserManager.getUser(target)
 
-            if (!targetUser.member.isMemberOf(community.id)) throw NoPermission()
+            if (!targetUser.isMemberOf(community.id)) throw NoPermission()
 
             when {
                 targetUser.id == token.owner -> throw NoPermission()
@@ -341,7 +349,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
                 community.setRole(targetUser.id, role)
             }
 
-            call.respond(Response())
+            call.respond(Response("OK"))
         }
     }
 }

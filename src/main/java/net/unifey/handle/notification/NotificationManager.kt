@@ -9,8 +9,12 @@ import net.unifey.util.IdGenerator
 import org.litote.kmongo.and
 import org.litote.kmongo.eq
 import org.litote.kmongo.setValue
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object NotificationManager {
+    val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
+
     /** Post a notification with [message] for a [User]. */
     suspend fun User.postNotification(message: String) = postNotification(this.id, message)
 
@@ -24,6 +28,8 @@ object NotificationManager {
             .getDatabase("users")
             .getCollection<Notification>("notifications")
             .insertOne(notification)
+
+        LOGGER.trace("CREATE NOTIFICATION: $user -> ${message.length}")
 
         Live.sendUpdate(Live.LiveObject("NOTIFICATION", user, Json.encodeToString(notification)))
     }

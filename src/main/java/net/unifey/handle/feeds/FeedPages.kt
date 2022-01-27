@@ -5,6 +5,7 @@ import io.ktor.application.call
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.*
+import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
@@ -76,9 +77,26 @@ fun Routing.feedPages() {
         route("/{feed}") {
             /** Get a feed and it's posts. */
             get {
+                @Serializable
+                data class FeedResponse(
+                    val id: String,
+                    val banned: List<Long>,
+                    val moderators: List<Long>,
+                    val postCount: Long,
+                    val pageCount: Long
+                )
+
                 val (feed) = call.getFeed()
 
-                call.respond(feed)
+                call.respond(
+                    FeedResponse(
+                        feed.id,
+                        feed.banned,
+                        feed.moderators,
+                        feed.getPostCount(),
+                        feed.getPageCount()
+                    )
+                )
             }
 
             /** Manage and view posts. */
@@ -108,7 +126,7 @@ fun Routing.feedPages() {
 
                     PostManager.deletePost(post.id)
 
-                    call.respond(Response())
+                    call.respond(Response("OK"))
                 }
 
                 /** Manage your own vote. */
@@ -122,7 +140,7 @@ fun Routing.feedPages() {
 
                     VoteManager.setPostVote(post.id, token.owner, vote)
 
-                    call.respond(Response())
+                    call.respond(Response("OK"))
                 }
 
                 suspend fun ApplicationCall.managePost(param: String): Pair<String, Post> {
@@ -141,12 +159,13 @@ fun Routing.feedPages() {
                     if (content.isBlank() || content.length > PostLimits.MAX_CONTENT_LEN)
                         throw InvalidVariableInput(
                             "content",
-                            "Post must be under ${PostLimits.MAX_CONTENT_LEN} characters.")
+                            "Post must be under ${PostLimits.MAX_CONTENT_LEN} characters."
+                        )
 
-                    post.content = content
-                    post.edited = true
+                    PostManager.setContent(post.id, content)
+                    PostManager.setEdited(post.id, true)
 
-                    call.respond(Response())
+                    call.respond(Response("OK"))
                 }
 
                 post("/title") {
@@ -155,12 +174,13 @@ fun Routing.feedPages() {
                     if (content.isBlank() || content.length > PostLimits.MAX_TITLE_LEN)
                         throw InvalidVariableInput(
                             "title",
-                            "Title must be under ${PostLimits.MAX_CONTENT_LEN} characters.")
+                            "Title must be under ${PostLimits.MAX_CONTENT_LEN} characters."
+                        )
 
-                    post.title = content
-                    post.edited = true
+                    PostManager.setTitle(post.id, content)
+                    PostManager.setEdited(post.id, true)
 
-                    call.respond(Response())
+                    call.respond(Response("OK"))
                 }
             }
 
@@ -187,7 +207,9 @@ fun Routing.feedPages() {
                     GetFeedResponse(
                         feed,
                         response,
-                        if (token != null) feed.getFeedPermissions(token.getOwner()) else null))
+                        if (token != null) feed.getFeedPermissions(token.getOwner()) else null
+                    )
+                )
             }
 
             /** Post to a feed. */

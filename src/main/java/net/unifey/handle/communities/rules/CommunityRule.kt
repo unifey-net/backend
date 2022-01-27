@@ -1,4 +1,6 @@
 package net.unifey.handle.communities.rules
 
+import kotlinx.serialization.Serializable
+
 /** One of a communities' rules. */
-data class CommunityRule(val id: Long, var title: String, var body: String)
+@Serializable data class CommunityRule(val id: Long, var title: String, var body: String)

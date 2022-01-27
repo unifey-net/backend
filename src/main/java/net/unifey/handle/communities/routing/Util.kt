@@ -14,6 +14,7 @@ import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.getRole
 import net.unifey.handle.communities.responses.GetCommunityResponse
 import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.users.User
@@ -31,12 +32,21 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
             null
         }
 
-    if (community.viewRole != CommunityRoles.DEFAULT) {
+    if (community.permissions.viewRole != CommunityRoles.DEFAULT) {
         if (user == null ||
-            !CommunityRoles.hasPermission(community.getRole(user.owner), community.viewRole)) {
+                !CommunityRoles.hasPermission(
+                    community.getRole(user.owner),
+                    community.permissions.viewRole
+                )
+        ) {
             respond(
                 GetCommunityResponse(
-                    community, community.getRole(user?.owner ?: -1), listOf(), null))
+                    community,
+                    community.getRole(user?.owner ?: -1),
+                    listOf(),
+                    null
+                )
+            )
 
             return
         }
@@ -47,7 +57,9 @@ suspend fun ApplicationCall.respondCommunity(community: Community) {
             community,
             community.getRole(user?.owner ?: -1L),
             EmoteHandler.getCommunityEmotes(community),
-            community.getFeed()))
+            community.getFeed()
+        )
+    )
 }
 
 /**

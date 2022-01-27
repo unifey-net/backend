@@ -10,13 +10,14 @@ import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import net.unifey.FRONTEND_EXPECT
-import net.unifey.VERSION
+import net.unifey.Unifey
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.live.WebSocket.authenticateMessage
 import net.unifey.handle.live.WebSocket.customTypeMessage
 import net.unifey.handle.live.WebSocket.errorMessage
+import net.unifey.handle.live.objs.SocketSession
+import net.unifey.handle.live.objs.SocketType
 import net.unifey.response.Response
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
@@ -32,7 +33,7 @@ fun Routing.liveSocket() {
 
         webSocket {
             var token: Token? = null
-            var channel = Channel<Live.LiveObject>()
+            val channel = Channel<Live.LiveObject>()
 
             launch {
                 while (!channel.isClosedForReceive) {
@@ -46,8 +47,9 @@ fun Routing.liveSocket() {
             customTypeMessage(
                 "init",
                 JSONObject()
-                    .put("frontend", FRONTEND_EXPECT)
-                    .put("version", "Unifey Backend $VERSION"))
+                    .put("frontend", Unifey.FRONTEND_EXPECT)
+                    .put("version", "Unifey Backend ${Unifey.VERSION}")
+            )
 
             for (frame in incoming) {
                 when (frame) {
@@ -65,20 +67,24 @@ fun Routing.liveSocket() {
                                         errorMessage("Invalid token.")
                                     } else {
                                         if (TokenManager.isTokenExpired(tokenObj)) {
+                                            socketLogger.info("SOCK AUTH: Failed due to expired token.")
+                                            customTypeMessage("TOKEN_EXPIRED", "Your token has expired!")
                                             close(CloseReason(4011, "Your token was expired!"))
                                         } else {
                                             token = tokenObj
 
-                                            if (Live.getOnlineUsers()
-                                                .keys
-                                                .contains(tokenObj.owner)) {
+                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)
+                                            ) {
                                                 socketLogger.info(
-                                                    "AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
+                                                    "AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE"
+                                                )
 
                                                 close(
                                                     CloseReason(
                                                         CloseReason.Codes.VIOLATED_POLICY,
-                                                        "You're already logged in somewhere else!"))
+                                                        "You're already logged in somewhere else!"
+                                                    )
+                                                )
                                             } else {
                                                 socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
@@ -132,23 +138,21 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     val page = findPage(json.getString("action"))
 
     if (page != null)
-        page.run {
-            var success = false
+        page.second.run {
             val time = measureTimeMillis {
-                success = SocketSession(this@handleIncoming, json, user).receive()
+                SocketSession(this@handleIncoming, json, user, page.first).receive()
             }
 
-            socketLogger.info(
-                "${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
+            socketLogger.info("${user.owner} -> ${json.getString("action")} (took ${time}ms)")
         }
     else {
         errorMessage("That page could not be found.")
     }
 }
 
-private fun findPage(action: String): SocketAction? {
-    SocketActionHandler.socketActions.forEach { (name, page) ->
-        if (action.equals(name, true)) return page
+private fun findPage(action: String): Pair<SocketType, SocketAction>? {
+    SocketActionHandler.socketActions.forEach { (type, page) ->
+        if (action.equals(type.type, true)) return type to page
     }
 
     return null

@@ -1,104 +1,66 @@
 package net.unifey.handle.live
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.http.cio.websocket.*
-import java.lang.Exception
-import net.unifey.VERSION
+import net.unifey.Unifey
 import net.unifey.handle.Error
-import net.unifey.handle.live.WebSocket.customTypeMessage
-import net.unifey.handle.live.WebSocket.errorMessage
-import net.unifey.handle.live.WebSocket.successMessage
-import org.reflections.Reflections
+import net.unifey.handle.live.objs.ActionHolder
+import net.unifey.handle.live.objs.FindActions
+import net.unifey.handle.live.objs.SocketSession
+import net.unifey.handle.live.objs.SocketType
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object SocketActionHandler {
+    val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
     /** All socket actions. */
-    val socketActions = arrayListOf<Pair<String, SocketAction>>()
+    val socketActions = arrayListOf<Pair<SocketType, SocketAction>>()
 
     /** Find pages using [SocketInteraction]. */
-    private fun findActions() {
-        val types = Reflections("net.unifey").getTypesAnnotatedWith(SocketInteraction::class.java)
-
-        val found = arrayListOf<Pair<String, SocketAction>>()
+    fun findActions() {
+        logger.trace("Looking for actions in net.unifey...")
+        val types = Unifey.REFLECTIONS.getTypesAnnotatedWith(FindActions::class.java)
 
         types.forEach { type ->
-            val instance = type.getDeclaredConstructor().newInstance()
+            val pages = ((type.fields[0].get(type)) as ActionHolder).pages
 
-            if (instance is SocketAction) {
-                val anno =
-                    type.annotations.single { ann -> ann is SocketInteraction } as SocketInteraction
+            logger.trace("Found ${type.simpleName}, ${pages.size} actions.")
 
-                found.add(anno.name to instance)
-            }
+            socketActions.addAll(pages)
         }
-
-        socketActions.addAll(found)
     }
 
     /** Holds pages for [socketActions]. */
     class SocketActions {
-        val pages: ArrayList<Pair<String, SocketAction>> = arrayListOf()
+        val pages: ArrayList<Pair<SocketType, SocketAction>> = arrayListOf()
     }
 
     /** Constructor that holds [action] */
-    fun socketActions(pages: SocketActions.() -> Unit) {
+    fun socketActions(pages: SocketActions.() -> Unit): ArrayList<Pair<SocketType, SocketAction>> {
         val pagesInst = SocketActions()
 
         pages.invoke(pagesInst)
 
-        this.socketActions.addAll(pagesInst.pages)
+        return pagesInst.pages
     }
 
     /** Create a action with [name]. */
-    fun SocketActions.action(
-        name: String,
-        constructor: suspend SocketSession.() -> Boolean = { true }
-    ) {
-        if (name.isBlank()) throw Exception("Name cannot be blank!")
+    fun SocketActions.action(type: SocketType, constructor: suspend SocketSession.() -> Unit) {
+        if (type.type.isBlank()) throw Exception("Name cannot be blank!")
 
         val page =
             object : SocketAction {
-                override suspend fun SocketSession.receive(): Boolean {
+                override suspend fun SocketSession.receive() {
                     return try {
                         constructor.invoke(this)
                     } catch (err: SocketError) {
                         this@receive.session.close(err.reason)
-                        false
                     } catch (ex: Error) {
-                        errorMessage(ex.message)
-                        false
+                        respond(type, ex)
                     }
                 }
             }
 
-        pages.add(name to page)
-    }
-
-    init {
-        findActions()
-
-        // default pages:
-        socketActions {
-            /** Get the amount of users online. */
-            action("GET_USER_COUNT") {
-                successMessage("${Live.getOnlineUsers().size}")
-                true
-            }
-
-            /** Get the server's version. */
-            action("GET_SERVER_VERSION") {
-                successMessage(VERSION)
-                true
-            }
-
-            /** Get user. This is used when the frontend starts. */
-            action("GET_USER") {
-                val owner = token.getOwner()
-                val mapper = jacksonObjectMapper()
-
-                customTypeMessage("GET_USER", mapper.writeValueAsString(owner))
-
-                true
-            }
-        }
+        pages.add(type to page)
     }
 }
