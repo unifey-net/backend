@@ -55,13 +55,6 @@ object Unifey {
 
         SocketActionHandler.findActions()
 
-        runBlocking {
-            val community =
-                CommunityManager.createCommunity(10630588113001, "Announcements", "Announcements")
-
-            ROOT_LOGGER.info("{}", community)
-        }
-
         SERVER.start(true)
     }
 

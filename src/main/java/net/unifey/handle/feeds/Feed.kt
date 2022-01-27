@@ -1,13 +1,10 @@
 package net.unifey.handle.feeds
 
-import com.fasterxml.jackson.annotation.JsonIgnore
-import kotlin.math.ceil
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 import net.unifey.handle.feeds.FeedManager.POSTS_PAGE_SIZE
 import net.unifey.handle.feeds.responses.UserFeedPermissions
 import net.unifey.handle.users.User
+import kotlin.math.ceil
 
 @Serializable
 data class Feed(

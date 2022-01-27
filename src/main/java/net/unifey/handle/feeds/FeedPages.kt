@@ -5,6 +5,7 @@ import io.ktor.application.call
 import io.ktor.request.receiveParameters
 import io.ktor.response.respond
 import io.ktor.routing.*
+import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
@@ -76,9 +77,26 @@ fun Routing.feedPages() {
         route("/{feed}") {
             /** Get a feed and it's posts. */
             get {
+                @Serializable
+                data class FeedResponse(
+                    val id: String,
+                    val banned: List<Long>,
+                    val moderators: List<Long>,
+                    val postCount: Long,
+                    val pageCount: Long
+                )
+
                 val (feed) = call.getFeed()
 
-                call.respond(feed)
+                call.respond(
+                    FeedResponse(
+                        feed.id,
+                        feed.banned,
+                        feed.moderators,
+                        feed.getPostCount(),
+                        feed.getPageCount()
+                    )
+                )
             }
 
             /** Manage and view posts. */

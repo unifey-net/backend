@@ -19,8 +19,12 @@ import org.litote.kmongo.coroutine.CoroutineFindPublisher
 import org.litote.kmongo.eq
 import org.litote.kmongo.pull
 import org.litote.kmongo.push
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object FeedManager {
+    val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
+
     /** A communities feed. */
     @Throws(NotFound::class)
     suspend fun getCommunityFeed(community: Community): Feed = getFeed("cf_${community.id}")
@@ -30,6 +34,7 @@ object FeedManager {
 
     /** Create a feed for [id] community. [owner] is the creator. */
     suspend fun createFeedForCommunity(id: Long, owner: Long) {
+        LOGGER.trace("CREATE COMMUNITY FEED: $id ($owner) -> cf_${id}")
         MONGO
             .getDatabase("feeds")
             .getCollection<Feed>("feeds")
@@ -38,6 +43,8 @@ object FeedManager {
 
     /** Create a feed for [id] user */
     suspend fun createFeedForUser(id: Long) {
+        LOGGER.trace("CREATE USER FEED: $id -> uf_${id}")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Feed>("feeds")
@@ -126,6 +133,8 @@ object FeedManager {
             SortingMethod.values().firstOrNull { sort -> sort.toString().equals(method, true) }
                 ?: throw InvalidArguments("sort")
 
+        LOGGER.trace("FEED POSTS: ${feed.id} ($method) -> $page")
+
         return getFeedPage(feed, page, parsedMethod)
     }
 
@@ -147,6 +156,8 @@ object FeedManager {
         val parsedMethod =
             SortingMethod.values().firstOrNull { sort -> sort.toString().equals(method, true) }
                 ?: throw InvalidArguments("sort")
+
+        LOGGER.trace("FEEDS POSTS: ${feeds.joinToString { feed -> feed.id }} ($method) -> $page")
 
         return getFeedsPages(feeds, page, parsedMethod)
     }
@@ -206,6 +217,8 @@ object FeedManager {
 
     /** Add [moderator] to [feed] */
     suspend fun addModerator(feed: String, moderator: Long) {
+        LOGGER.trace("FEED ADD MODERATOR: $feed ->+ $moderator")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Feed>("feeds")
@@ -214,6 +227,8 @@ object FeedManager {
 
     /** Remove [moderator] from [feed] */
     suspend fun removeModerator(feed: String, moderator: Long) {
+        LOGGER.trace("FEED REMOVE MODERATOR: $feed ->- $moderator")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Feed>("feeds")

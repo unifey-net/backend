@@ -14,6 +14,7 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import net.unifey.Unifey
 import java.time.Duration
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
@@ -51,7 +52,7 @@ val SERVER =
 
         install(CallLogging) { level = Level.INFO }
 
-        install(DefaultHeaders) { header("Server", "Unifey") }
+        install(DefaultHeaders) { header("Server", "Unifey v${Unifey.VERSION}") }
 
         install(AutoHeadResponse)
 

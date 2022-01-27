@@ -12,14 +12,11 @@ import net.unifey.util.IdGenerator
 import net.unifey.util.cleanInput
 import org.litote.kmongo.eq
 import org.litote.kmongo.setValue
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 object PostManager {
-    /** Add a post to the database. */
-    suspend fun createPost(post: Post): Post {
-        MONGO.getDatabase("feeds").getCollection<Post>("posts").insertOne(post)
-
-        return post
-    }
+    val LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
 
     /** Add a post to the database. */
     @Throws(InvalidArguments::class)
@@ -48,7 +45,11 @@ object PostManager {
 
         sendPostNotification(feed, author)
 
-        return createPost(post)
+        LOGGER.trace("POST CREATE: ${post.feed} -> ${post.authorId} (${post.id})")
+
+        MONGO.getDatabase("feeds").getCollection<Post>("posts").insertOne(post)
+
+        return post
     }
 
     /** Send create post notifications. */
@@ -82,6 +83,8 @@ object PostManager {
 
     /** Delete a post by it's [id]. */
     suspend fun deletePost(id: Long) {
+        LOGGER.trace("DELETE POST: $id")
+
         MONGO.getDatabase("feeds").getCollection<Post>("posts").deleteOne(Post::id eq id)
 
         MONGO
@@ -92,6 +95,8 @@ object PostManager {
 
     /** Set the [post]'s [content]. */
     suspend fun setContent(post: Long, content: String) {
+        LOGGER.trace("UPDATE POST CONTENT: $post -> ${content.length}")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Comment>("posts")
@@ -100,6 +105,8 @@ object PostManager {
 
     /** Set the [post]'s [title]. */
     suspend fun setTitle(post: Long, title: String) {
+        LOGGER.trace("UPDATE POST TITLE: $post -> ${title.length}")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Post>("posts")
@@ -108,6 +115,8 @@ object PostManager {
 
     /** Set if the [post] is [edited]. */
     suspend fun setEdited(post: Long, edited: Boolean) {
+        LOGGER.trace("UPDATE POST EDITED STATUS: $post -> $edited")
+
         MONGO
             .getDatabase("feeds")
             .getCollection<Post>()

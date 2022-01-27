@@ -67,6 +67,8 @@ fun Routing.liveSocket() {
                                         errorMessage("Invalid token.")
                                     } else {
                                         if (TokenManager.isTokenExpired(tokenObj)) {
+                                            socketLogger.info("SOCK AUTH: Failed due to expired token.")
+                                            customTypeMessage("TOKEN_EXPIRED", "Your token has expired!")
                                             close(CloseReason(4011, "Your token was expired!"))
                                         } else {
                                             token = tokenObj
