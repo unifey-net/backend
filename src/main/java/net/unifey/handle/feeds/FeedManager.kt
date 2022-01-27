@@ -12,9 +12,7 @@ import net.unifey.handle.communities.CommunityRoles
 import net.unifey.handle.communities.getRole
 import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.mongo.MONGO
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
-import org.bson.Document
 import org.litote.kmongo.coroutine.CoroutineFindPublisher
 import org.litote.kmongo.eq
 import org.litote.kmongo.pull
@@ -200,9 +198,9 @@ object FeedManager {
     ): MutableList<Post> {
         val sort =
             when (sortMethod) {
-                SortingMethod.NEW -> Sorts.descending("created_at")
+                SortingMethod.NEW -> Sorts.descending("createdAt")
                 SortingMethod.TOP -> Sorts.descending("vote.upvotes")
-                SortingMethod.OLD -> Sorts.ascending("created_at")
+                SortingMethod.OLD -> Sorts.ascending("createdAt")
             }
 
         return posts.sort(sort).skip(startAt).limit(POSTS_PAGE_SIZE).toList().toMutableList()
