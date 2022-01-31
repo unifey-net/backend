@@ -55,7 +55,7 @@ dependencies {
 
     implementation 'ch.qos.logback:logback-classic:1.2.10'
     implementation('org.json:json:20211205')
-    implementation 'com.github.ajkneisl:lib:2.1'
+    implementation 'com.github.ajkneisl:lib:839a75d077'
     implementation 'com.github.vladimir-bukhtoyarov:bucket4j-core:7.0.0'
     implementation 'com.sun.mail:javax.mail:1.6.2'
     implementation 'org.mindrot:jbcrypt:0.4'

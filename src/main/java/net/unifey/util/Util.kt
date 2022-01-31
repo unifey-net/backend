@@ -26,7 +26,7 @@ import org.jsoup.safety.Whitelist
 val URL: String
     get() =
         if (Unifey.prod) {
-            "https://unifeyapi.ajkneisl.dev"
+            "https://api.unifey.app"
         } else {
             "http://localhost:8077"
         }
@@ -34,7 +34,7 @@ val URL: String
 val FRONTEND_URL: String
     get() =
         if (Unifey.prod) {
-            "https://unifey.ajkneisl.dev"
+            "https://unifey.app"
         } else {
             "http://localhost:3000"
         }

@@ -250,6 +250,7 @@ object UserEmailManager {
             EMAIL_LOGGER.info(
                 "An email (${request.id} - ${request.type}) has been sent to ${request.email}. (${response.statusCode})"
             )
+            EMAIL_LOGGER.trace("Body: {}, Headers: {}", response.body, response.headers)
         } catch (ex: IOException) {
             EMAIL_LOGGER.error(
                 "An email (${request.id} - ${request.type}) could not be sent to ${request.email}."

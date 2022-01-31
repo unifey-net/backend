@@ -44,7 +44,7 @@ object Unifey {
     @JvmStatic
     fun main(args: Array<String>) {
         disableLoggers()
-        ROOT_LOGGER.info("BACKEND - $VERSION")
+        ROOT_LOGGER.info("BACKEND - $VERSION, $prod")
 
         mongo = System.getenv("MONGO")
         webhook = DiscordWebhook(System.getenv("WEBHOOK"))

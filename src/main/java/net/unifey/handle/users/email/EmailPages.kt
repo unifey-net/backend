@@ -1,11 +1,15 @@
 package net.unifey.handle.users.email
 
 import com.mongodb.client.model.Filters.eq
+import com.sendgrid.helpers.eventwebhook.EventWebhook
 import io.ktor.application.call
-import io.ktor.request.receiveParameters
+import io.ktor.http.*
+import io.ktor.request.*
 import io.ktor.response.respond
 import io.ktor.response.respondRedirect
 import io.ktor.routing.*
+import io.ktor.util.*
+import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.Mongo
@@ -14,6 +18,10 @@ import net.unifey.handle.users.UserManager
 import net.unifey.response.Response
 import net.unifey.util.FieldChangeLimiter
 import net.unifey.util.RateLimitException
+import org.slf4j.LoggerFactory
+
+private val PUBLIC_KEY = System.getenv("SENDGRID_HOOK_KEY")
+private val EMAIL_LOGGER = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 /** Pages for email. */
 fun Routing.emailPages() {
