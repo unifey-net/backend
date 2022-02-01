@@ -2,6 +2,7 @@ package net.unifey.handle.live
 
 import dev.ajkneisl.lib.util.jsonObjectOf
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
 import io.ktor.routing.*
@@ -11,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import net.unifey.Unifey
+import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.live.WebSocket.authenticateMessage
@@ -28,6 +30,29 @@ val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 /** This is the websocket implementation as well as the REST implementation. */
 @OptIn(ExperimentalCoroutinesApi::class)
 fun Routing.liveSocket() {
+    route("/manage-live") {
+        get("/view") {
+            val token = call.isAuthenticated()
+
+            if (Live.getOnlineUsers().containsKey(token.owner)) {
+                call.respond(Response("Currently connected."))
+            } else {
+                call.respond(Response("Currently not connected anywhere else."))
+            }
+        }
+
+        delete("/logout") {
+            val token = call.isAuthenticated()
+
+            if (Live.getOnlineUsers().containsKey(token.owner)) {
+                Live.sendUpdate(Live.LiveObject("DISCONNECT", token.owner, ""))
+                call.respond(HttpStatusCode.OK, Response("Disconnected other account."))
+            } else {
+                call.respond(HttpStatusCode.BadRequest, Response("No one "))
+            }
+        }
+    }
+
     route("/live") {
         get("/count") { call.respond(Response(Live.getOnlineUsers().size)) }
 
@@ -39,8 +64,12 @@ fun Routing.liveSocket() {
                 while (!channel.isClosedForReceive) {
                     val (type, user, data) = channel.receive()
 
-                    socketLogger.info("SEND $user: LIVE $type ($data)")
-                    customTypeMessage(type, data)
+                    if (type.equals("DISCONNECT", true)) {
+                        close(CloseReason(CloseReason.Codes.GOING_AWAY, "Connected somewhere else."))
+                    } else {
+                        socketLogger.info("SEND $user: LIVE $type ($data)")
+                        customTypeMessage(type, data)
+                    }
                 }
             }
 

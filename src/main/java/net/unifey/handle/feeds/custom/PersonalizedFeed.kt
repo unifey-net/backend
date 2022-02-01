@@ -1,6 +1,7 @@
 package net.unifey.handle.feeds.custom
 
 import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.communities.getFeed
 import net.unifey.handle.feeds.Feed
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.custom.response.GetLimitedFeedResponse

@@ -20,7 +20,7 @@ import net.unifey.handle.users.User
 import net.unifey.response.Response
 import org.bson.Document
 import org.jsoup.Jsoup
-import org.jsoup.safety.Whitelist
+import org.jsoup.safety.Safelist
 
 /** The API base url. Changes depending on if it's prod or not. */
 val URL: String
@@ -67,7 +67,7 @@ suspend fun ApplicationCall.ensureProperImageBody(maxSize: Long = 4_000_000): By
 
 /** Clears invalid HTML tags from [input] */
 fun cleanInput(input: String): String {
-    return Jsoup.clean(input, Whitelist.basic())
+    return Jsoup.clean(input, Safelist.basic())
 }
 
 fun String?.clean(): String? {

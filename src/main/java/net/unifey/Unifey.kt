@@ -1,6 +1,6 @@
 package net.unifey
 
-import ch.qos.logback.classic.Level.OFF
+import ch.qos.logback.classic.Level.*
 import ch.qos.logback.classic.LoggerContext
 import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
@@ -62,7 +62,7 @@ object Unifey {
     private fun disableLoggers() {
         val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
         val rootLogger = loggerContext.getLogger("org.mongodb.driver")
-        rootLogger.level = OFF
+        rootLogger.level = INFO
 
         val awsLogger = loggerContext.getLogger("software.amazon.awssdk")
         awsLogger.level = OFF

@@ -11,6 +11,7 @@ import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.communities.CommunityInputRequirements
 import net.unifey.handle.communities.CommunityManager
+import net.unifey.handle.live.socketLogger
 import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
 import org.mindrot.jbcrypt.BCrypt
@@ -37,15 +38,16 @@ fun Routing.communityPages() {
             // only check for captcha in production
             if (Unifey.prod) call.checkCaptcha(params)
 
-            if (!CommunityManager.canCreate(token.owner))
-                throw Error({
-                    call.respond(
-                        HttpStatusCode.Unauthorized,
-                        Response(
-                            "Your account must be 14 days old and you can't have create a community before!"
-                        )
-                    )
-                })
+//            if (!CommunityManager.canCreate(token.owner))
+//                throw Error({
+//                    call.respond(
+//                        HttpStatusCode.Unauthorized,
+//                        Response(
+//                            "Your account must be 14 days old and you can't have create a community before!"
+//                        )
+//                    )
+//                })
+
 
             val name = params["name"]
             val desc = params["description"]
@@ -63,7 +65,11 @@ fun Routing.communityPages() {
                 )
             )
 
-            call.respond(CommunityManager.createCommunity(token.owner, name, desc))
+            socketLogger.trace("{}, {}, {}", token.owner, name, desc)
+
+            val createdCommunity = CommunityManager.createCommunity(token.owner, name, desc)
+
+            call.respond(createdCommunity)
         }
 
         /** Get all communities */

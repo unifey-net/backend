@@ -5,6 +5,7 @@ import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
 import net.unifey.handle.Error
 import net.unifey.handle.HTTP_CLIENT
 import org.slf4j.Logger
@@ -25,11 +26,12 @@ object ReCaptcha {
      * @param hostname the hostname of the site where the reCAPTCHA was solved
      * @param errorCodes possible error codes
      */
+    @Serializable
     private data class Response(
         val success: Boolean,
         @SerialName("challenge_ts") val challengeTs: String,
         val hostname: String,
-        @SerialName("error-codes") val errorCodes: List<String>
+        @SerialName("error-codes") val errorCodes: List<String> = listOf()
     )
 
     /** Get if [response] is successful as async. */

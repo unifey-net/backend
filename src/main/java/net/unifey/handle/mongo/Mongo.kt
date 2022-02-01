@@ -1,5 +1,7 @@
 package net.unifey.handle.mongo
 
+import com.mongodb.ConnectionString
+import com.mongodb.MongoClientSettings
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoClients
 import kotlinx.coroutines.*
@@ -14,11 +16,18 @@ val MONGO
 object Mongo {
     val K_MONGO =
         KMongo.createClient(
-                if (Unifey.prod) {
-                    "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
-                } else {
-                    "mongodb://127.0.0.1:27017"
-                }
+                MongoClientSettings.builder()
+                    .applyConnectionString(
+                        ConnectionString(
+                            if (Unifey.prod) {
+                                "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+                            } else {
+                                "mongodb://127.0.0.1:27017"
+                            }
+                        )
+                    )
+                    .retryWrites(false)
+                    .build()
             )
             .coroutine
 

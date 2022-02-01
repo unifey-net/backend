@@ -14,15 +14,14 @@ import io.ktor.routing.*
 import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
-import net.unifey.Unifey
 import java.time.Duration
+import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
 import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.live.liveSocket
-import net.unifey.handle.notification.NotificationManager.LOGGER
 import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.reports.reportPages
 import net.unifey.handle.users.email.emailPages
@@ -30,7 +29,6 @@ import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.slf4j.event.Level
-import java.io.File
 
 val HTTP_CLIENT = HttpClient {
     install(JsonFeature) {
@@ -74,6 +72,12 @@ val SERVER =
 
             exception<Throwable> {
                 Unifey.ROOT_LOGGER.error("There was an issue.", it)
+
+                Unifey.webhook.sendBigMessage(
+                    ExceptionUtils.getStackTrace(it),
+                    fileName = "error",
+                    message = it.message ?: "No message."
+                )
 
                 call.respond(
                     HttpStatusCode.InternalServerError,

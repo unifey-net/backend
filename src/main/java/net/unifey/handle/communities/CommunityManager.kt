@@ -18,6 +18,7 @@ import org.litote.kmongo.*
 import org.litote.kmongo.coroutine.aggregate
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import javax.swing.text.Document
 
 /** Manage [Community]s */
 object CommunityManager {
@@ -113,7 +114,12 @@ object CommunityManager {
 
         val community =
             Community(
-                id = IdGenerator.getId(),
+                id = IdGenerator.getSuspensefulId {
+                    MONGO
+                        .getDatabase("communities")
+                        .getCollection<Community>("communities")
+                        .findOne(Community::id eq it) != null
+                },
                 createdAt = System.currentTimeMillis(),
                 permissions =
                     CommunityPermissions(
@@ -144,7 +150,7 @@ object CommunityManager {
         return MONGO
             .getDatabase("communities")
             .getCollection<Community>("communities")
-            .findOne(Community::name eq name) == null
+            .findOne(Community::name eq name) != null
     }
 
     /** Get the member count of a community */
