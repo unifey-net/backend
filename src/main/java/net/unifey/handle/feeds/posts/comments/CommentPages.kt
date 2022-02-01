@@ -40,7 +40,7 @@ fun Route.commentPages() {
             try {
                 val sortString = call.request.queryParameters["sort"] ?: "new"
 
-                SortingMethod.valueOf(sortString.toUpperCase())
+                SortingMethod.valueOf(sortString.uppercase())
             } catch (ex: Exception) {
                 throw InvalidArguments("sort")
             }

@@ -1,6 +1,5 @@
 package net.unifey.handle.feeds.posts.comments
 
-import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Sorts
 import kotlin.math.ceil
 import kotlinx.coroutines.flow.map
@@ -13,7 +12,6 @@ import net.unifey.handle.feeds.posts.Post
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.mongo.MONGO
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import net.unifey.util.IdGenerator
@@ -132,12 +130,6 @@ object CommentManager {
     ): MutableList<GetCommentResponse> {
         val startAt = ((page - 1) * COMMENT_PAGE_SIZE)
 
-        val comments =
-            Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection("comments")
-                .find(Filters.eq("parent", post))
-
         val sorted =
             when (sort) {
                 SortingMethod.NEW -> Sorts.descending("createdAt")
@@ -148,7 +140,7 @@ object CommentManager {
         return MONGO
             .getDatabase("feeds")
             .getCollection<Comment>("comments")
-            .aggregate<Comment>(Comment::parent eq post, sort(sorted), skip(startAt))
+            .aggregate<Comment>(match(Comment::parent eq post), sort(sorted), skip(startAt))
             .toList()
             .map { comment ->
                 GetCommentResponse(
