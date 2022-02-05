@@ -1,30 +1,34 @@
 package net.unifey.handle.users.friends
 
-import com.mongodb.client.model.Filters
-import com.mongodb.client.model.Updates
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 import org.bson.Document
+import org.litote.kmongo.and
+import org.litote.kmongo.eq
+import org.litote.kmongo.setValue
 
 object FriendManager {
+    class UserFriends(val id: Long, val friends: List<Friend>)
+
     /** Get a user's friends,. */
-    fun User.getFriends() = getFriends(id)
+    suspend fun User.getFriends() = getFriends(id)
 
     /** Remove a user's [friend]. */
-    fun User.removeFriend(friend: Long) = removeFriend(id, friend)
+    suspend fun User.removeFriend(friend: Long) = removeFriend(id, friend)
 
     /** If [User] has [friend]. */
-    fun User.hasFriend(friend: Long) = getFriends().any { user -> user.id == friend }
+    suspend fun User.hasFriend(friend: Long) = getFriends().any { user -> user.id == friend }
 
     /** Get [user]'s online friend count. */
-    fun getOnlineFriendCount(user: Long): Int {
+    suspend fun getOnlineFriendCount(user: Long): Int {
         val online = Live.getOnlineUsers()
 
         return getFriends(user).map { friend -> online.contains(friend.id) }.size
@@ -36,25 +40,10 @@ object FriendManager {
         val hasFriends = hasFriends(id)
 
         if (!hasFriends) {
-            Mongo.getClient()
+            MONGO
                 .getDatabase("users")
-                .getCollection("friends")
-                .insertOne(
-                    Document(
-                        mapOf(
-                            "id" to id,
-                            "friends" to
-                                listOf(
-                                    Document(
-                                        mapOf(
-                                            "id" to friend,
-                                            "friendedAt" to System.currentTimeMillis()
-                                        )
-                                    )
-                                )
-                        )
-                    )
-                )
+                .getCollection<UserFriends>("friends")
+                .insertOne(UserFriends(id, listOf(Friend(friend, System.currentTimeMillis()))))
         } else {
             val friends = getFriends(id)
 
@@ -70,25 +59,17 @@ object FriendManager {
     }
 
     /** Update [id]'s [friends]. */
-    private fun updateFriends(id: Long, friends: List<Friend>) {
-        Mongo.getClient()
+    private suspend fun updateFriends(id: Long, friends: List<Friend>) {
+        MONGO
             .getDatabase("users")
-            .getCollection("friends")
-            .updateOne(
-                Filters.eq("id", id),
-                Updates.set(
-                    "friends",
-                    friends.map { friend ->
-                        Document(mapOf("id" to friend.id, "friendedAt" to friend.friendedAt))
-                    }
-                )
-            )
+            .getCollection<UserFriends>("friends")
+            .updateOne(UserFriends::id eq id, setValue(UserFriends::friends, friends))
     }
 
     /** Remove [friend] from [id]'s friends. */
     @Throws(NotFound::class)
-    fun removeFriend(id: Long, friend: Long) {
-        fun remove(id: Long, friend: Long) {
+    suspend fun removeFriend(id: Long, friend: Long) {
+        suspend fun remove(id: Long, friend: Long) {
             if (!hasFriends(id)) return
 
             val friends = getFriends(id)
@@ -107,64 +88,50 @@ object FriendManager {
 
     /** Get [id]'s friends. */
     @Throws(NotFound::class)
-    fun getFriends(id: Long): MutableList<Friend> {
+    suspend fun getFriends(id: Long): MutableList<Friend> {
         if (!hasFriends(id)) return arrayListOf()
 
         val doc =
-            Mongo.getClient()
+            MONGO
                 .getDatabase("users")
-                .getCollection("friends")
-                .find(Filters.eq("id", id))
-                .singleOrNull()
+                .getCollection<UserFriends>("friends")
+                .findOne(UserFriends::id eq id)
 
-        if (doc != null)
-            return doc.getList("friends", Document::class.java)
-                .map { docu -> Friend(docu.getLong("id"), docu.getLong("friendedAt")) }
-                .toMutableList()
-        else throw NotFound("friends")
+        if (doc != null) return doc.friends.toMutableList() else throw NotFound("friends")
     }
 
     /** If [id] has friends. */
-    private fun hasFriends(id: Long): Boolean =
-        Mongo.getClient()
-            .getDatabase("users")
-            .getCollection("friends")
-            .find(Filters.eq("id", id))
-            .singleOrNull() != null
-
-    /** Form a [FriendRequest] from a [Document] */
-    private fun formFriendRequest(doc: Document) =
-        FriendRequest(doc.getLong("sentAt"), doc.getLong("sentTo"), doc.getLong("sentFrom"))
+    private suspend fun hasFriends(id: Long): Boolean =
+        MONGO.getDatabase("users").getCollection<UserFriends>().findOne(UserFriends::id eq id) !=
+            null
 
     /** Get friend requests for [user]. */
-    fun getFriendRequests(user: Long): List<FriendRequest> {
-        return Mongo.getClient()
+    suspend fun getFriendRequests(user: Long): List<FriendRequest> {
+        return MONGO
             .getDatabase("users")
-            .getCollection("friend_requests")
-            .find(Filters.eq("sentTo", user))
-            .map(::formFriendRequest)
+            .getCollection<FriendRequest>("friend_requests")
+            .find(FriendRequest::sentTo eq user)
             .toList()
     }
 
     /** Get the friend requests [user] has sent, but the receiver has yet to accept/deny. */
-    fun getPendingFriendRequests(user: Long): List<FriendRequest> {
-        return Mongo.getClient()
+    suspend fun getPendingFriendRequests(user: Long): List<FriendRequest> {
+        return MONGO
             .getDatabase("users")
-            .getCollection("friend_requests")
-            .find(Filters.eq("sentFrom", user))
-            .map(::formFriendRequest)
+            .getCollection<FriendRequest>("friend_requests")
+            .find(FriendRequest::sentFrom eq user)
             .toList()
     }
 
     /** Delete a friend request from [from]. (This is also the function for denying.) */
-    fun deleteFriendRequest(from: Long, to: Long) {
+    suspend fun deleteFriendRequest(from: Long, to: Long) {
         if (!getPendingFriendRequests(from).any { req -> req.sentTo == to })
             throw NotFound("request")
 
-        Mongo.getClient()
+        MONGO
             .getDatabase("users")
-            .getCollection("friend_requests")
-            .deleteOne(Filters.and(Filters.eq("sentFrom", from), Filters.eq("sentTo", to)))
+            .getCollection<FriendRequest>("friend_requests")
+            .deleteOne(and(FriendRequest::sentFrom eq from, FriendRequest::sentTo eq to))
     }
 
     /** [to] has accepted [from]'s request. */
@@ -197,18 +164,9 @@ object FriendManager {
 
         val friendRequestObject = FriendRequest(System.currentTimeMillis(), to, from)
 
-        Mongo.getClient()
-            .getDatabase("users")
-            .getCollection("friend_requests")
-            .insertOne(
-                Document(
-                    mapOf(
-                        "sentAt" to friendRequestObject.sentAt,
-                        "sentTo" to friendRequestObject.sentTo,
-                        "sentFrom" to friendRequestObject.sentFrom
-                    )
-                )
-            )
+        MONGO.getDatabase("users")
+            .getCollection<FriendRequest>("friend_requests")
+            .insertOne(friendRequestObject)
 
         NotificationManager.postNotification(
             to,

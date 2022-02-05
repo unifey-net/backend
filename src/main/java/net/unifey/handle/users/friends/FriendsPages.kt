@@ -197,7 +197,7 @@ object FriendsActions : ActionHolder {
                         FriendResponse(friend.id, friend.friendedAt, UserManager.getUser(friend.id))
                     }
 
-                respondSuccess(Unifey.JSON.encodeToString(friends))
+                respondSuccess(friends)
             }
         }
 }

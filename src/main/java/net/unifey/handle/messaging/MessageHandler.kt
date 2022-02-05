@@ -150,7 +150,10 @@ object MessageHandler {
             .getCollection<Message>("messages")
             .insertOne(messageObject)
 
-        ChannelHandler.stopTyping(channel, user.owner)
+        try {
+            ChannelHandler.stopTyping(channel, user.owner)
+        } catch (_: Error) {
+        }
     }
 
     /** Get the amount of messages in a [channel]. */
