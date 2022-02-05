@@ -263,6 +263,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
     route("/roles") {
         /** Get a communities roles. */
         get {
+            @Serializable
             data class UserCommunityRole(val id: Long, val name: String, val role: Int)
 
             val token = call.isAuthenticated()

@@ -5,6 +5,7 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
@@ -15,6 +16,7 @@ import net.unifey.handle.communities.getRole
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.posts.PostManager
 import net.unifey.handle.feeds.posts.comments.CommentManager
+import net.unifey.handle.reports.obj.ReportRequest
 import net.unifey.handle.reports.obj.ReportType
 import net.unifey.handle.users.GlobalRoles
 import net.unifey.handle.users.UserManager
@@ -112,9 +114,7 @@ fun Routing.reportPages() {
                         throw NoPermission()
                 } else if (!feed.moderators.contains(token.owner)) throw NoPermission()
 
-                call.respond(
-                    ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id))
-                )
+                call.respond(ReportHandler.asReportRequest(ReportHandler.getReportsForFeed(feed.id)))
             }
 
             /** Delete a report in a feed. */

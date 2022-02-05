@@ -1,5 +1,6 @@
 package net.unifey.handle.reports
 
+import kotlinx.serialization.Serializable
 import net.unifey.handle.InvalidArguments
 
 enum class TargetType {
@@ -8,6 +9,7 @@ enum class TargetType {
     ACCOUNT
 }
 
+@Serializable
 data class Target(val id: Long, val type: TargetType) {
     companion object {
         fun parse(id: String?, type: String?): Target {
