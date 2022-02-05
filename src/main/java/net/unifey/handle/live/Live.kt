@@ -10,6 +10,7 @@ import org.json.JSONObject
 
 /** Different classes can send out live information (such as notifications) */
 object Live {
+    data class Session(val channel: Channel<LiveObject>, val connectedAt: Long)
     data class LiveObject constructor(val type: String, val user: Long, val data: String) {
         constructor(type: String, user: Long, data: JSONObject) : this(type, user, data.toString())
     }
@@ -19,13 +20,13 @@ object Live {
      *
      * The channel allows for live notifications.
      */
-    private val USERS_ONLINE = ConcurrentHashMap<Long, Channel<LiveObject>>()
+    private val USERS_ONLINE = ConcurrentHashMap<Long, Session>()
 
     /** Send [obj] to a user on a socket. */
     suspend fun sendUpdate(obj: LiveObject) {
         socketLogger.trace("SEND ${obj.user} (ATTEMPT): ${obj.type} (${obj.data})")
 
-        USERS_ONLINE[obj.user]?.send(obj)
+        USERS_ONLINE[obj.user]?.channel?.send(obj)
     }
 
     data class LiveObjectBuilder(
@@ -87,7 +88,7 @@ object Live {
      * @param channel The channel from the websocket, to allow for live updates.
      */
     suspend fun userOnline(user: Long, channel: Channel<LiveObject>) {
-        USERS_ONLINE[user] = channel
+        USERS_ONLINE[user] = Session(channel, System.currentTimeMillis())
 
         updateFriendOnline(user)
     }

@@ -11,6 +11,7 @@ import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
 import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
@@ -32,10 +33,23 @@ val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 fun Routing.liveSocket() {
     route("/manage-live") {
         get("/view") {
+            @Serializable
+            data class SocketSessionResponse(
+                val owner: Long,
+                val connected: Boolean,
+                val sessionLength: Long
+            )
             val token = call.isAuthenticated()
 
-            if (Live.getOnlineUsers().containsKey(token.owner)) {
-                call.respond(Response("Currently connected."))
+            val session = Live.getOnlineUsers()[token.owner]
+            if (session != null) {
+                call.respond(
+                    SocketSessionResponse(
+                        token.owner,
+                        true,
+                        System.currentTimeMillis() - session.connectedAt
+                    )
+                )
             } else {
                 call.respond(Response("Currently not connected anywhere else."))
             }
@@ -48,7 +62,7 @@ fun Routing.liveSocket() {
                 Live.sendUpdate(Live.LiveObject("DISCONNECT", token.owner, ""))
                 call.respond(HttpStatusCode.OK, Response("Disconnected other account."))
             } else {
-                call.respond(HttpStatusCode.BadRequest, Response("No one "))
+                call.respond(HttpStatusCode.BadRequest, Response("No one is connected!"))
             }
         }
     }
@@ -65,7 +79,10 @@ fun Routing.liveSocket() {
                     val (type, user, data) = channel.receive()
 
                     if (type.equals("DISCONNECT", true)) {
-                        close(CloseReason(CloseReason.Codes.GOING_AWAY, "Connected somewhere else."))
+                        customTypeMessage("DISCONNECT", JSONObject())
+                        close(
+                            CloseReason(CloseReason.Codes.GOING_AWAY, "Connected somewhere else.")
+                        )
                     } else {
                         socketLogger.info("SEND $user: LIVE $type ($data)")
                         customTypeMessage(type, data)
@@ -96,8 +113,13 @@ fun Routing.liveSocket() {
                                         errorMessage("Invalid token.")
                                     } else {
                                         if (TokenManager.isTokenExpired(tokenObj)) {
-                                            socketLogger.info("SOCK AUTH: Failed due to expired token.")
-                                            customTypeMessage("TOKEN_EXPIRED", "Your token has expired!")
+                                            socketLogger.info(
+                                                "SOCK AUTH: Failed due to expired token."
+                                            )
+                                            customTypeMessage(
+                                                "TOKEN_EXPIRED",
+                                                "Your token has expired!"
+                                            )
                                             close(CloseReason(4011, "Your token was expired!"))
                                         } else {
                                             token = tokenObj
