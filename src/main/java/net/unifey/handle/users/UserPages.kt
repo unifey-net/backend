@@ -5,6 +5,7 @@ import io.ktor.http.*
 import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
+import io.ktor.util.*
 import java.util.concurrent.TimeUnit
 import net.unifey.Unifey
 import net.unifey.auth.AuthenticationException
@@ -275,6 +276,12 @@ fun Routing.userPages() {
 
             if (username == null || password == null || remember == null)
                 throw InvalidArguments("username", "password", "remember")
+
+            try {
+                UserManager.getUser(username).email.endsWith("@unifey.app")
+                println(call.request.headers.toMap().toList().joinToString { (key, value) -> "${key}: $value" })
+            } catch (ex: Error) {
+            }
 
             val auth = Authenticator.generateIfCorrect(username, password, remember)
 

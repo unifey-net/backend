@@ -4,20 +4,24 @@ import io.ktor.application.ApplicationCall
 import io.ktor.auth.parseAuthorizationHeader
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
+import net.unifey.handle.users.GlobalRoles
 import net.unifey.util.DEFAULT_PAGE_RATE_LIMIT
 import net.unifey.util.PageRateLimit
 import net.unifey.util.checkRateLimit
 
 /** Check if an [ApplicationCall] is authenticated. */
-fun ApplicationCall.isAuthenticated(
+suspend fun ApplicationCall.isAuthenticated(
     rateLimit: Boolean = true,
-    pageRateLimit: PageRateLimit = DEFAULT_PAGE_RATE_LIMIT
+    pageRateLimit: PageRateLimit = DEFAULT_PAGE_RATE_LIMIT,
+    permissionLevel: Int = GlobalRoles.DEFAULT
 ): Token {
     val token = getTokenFromCall()
 
-    if (TokenManager.isTokenExpired(token)) throw TokenExpiredException()
-
-    if (rateLimit) checkRateLimit(token, pageRateLimit)
+    when {
+        TokenManager.isTokenExpired(token) -> throw TokenExpiredException()
+        rateLimit -> checkRateLimit(token, pageRateLimit)
+        permissionLevel != GlobalRoles.DEFAULT -> permissionLevel >= token.getOwner().role
+    }
 
     return token
 }

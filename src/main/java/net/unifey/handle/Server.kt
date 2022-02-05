@@ -17,6 +17,7 @@ import io.ktor.server.netty.*
 import java.time.Duration
 import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
+import net.unifey.handle.admin.adminPages
 import net.unifey.handle.beta.betaPages
 import net.unifey.handle.communities.routing.communityPages
 import net.unifey.handle.emotes.emotePages
@@ -107,7 +108,7 @@ val SERVER =
             communityPages()
             reportPages()
             liveSocket()
-
+            adminPages()
             betaPages()
 
             get("/") { call.respond(Response("unifey :)")) }

@@ -1,10 +1,7 @@
 package net.unifey.handle.messaging
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
-import java.time.Duration
-import kotlin.jvm.Throws
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
@@ -26,6 +23,7 @@ import net.unifey.util.checkRateLimit
 import org.litote.kmongo.descending
 import org.litote.kmongo.eq
 import org.slf4j.LoggerFactory
+import java.time.Duration
 
 /** Manages sending and viewing messages. */
 object MessageHandler {
@@ -87,13 +85,11 @@ object MessageHandler {
                 Message.SYSTEM_ID to Message.SYSTEM_NAME
             )
 
-        val mapper = jacksonObjectMapper()
-
         val receivers = ChannelHandler.getChannelReceivers(channelObject)
         Live.sendUpdates {
             users = receivers
             type = "INCOMING_MESSAGE" // make silent
-            data = mapper.writeValueAsString(response)
+            data = response
         }
 
         Mongo.K_MONGO
@@ -134,15 +130,13 @@ object MessageHandler {
         val response =
             IncomingMessageResponse(channelObject, messageObject, user.owner to owner.username)
 
-        val mapper = jacksonObjectMapper()
-
         val receivers =
             ChannelHandler.getChannelReceivers(channelObject).filter { id -> id != user.owner }
 
         Live.sendUpdates {
             users = receivers
             type = "INCOMING_MESSAGE"
-            data = mapper.writeValueAsString(response)
+            data = response
         }
 
         Mongo.K_MONGO

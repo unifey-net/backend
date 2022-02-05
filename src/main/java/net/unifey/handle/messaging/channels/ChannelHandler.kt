@@ -62,17 +62,12 @@ object ChannelHandler {
         val typing = UserTyping(user, channel, System.currentTimeMillis())
         TYPING[user] = typing
 
-        val mapper = jacksonObjectMapper()
-
         LOGGER.trace("TYPING ($user [$channel] -> START)")
 
         Live.sendUpdates {
             users = receivers
             type = "START_TYPING"
-            data =
-                mapper.writeValueAsString(
-                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
-                )
+            data = UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
         }
 
         GlobalScope.launch {
@@ -115,17 +110,12 @@ object ChannelHandler {
 
         TYPING.remove(user)
 
-        val mapper = jacksonObjectMapper()
-
         LOGGER.trace("TYPING ($user [$channel] -> STOP)")
 
         Live.sendUpdates {
             users = receivers
             type = "STOP_TYPING"
-            data =
-                mapper.writeValueAsString(
-                    UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
-                )
+            data = UserTypingResponse(ShortUser.fromUser(userObject), channelObject)
         }
     }
 
@@ -175,13 +165,6 @@ object ChannelHandler {
             .find(MessageChannel::id eq id)
             .first()
             ?: throw NotFound("channel")
-    }
-
-    /** Get a [T] from a [id]. */
-    inline fun <reified T : MessageChannel> getChannel(document: Document): T {
-        val mapper = jacksonObjectMapper()
-
-        return mapper.readValue(document.toJson(), T::class.java)
     }
 
     /** Get the users of a group chat who should receive updates. (ex: new messages) */
@@ -305,8 +288,6 @@ object ChannelHandler {
         }
 
         val channel = DirectMessageChannel(generateIdentifier(), arrayListOf(userOne, userTwo))
-
-        val mapper = jacksonObjectMapper()
 
         Mongo.getClient()
             .getDatabase("messages")

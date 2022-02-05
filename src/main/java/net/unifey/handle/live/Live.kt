@@ -3,6 +3,8 @@ package net.unifey.handle.live
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.channels.Channel
+import kotlinx.serialization.encodeToString
+import net.unifey.Unifey
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.users.friends.updateFriendOffline
 import net.unifey.handle.users.friends.updateFriendOnline
@@ -41,25 +43,6 @@ object Live {
         var data: Any? = null
     )
 
-    /** Send a update to a user, using [builder]. */
-    suspend fun sendUpdate(builder: LiveObjectBuilder.() -> Unit) {
-        val obj = LiveObjectBuilder()
-
-        builder.invoke(obj)
-
-        if (obj.type == null || obj.user == null || obj.data == null) {
-            throw InvalidArguments()
-        }
-
-        val data = obj.data!!
-
-        val strData =
-            if (data::class != String::class) jacksonObjectMapper().writeValueAsString(data)
-            else data as String
-
-        sendUpdate(LiveObject(obj.type!!, obj.user!!, strData))
-    }
-
     /** Send multiple updates to users, using [builder]. */
     suspend fun sendUpdates(builder: MultiLiveObjectBuilder.() -> Unit) {
         val obj = MultiLiveObjectBuilder()
@@ -70,13 +53,9 @@ object Live {
             throw InvalidArguments()
         }
 
-        val data = obj.data!!
-
-        val strData =
-            if (data::class != String::class) jacksonObjectMapper().writeValueAsString(data)
-            else data as String
-
-        obj.users!!.forEach { user -> sendUpdate(LiveObject(obj.type!!, user, strData)) }
+        obj.users!!.forEach { user ->
+            sendUpdate(LiveObject(obj.type!!, user, Unifey.JSON.encodeToString(obj.data)))
+        }
     }
 
     /** Get [USERS_ONLINE] */

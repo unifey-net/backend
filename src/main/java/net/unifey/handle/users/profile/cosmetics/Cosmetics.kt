@@ -1,73 +1,49 @@
 package net.unifey.handle.users.profile.cosmetics
 
-import com.mongodb.client.model.Filters
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import net.unifey.handle.NotFound
-import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.mongo.MONGO
+import net.unifey.handle.users.profile.Profile
 import net.unifey.util.URL
-import org.bson.Document
+import org.litote.kmongo.and
+import org.litote.kmongo.eq
 
 object Cosmetics {
     @Serializable
-    sealed class Cosmetic {
-        abstract val type: Int
-        abstract val id: String
-        abstract val desc: String
-
-        class Badge(override val id: String, override val desc: String) : Cosmetic() {
-            override val type: Int = 0
-
-            val image = "${URL}/user/cosmetic/viewer?type=${type}&id=${id}"
-        }
-    }
+    data class Cosmetic(val type: Int, val id: String, val desc: String)
 
     /** Get all available cosmetics. */
-    fun getAll(): List<Cosmetic> {
-        return Mongo.getClient()
-            .getDatabase("global")
-            .getCollection("cosmetics")
-            .find()
-            .map { doc -> parseCosmetic(doc) }
-            .toList()
+    suspend fun getAll(): List<Cosmetic> {
+        return MONGO.getDatabase("global").getCollection<Cosmetic>("cosmetics").find().toList()
     }
 
     /** Get [user]'s [Cosmetic]'s */
-    fun getCosmetics(user: Long): List<Cosmetic> {
+    suspend fun getCosmetics(user: Long): List<Cosmetic> {
         val cosmetics =
-            Mongo.getClient()
+            MONGO
                 .getDatabase("users")
-                .getCollection("profiles")
-                .find(Filters.eq("id", user))
-                .singleOrNull()
+                .getCollection<Profile>("profiles")
+                .findOne(Profile::id eq user)
 
         if (cosmetics != null) {
-            val objs = cosmetics["cosmetics"] as MutableList<Document>
-
-            return objs.map { doc -> parseCosmetic(doc) }
+            return cosmetics.cosmetics
         } else throw NotFound("profile")
     }
-
-    /** Parse a [Cosmetic] from [document]. */
-    private fun parseCosmetic(document: Document): Cosmetic =
-        when (document.getInteger("type")) {
-            0 -> Cosmetic.Badge(document.getString("id"), document.getString("desc"))
-            else -> throw NotFound("cosmetic")
-        }
-
     /** Upload a cosmetic. */
-    fun uploadCosmetic(type: Int, id: String, desc: String) {
-        Mongo.getClient()
+    suspend fun uploadCosmetic(type: Int, id: String, desc: String) {
+        MONGO
             .getDatabase("global")
-            .getCollection("cosmetics")
-            .insertOne(Document(mapOf("type" to type, "id" to id, "desc" to desc)))
+            .getCollection<Cosmetic>("cosmetics")
+            .insertOne(Cosmetic(type, id, desc))
     }
 
     /** Delete a cosmetic */
-    fun deleteCosmetic(type: Int, id: String) {
-        Mongo.getClient()
+    suspend fun deleteCosmetic(type: Int, id: String) {
+        MONGO
             .getDatabase("global")
-            .getCollection("cosmetics")
-            .deleteOne(Filters.and(Filters.eq("type", type), Filters.eq("id", id)))
+            .getCollection<Cosmetic>("cosmetics")
+            .deleteOne(and(Cosmetic::type eq type, Cosmetic::id eq id))
     }
 
     fun List<Cosmetic>.hasCosmetic(id: String, type: Int): Boolean = any { cos ->

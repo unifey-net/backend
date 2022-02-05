@@ -43,7 +43,7 @@ object UserManager {
     }
 
     /** Generate a unique identifier for a user. */
-    private suspend fun generateIdentifier(): Long {
+    suspend fun generateIdentifier(): Long {
         return IdGenerator.getSuspensefulId { id ->
             MONGO.getDatabase("users").getCollection<User>("users").find(User::id eq id).first() !=
                 null

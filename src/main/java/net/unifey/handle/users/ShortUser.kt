@@ -1,5 +1,8 @@
 package net.unifey.handle.users
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ShortUser(val username: String, val id: Long) {
     companion object {
         /** Get a [ShortUser] from [user] */
