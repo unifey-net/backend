@@ -6,19 +6,16 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
 import net.unifey.handle.Error
 import net.unifey.handle.communities.Community
-import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.mongo.Mongo
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
 import org.bson.Document
-import kotlin.math.sign
 
 object CommunityRuleManager {
     private const val MAX_RULES = 32
 
     /**
-     * Create a rule for [community].
-     * The rules index is the first one available.
+     * Create a rule for [community]. The rules index is the first one available.
      *
      * @param title The title of the rule.
      * @param body The body of the rule.
@@ -37,21 +34,14 @@ object CommunityRuleManager {
 
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("communities")
-                    .updateOne(
-                            Filters.eq("id", community.id),
-                            Updates.set("rules.${id}",
-                                    Document(mapOf(
-                                            "title" to title,
-                                            "body" to body
-                                    ))))
+                .getCollection("communities")
+                .updateOne(
+                    Filters.eq("id", community.id),
+                    Updates.set("rules.${id}", Document(mapOf("title" to title, "body" to body)))
+                )
         }
 
-        community.rules.add(CommunityRule(
-                id,
-                title,
-                body
-        ))
+        community.rules.add(CommunityRule(id, title, body))
 
         return id
     }
@@ -66,16 +56,11 @@ object CommunityRuleManager {
     suspend fun modifyTitle(title: String, id: Long, community: Community) {
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("communities")
-                    .updateOne(
-                            Filters.eq("id", community.id),
-                            Updates.set("rules.${id}.title", title)
-                    )
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", community.id), Updates.set("rules.${id}.title", title))
         }
 
-        community.rules
-                .single { rule -> rule.id == id }
-                .title = title
+        community.rules.single { rule -> rule.id == id }.title = title
     }
 
     /**
@@ -88,16 +73,11 @@ object CommunityRuleManager {
     suspend fun modifyBody(body: String, id: Long, community: Community) {
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("communities")
-                    .updateOne(
-                            Filters.eq("id", community.id),
-                            Updates.set("rules.${id}.body", body)
-                    )
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", community.id), Updates.set("rules.${id}.body", body))
         }
 
-        community.rules
-                .single { rule -> rule.id == id }
-                .body = body
+        community.rules.single { rule -> rule.id == id }.body = body
     }
 
     /**
@@ -109,8 +89,8 @@ object CommunityRuleManager {
     suspend fun deleteRule(id: Long, community: Community) {
         Mongo.useJob {
             getDatabase("communities")
-                    .getCollection("communities")
-                    .updateOne(Filters.eq("id", community.id), Updates.unset("rules.${id}"))
+                .getCollection("communities")
+                .updateOne(Filters.eq("id", community.id), Updates.unset("rules.${id}"))
         }
 
         community.rules.removeIf { rule -> rule.id == id }

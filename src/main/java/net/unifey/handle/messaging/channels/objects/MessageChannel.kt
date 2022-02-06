@@ -1,6 +1,11 @@
 package net.unifey.handle.messaging.channels.objects
 
+import kotlinx.serialization.Serializable
+
 /**
  * A message channel.
+ *
+ * @param id The ID of the channel.
+ * @param channelType The type of channel. [ChannelType.DIRECT_MESSAGE] or [ChannelType.GROUP]
  */
-open class MessageChannel(open val id: Long, val type: ChannelType)
+@Serializable open class MessageChannel(open val id: Long, val channelType: ChannelType)

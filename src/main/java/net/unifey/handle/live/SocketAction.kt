@@ -1,15 +1,9 @@
 package net.unifey.handle.live
 
-import io.ktor.http.cio.websocket.*
-import net.unifey.auth.tokens.Token
-import org.json.JSONObject
+import net.unifey.handle.live.objs.SocketSession
 
-/**
- * A socket action.
- */
+/** A socket action. */
 interface SocketAction {
-    /**
-     * When an action receives an invoke.
-     */
-    suspend fun SocketSession.receive(): Boolean
+    /** When an action receives an invoke. */
+    suspend fun SocketSession.receive()
 }

@@ -1,6 +1,6 @@
 package net.unifey.handle.emotes
 
-import com.fasterxml.jackson.annotation.JsonIgnore
+import kotlinx.serialization.Serializable
 
 /**
  * An emote.
@@ -11,11 +11,12 @@ import com.fasterxml.jackson.annotation.JsonIgnore
  * @param name The name of the emote.
  * @param date The date the emote was uploaded.
  */
+@Serializable
 data class Emote(
-        val url: String,
-        val id: Long,
-        val parent: Long,
-        val name: String,
-        val uploadedBy: Long,
-        val date: Long
+    val url: String,
+    val id: Long,
+    val parent: Long,
+    val name: String,
+    val uploadedBy: Long,
+    val date: Long
 )

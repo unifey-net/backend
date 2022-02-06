@@ -1,134 +1,137 @@
 package net.unifey.handle.users
 
-import com.mongodb.client.model.Filters
-import com.mongodb.client.model.Filters.eq
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.auth.tokens.TokenManager.deleteToken
 import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.live.Live
-import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.email.UserEmailManager
+import net.unifey.handle.users.member.Member
+import net.unifey.handle.users.profile.Profile
 import net.unifey.util.IdGenerator
-import org.bson.Document
 import org.json.JSONObject
+import org.litote.kmongo.eq
+import org.litote.kmongo.setValue
 import org.mindrot.jbcrypt.BCrypt
-import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Manage [User]s.
- */
+/** Manage [User]s. */
 object UserManager {
-    private val cache = ConcurrentHashMap<Long, User>()
+    /** Get a user by their [username], then return their ID. */
+    suspend fun getId(username: String, ignoreCase: Boolean = true): Long =
+        getUser(username, ignoreCase).id
 
-    /**
-     * Get a [User] object from the [bson] document.
-     */
-    @Throws(NotFound::class)
-    fun getUser(bson: Document?): User {
-        if (bson == null)
-            throw NotFound("user")
-
-        val user = User(
-                bson.getLong("id"),
-                bson.getString("username"),
-                bson.getString("password"),
-                bson.getString("email"),
-                bson.getInteger("role"),
-                bson.getBoolean("verified"),
-                bson.getLong("created_at")
-        )
-
-        cache[user.id] = user
-
-        return user
-    }
-
-    /**
-     * Get a user's ID by their [name].
-     */
-    suspend fun getId(name: String): Long {
-        val cacheUser = cache
-                .filter { user -> user.value.username.equals(name, true) }
-                .keys
-                .firstOrNull()
-
-        if (cacheUser != null)
-            return cacheUser
-
-        val collection = Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("users")
-
-        val user = getUser(
-                collection
-                        .find()
-                        .firstOrNull { doc -> doc.getString("username").equals(name, true) }
-        )
-
-        return user.id
-    }
-
-    /**
-     * Get a user by their [id]. Prefers [cache] over database.
-     */
+    /** Get a user by their [id]. */
     @Throws(NotFound::class)
     suspend fun getUser(id: Long): User {
-        if (cache.containsKey(id))
-            return cache[id]!!
+        return MONGO.getDatabase("users").getCollection<User>("users").find(User::id eq id).first()
+            ?: throw NotFound("user")
+    }
 
-        val collection = Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("users")
+    /** Get a user by their [username]. */
+    @Throws(NotFound::class)
+    suspend fun getUser(username: String, ignoreCase: Boolean = true): User {
+        return MONGO
+            .getDatabase("users")
+            .getCollection<User>("users")
+            .find()
+            .toList()
+            .firstOrNull { user -> user.username.equals(username, ignoreCase) }
+            ?: throw NotFound("user")
+    }
 
-        return getUser(
-                collection
-                        .find(eq("id", id))
-                        .firstOrNull()
-        )
+    /** Generate a unique identifier for a user. */
+    suspend fun generateIdentifier(): Long {
+        return IdGenerator.getSuspensefulId { id ->
+            MONGO.getDatabase("users").getCollection<User>("users").find(User::id eq id).first() !=
+                null
+        }
     }
 
     /**
-     * Create an account with [email], [username] and [password].
+     * Create an account with [email], [username] and [password]. If the account was created through
+     * a third party service that would've already verified the email, then [verified] is set to
+     * true. ex: google
      */
     @Throws(InvalidVariableInput::class)
-    suspend fun createUser(email: String, username: String, password: String): User {
+    suspend fun createUser(
+        email: String,
+        username: String,
+        password: String,
+        verified: Boolean = false
+    ): User {
         UserInputRequirements.allMeets(username, password, email)
 
-        val id = IdGenerator.getId()
+        val id = generateIdentifier()
+        val user =
+            User(
+                id = id,
+                username = username,
+                password = BCrypt.hashpw(password, BCrypt.gensalt()),
+                email = email,
+                verified = verified,
+                role = GlobalRoles.DEFAULT,
+                createdAt = System.currentTimeMillis()
+            )
 
-        val userDocument = Document(mapOf(
-                "id" to id,
-                "username" to username,
-                "password" to BCrypt.hashpw(password, BCrypt.gensalt()),
-                "email" to email,
-                "created_at" to System.currentTimeMillis(),
-                "verified" to false,
-                "role" to 0
-        ))
+        val profile = Profile(id, "", "", "", listOf())
+        val member = Member(id, listOf(), listOf())
+        val db = MONGO.getDatabase("users")
 
-        Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("users")
-                .insertOne(userDocument)
+        db.getCollection<Member>("members").insertOne(member)
+        db.getCollection<Profile>("profiles").insertOne(profile)
+        db.getCollection<User>("users").insertOne(user)
 
         FeedManager.createFeedForUser(id)
 
-        UserEmailManager.sendVerify(id, email)
-
-        NotificationManager.postNotification(id, "A verification link has been sent to your email. If you can't see it, visit your settings to resend.")
+        if (!verified) {
+            UserEmailManager.sendVerify(id, email)
+            NotificationManager.postNotification(
+                id,
+                "A verification link has been sent to your email. If you can't see it, visit your settings to resend."
+            )
+        }
 
         return getUser(id)
     }
 
-    /**
-     * Signs out all users connected to the account (aka delete all tokens)
-     */
+    /** Change a user's [email] by their [id]. */
+    suspend fun changeEmail(id: Long, email: String) {
+        MONGO
+            .getDatabase("users")
+            .getCollection<User>("users")
+            .updateOne(User::id eq id, setValue(User::email, email))
+    }
+
+    /** Change a user's [password] by their [id]. */
+    suspend fun changePassword(id: Long, password: String) {
+        MONGO
+            .getDatabase("users")
+            .getCollection<User>("users")
+            .updateOne(User::id eq id, setValue(User::password, password))
+    }
+
+    /** Change a user's [name] by their [id]. */
+    suspend fun changeUsername(id: Long, name: String) {
+        MONGO
+            .getDatabase("users")
+            .getCollection<User>("users")
+            .updateOne(User::id eq id, setValue(User::username, name))
+    }
+
+    /** Change [id]'s verification status. */
+    suspend fun setVerified(id: Long, verified: Boolean) {
+        MONGO
+            .getDatabase("users")
+            .getCollection<User>("users")
+            .updateOne(User::id eq id, setValue(User::verified, verified))
+    }
+
+    /** Signs out all users connected to the account (aka delete all tokens) */
     suspend fun signOutAll(user: User) {
-        TokenManager.getTokensForUser(user)
-            .forEach(::deleteToken)
+        TokenManager.getTokensForUser(user).forEach(::deleteToken)
 
         Live.sendUpdate(Live.LiveObject("SIGN_OUT", user.id, JSONObject()))
     }

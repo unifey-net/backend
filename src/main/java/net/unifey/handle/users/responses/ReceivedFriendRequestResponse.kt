@@ -1,9 +1,8 @@
 package net.unifey.handle.users.responses
 
+import kotlinx.serialization.Serializable
 import net.unifey.handle.users.User
 import net.unifey.handle.users.friends.FriendRequest
 
-data class ReceivedFriendRequestResponse(
-    val friendRequest: FriendRequest,
-    val sentFrom: User
-)
+@Serializable
+data class ReceivedFriendRequestResponse(val friendRequest: FriendRequest, val sentFrom: User)

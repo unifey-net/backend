@@ -1,5 +1,6 @@
 package net.unifey.handle.reports.obj
 
+import kotlinx.serialization.Serializable
 import net.unifey.handle.reports.Target
 
 /**
@@ -13,12 +14,13 @@ import net.unifey.handle.reports.Target
  * @param reason The user extended reason (this can be blank)
  * @param date The date the report occurred
  */
+@Serializable
 data class Report(
-        val id: Long,
-        val feed: String?,
-        val reportee: Long,
-        val target: Target,
-        val reportType: ReportType,
-        val reason: String,
-        val date: Long
+    val id: Long,
+    val feed: String?,
+    val reportee: Long,
+    val target: Target,
+    val reportType: ReportType,
+    val reason: String,
+    val date: Long
 )

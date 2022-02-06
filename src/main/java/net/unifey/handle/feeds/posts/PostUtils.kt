@@ -9,11 +9,14 @@ import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.feeds.getFeed
 
 @Throws(NoPermission::class)
-suspend fun ApplicationCall.getPost(requirePost: Boolean = false, requireComment: Boolean = false): Triple<Token?, Post, Feed> {
-    val (feed, token) = getFeed(requireView = true, requirePost = requirePost, requireComment = requireComment)
+suspend fun ApplicationCall.getPost(
+    requirePost: Boolean = false,
+    requireComment: Boolean = false
+): Triple<Token?, Post, Feed> {
+    val (feed, token) =
+        getFeed(requireView = true, requirePost = requirePost, requireComment = requireComment)
 
-    val id = parameters["post"]?.toLongOrNull()
-            ?: throw InvalidArguments("post")
+    val id = parameters["post"]?.toLongOrNull() ?: throw InvalidArguments("post")
 
     val post = FeedManager.getPost(id)
 

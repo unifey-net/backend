@@ -1,58 +1,100 @@
 package net.unifey.handle.live
 
-import dev.shog.lib.util.jsonObjectOf
+import dev.ajkneisl.lib.util.jsonObjectOf
 import io.ktor.application.*
+import io.ktor.http.*
 import io.ktor.http.cio.websocket.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.websocket.*
+import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import net.unifey.FRONTEND_EXPECT
-import net.unifey.VERSION
+import kotlinx.serialization.Serializable
+import net.unifey.Unifey
+import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.live.WebSocket.authenticateMessage
 import net.unifey.handle.live.WebSocket.customTypeMessage
 import net.unifey.handle.live.WebSocket.errorMessage
+import net.unifey.handle.live.objs.SocketSession
+import net.unifey.handle.live.objs.SocketType
 import net.unifey.response.Response
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
-import kotlin.system.measureTimeMillis
 
-/**
- * The logger for the socket.
- */
+/** The logger for the socket. */
 val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
-/**
- * This is the websocket implementation as well as the REST implementation.
- */
+/** This is the websocket implementation as well as the REST implementation. */
 @OptIn(ExperimentalCoroutinesApi::class)
 fun Routing.liveSocket() {
-    route("/live") {
-        get("/count") {
-            call.respond(Response(Live.getOnlineUsers().size))
+    route("/manage-live") {
+        get("/view") {
+            @Serializable
+            data class SocketSessionResponse(
+                val owner: Long,
+                val connected: Boolean,
+                val sessionLength: Long
+            )
+            val token = call.isAuthenticated()
+
+            val session = Live.getOnlineUsers()[token.owner]
+            if (session != null) {
+                call.respond(
+                    SocketSessionResponse(
+                        token.owner,
+                        true,
+                        System.currentTimeMillis() - session.connectedAt
+                    )
+                )
+            } else {
+                call.respond(Response("Currently not connected anywhere else."))
+            }
         }
+
+        delete("/logout") {
+            val token = call.isAuthenticated()
+
+            if (Live.getOnlineUsers().containsKey(token.owner)) {
+                Live.sendUpdate(Live.LiveObject("DISCONNECT", token.owner, ""))
+                call.respond(HttpStatusCode.OK, Response("Disconnected other account."))
+            } else {
+                call.respond(HttpStatusCode.BadRequest, Response("No one is connected!"))
+            }
+        }
+    }
+
+    route("/live") {
+        get("/count") { call.respond(Response(Live.getOnlineUsers().size)) }
 
         webSocket {
             var token: Token? = null
-            var channel = Channel<Live.LiveObject>()
+            val channel = Channel<Live.LiveObject>()
 
             launch {
                 while (!channel.isClosedForReceive) {
                     val (type, user, data) = channel.receive()
 
-                    socketLogger.info("SEND $user: LIVE $type ($data)")
-                    customTypeMessage(type, data)
+                    if (type.equals("DISCONNECT", true)) {
+                        customTypeMessage("DISCONNECT", JSONObject())
+                        close(
+                            CloseReason(CloseReason.Codes.GOING_AWAY, "Connected somewhere else.")
+                        )
+                    } else {
+                        socketLogger.info("SEND $user: LIVE $type ($data)")
+                        customTypeMessage(type, data)
+                    }
                 }
             }
 
-            customTypeMessage("init",
+            customTypeMessage(
+                "init",
                 JSONObject()
-                    .put("frontend", FRONTEND_EXPECT)
-                    .put("version", "Unifey Backend $VERSION")
+                    .put("frontend", Unifey.FRONTEND_EXPECT)
+                    .put("version", "Unifey Backend ${Unifey.VERSION}")
             )
 
             for (frame in incoming) {
@@ -71,14 +113,29 @@ fun Routing.liveSocket() {
                                         errorMessage("Invalid token.")
                                     } else {
                                         if (TokenManager.isTokenExpired(tokenObj)) {
+                                            socketLogger.info(
+                                                "SOCK AUTH: Failed due to expired token."
+                                            )
+                                            customTypeMessage(
+                                                "TOKEN_EXPIRED",
+                                                "Your token has expired!"
+                                            )
                                             close(CloseReason(4011, "Your token was expired!"))
                                         } else {
                                             token = tokenObj
 
-                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)) {
-                                                socketLogger.info("AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE")
+                                            if (Live.getOnlineUsers().keys.contains(tokenObj.owner)
+                                            ) {
+                                                socketLogger.info(
+                                                    "AUTH ${tokenObj.owner}: FAILED, LOGGED IN SOMEWHERE ELSE"
+                                                )
 
-                                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "You're already logged in somewhere else!"))
+                                                close(
+                                                    CloseReason(
+                                                        CloseReason.Codes.VIOLATED_POLICY,
+                                                        "You're already logged in somewhere else!"
+                                                    )
+                                                )
                                             } else {
                                                 socketLogger.info("AUTH ${tokenObj.owner}: SUCCESS")
 
@@ -89,11 +146,9 @@ fun Routing.liveSocket() {
                                     }
                                 }
                             }
-
                             data.startsWith("ping") -> {
                                 customTypeMessage("PONG", jsonObjectOf())
                             }
-
                             token != null -> {
                                 try {
                                     handleIncoming(token, data)
@@ -102,18 +157,14 @@ fun Routing.liveSocket() {
                                     close(ex.reason)
                                 }
                             }
-
-                            else ->
-                                errorMessage("Not authenticated.")
+                            else -> errorMessage("Not authenticated.")
                         }
-                        }
-
+                    }
                     else -> errorMessage("Unexpected frame.")
                 }
             }
 
-            if (token != null)
-                Live.userOffline(token.owner)
+            if (token != null) Live.userOffline(token.owner)
         }
     }
 }
@@ -125,11 +176,12 @@ fun Routing.liveSocket() {
  */
 @Throws(SocketError::class)
 private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
-    val json = try {
-        JSONObject(data)
-    } catch (ex: Exception) {
-        throw SocketError(400, "Invalid data type, expects JSON.")
-    }
+    val json =
+        try {
+            JSONObject(data)
+        } catch (ex: Exception) {
+            throw SocketError(400, "Invalid data type, expects JSON.")
+        }
 
     if (!json.has("action") || json["action"] !is String)
         throw SocketError(400, "JSON doesn't contain \"action\" parameter.")
@@ -137,21 +189,21 @@ private suspend fun WebSocketSession.handleIncoming(user: Token, data: String) {
     val page = findPage(json.getString("action"))
 
     if (page != null)
-        page.run {
-            var success = false
-            val time = measureTimeMillis { success = SocketSession(this@handleIncoming, json, user).receive() }
+        page.second.run {
+            val time = measureTimeMillis {
+                SocketSession(this@handleIncoming, json, user, page.first).receive()
+            }
 
-            socketLogger.info("${json.getString("action")} - ${user.owner}: ${if (success) "OK" else "NOT OK"} (took ${time}ms)")
+            socketLogger.info("${user.owner} -> ${json.getString("action")} (took ${time}ms)")
         }
     else {
         errorMessage("That page could not be found.")
     }
 }
 
-private fun findPage(action: String): SocketAction? {
-    SocketActionHandler.socketActions.forEach { (name, page) ->
-        if (action.equals(name, true))
-            return page
+private fun findPage(action: String): Pair<SocketType, SocketAction>? {
+    SocketActionHandler.socketActions.forEach { (type, page) ->
+        if (action.equals(type.type, true)) return type to page
     }
 
     return null

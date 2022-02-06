@@ -1,33 +1,27 @@
 package net.unifey.handle.feeds
 
-import com.mongodb.client.model.Filters
-import com.mongodb.client.model.Updates
+import kotlinx.serialization.Serializable
 import net.unifey.handle.feeds.FeedManager.POSTS_PAGE_SIZE
 import net.unifey.handle.feeds.responses.UserFeedPermissions
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import kotlin.math.ceil
 
-class Feed(
-        val id: String,
-        val banned: MutableList<Long>,
-        val moderators: MutableList<Long>,
-        val postCount: Long,
-        val pageCount: Long = ceil(postCount.toDouble() / POSTS_PAGE_SIZE.toDouble()).toLong()
+@Serializable
+data class Feed(
+    val id: String,
+    val banned: List<Long>,
+    val moderators: List<Long>,
 ) {
-    /**
-     * Update this feeds data to the database
-     */
-    fun update() {
-        Mongo.getClient()
-                .getDatabase("feeds")
-                .getCollection("feeds")
-                .updateOne(Filters.eq("id", id), Updates.combine(Updates.set("banned", banned), Updates.set("moderators", moderators)))
+    /** TODO */
+    suspend fun getPostCount(): Long {
+        return FeedManager.getPostCount(id)
     }
 
-    /**
-     * Get [user]'s permissions for this feed.
-     */
+    suspend fun getPageCount(): Long {
+        return ceil(getPostCount().toDouble() / POSTS_PAGE_SIZE.toDouble()).toLong()
+    }
+
+    /** Get [user]'s permissions for this feed. */
     suspend fun getFeedPermissions(user: User): UserFeedPermissions {
         return UserFeedPermissions(
             FeedManager.canViewFeed(this, user.id),

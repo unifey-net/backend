@@ -1,18 +1,10 @@
-# Unifey
+![Total Lines](https://img.shields.io/tokei/lines/github/unifey-net/backend) ![Issues](https://img.shields.io/github/issues/unifey-net/backend)
+<h1 align="center">Unifey Backend</h1>
 
-The Unifey front-end.
+## Style / Format
+
+We currently use [KTFMT](https://github.com/cortinico/ktfmt-gradle) 's Dropbox style for the Unifey backend. This can be ran through Gradle. 
 
 ## How to run yourself
 
-Unifey staff do not directly support self-hosting Unifey and will not support your endeavours.
-
-### Requirements
-- MongoDB database
-- ReCAPTCHA
-- Amazon S3 bucket
-
-### Frontend
-The frontend can be ran with `npm run start` in the main directory.
-
-### Backend
-The backend can be built with `gradle shadowJar` in the main directory.
+There is currently no instructions and we're not currently offering instructions on how to self host Unifey. 

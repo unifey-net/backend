@@ -11,9 +11,7 @@ import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
-import net.unifey.handle.communities.Community
-import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.communities.CommunityRoles
+import net.unifey.handle.communities.*
 import net.unifey.handle.communities.responses.GetCommunityResponse
 import net.unifey.handle.emotes.EmoteHandler
 import net.unifey.handle.users.User
@@ -22,18 +20,22 @@ import net.unifey.response.Response
 import net.unifey.util.cleanInput
 import org.mindrot.jbcrypt.BCrypt
 
-/**
- * Properly respond [community] according to the authentication.
- */
+/** Properly respond [community] according to the authentication. */
 suspend fun ApplicationCall.respondCommunity(community: Community) {
-    val user = try {
-        isAuthenticated()
-    } catch (authEx: AuthenticationException) {
-        null
-    }
+    val user =
+        try {
+            isAuthenticated()
+        } catch (authEx: AuthenticationException) {
+            null
+        }
 
-    if (community.viewRole != CommunityRoles.DEFAULT) {
-        if (user == null || !CommunityRoles.hasPermission(community.getRole(user.owner), community.viewRole)) {
+    if (community.permissions.viewRole != CommunityRoles.DEFAULT) {
+        if (user == null ||
+                !CommunityRoles.hasPermission(
+                    community.getRole(user.owner),
+                    community.permissions.viewRole
+                )
+        ) {
             respond(
                 GetCommunityResponse(
                     community,
@@ -72,56 +74,44 @@ suspend fun ApplicationCall.modifyCommunity(
 ): Pair<Community, String> {
     val token = isAuthenticated()
 
-    val id = parameters["id"]?.toLongOrNull()
-        ?: throw InvalidArguments("p_id")
+    val id = parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("p_id")
 
     val community = CommunityManager.getCommunityById(id)
 
-    if (permission > community.getRole(token.owner))
-        throw NoPermission()
+    if (permission > community.getRole(token.owner)) throw NoPermission()
 
     val params = receiveParameters()
 
-    val par = params[param]
-        ?: throw InvalidArguments(param)
+    val par = params[param] ?: throw InvalidArguments(param)
 
     if (requirePassword) {
-        val password = params["password"]
-            ?: throw InvalidArguments("password")
+        val password = params["password"] ?: throw InvalidArguments("password")
 
         if (!BCrypt.checkpw(password, token.getOwner().password))
-            throw Error({
-                respond(HttpStatusCode.Unauthorized, Response("Invalid password!"))
-            })
+            throw Error({ respond(HttpStatusCode.Unauthorized, Response("Invalid password!")) })
     }
 
     return community to cleanInput(par)
 }
 
-/**
- * Modify a role.
- */
+/** Modify a role. */
 @Throws(NotFound::class, InvalidArguments::class, NoPermission::class)
 suspend fun ApplicationCall.modifyRole(): Pair<Community, Int> {
     val (community, roleStr) = modifyCommunity("role", CommunityRoles.ADMIN, false)
 
     val role = roleStr.toIntOrNull()
 
-    if (role == null || !CommunityRoles.isValid(role))
-        throw InvalidArguments("role")
+    if (role == null || !CommunityRoles.isValid(role)) throw InvalidArguments("role")
 
     return community to role
 }
 
-/**
- * Get a rule.
- */
+/** Get a rule. */
 @Throws(NoPermission::class)
 suspend fun ApplicationCall.getCommunityRule(): Pair<Community, Token> {
     val token = isAuthenticated()
 
-    val id = parameters["id"]?.toLongOrNull()
-        ?: throw InvalidArguments("p_id")
+    val id = parameters["id"]?.toLongOrNull() ?: throw InvalidArguments("p_id")
 
     val community = CommunityManager.getCommunityById(id)
 
@@ -131,9 +121,7 @@ suspend fun ApplicationCall.getCommunityRule(): Pair<Community, Token> {
     return community to token
 }
 
-/**
- * Manage personal communities.
- */
+/** Manage personal communities. */
 @Throws(NotFound::class, InvalidArguments::class)
 suspend fun ApplicationCall.managePersonalCommunities(): Pair<User, Community> {
     val token = isAuthenticated()
@@ -141,8 +129,7 @@ suspend fun ApplicationCall.managePersonalCommunities(): Pair<User, Community> {
 
     val params = receiveParameters()
 
-    val id = params["id"]?.toLongOrNull()
-        ?: throw InvalidArguments("id")
+    val id = params["id"]?.toLongOrNull() ?: throw InvalidArguments("id")
 
     return user to CommunityManager.getCommunityById(id)
 }

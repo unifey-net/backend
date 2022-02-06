@@ -1,6 +1,6 @@
 package net.unifey.handle.reports.obj
 
-data class ReportRequest(
-        val report: Report,
-        val data: ReportData
-)
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class ReportRequest(val report: Report, val data: ReportData)
