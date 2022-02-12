@@ -15,6 +15,7 @@ import io.ktor.serialization.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import java.time.Duration
+import kotlinx.serialization.Serializable
 import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.admin.adminPages
@@ -111,7 +112,23 @@ val SERVER =
             adminPages()
             betaPages()
 
-            get("/") { call.respond(Response("unifey :)")) }
+            @Serializable
+            data class HomeResponse(
+                val payload: String,
+                val uptime: Long,
+                val version: String,
+                val frontendVersion: String
+            )
+            get("/") {
+                call.respond(
+                    HomeResponse(
+                        payload = "unifey! :-)",
+                        uptime = System.currentTimeMillis() - Unifey.START_TIME,
+                        version = Unifey.VERSION,
+                        frontendVersion = Unifey.FRONTEND_EXPECT
+                    )
+                )
+            }
 
             get("/debug-notif") {
                 val token = call.isAuthenticated()

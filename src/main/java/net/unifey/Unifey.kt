@@ -5,13 +5,9 @@ import ch.qos.logback.classic.LoggerContext
 import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
 import io.ktor.locations.*
-import kotlin.system.exitProcess
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import net.unifey.handle.SERVER
-import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.live.SocketActionHandler
-import net.unifey.handle.users.UserManager
 import org.litote.kmongo.id.serialization.IdKotlinXSerializationModule
 import org.reflections.Reflections
 import org.slf4j.Logger
@@ -21,12 +17,13 @@ object Unifey {
     /** The version of the backend. */
     const val VERSION = "0.8.0"
 
+    /** The time the server started. */
+    val START_TIME = System.currentTimeMillis()
+
     /** Reflections instance */
     val REFLECTIONS = Reflections("net.unifey")
 
-    val JSON = Json {
-        serializersModule = IdKotlinXSerializationModule
-    }
+    val JSON = Json { serializersModule = IdKotlinXSerializationModule }
 
     /** What version is expected of the frontend. */
     const val FRONTEND_EXPECT = "0.8.0"
