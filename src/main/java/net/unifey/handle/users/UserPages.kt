@@ -43,7 +43,7 @@ fun Routing.userPages() {
         get {
             val token = call.isAuthenticated()
 
-            call.respond(token.getOwner().response())
+            call.respond(token.getOwner().response(isSelf = true))
         }
 
         /** Change a user using [param] */
@@ -279,9 +279,12 @@ fun Routing.userPages() {
 
             try {
                 UserManager.getUser(username).email.endsWith("@unifey.app")
-                println(call.request.headers.toMap().toList().joinToString { (key, value) -> "${key}: $value" })
-            } catch (ex: Error) {
-            }
+                println(
+                    call.request.headers.toMap().toList().joinToString { (key, value) ->
+                        "${key}: $value"
+                    }
+                )
+            } catch (ex: Error) {}
 
             val auth = Authenticator.generateIfCorrect(username, password, remember)
 

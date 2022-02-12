@@ -31,7 +31,7 @@ object DefaultSocketPages : ActionHolder {
         action(DefaultSocketPagesTypes.GET_USER) {
             val owner = token.getOwner()
 
-            respondSuccess(owner.response())
+            respondSuccess(owner.response(isSelf = true))
         }
     }
 }
