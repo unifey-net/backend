@@ -6,14 +6,13 @@ import io.ktor.client.request.forms.*
 import io.ktor.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import mu.KotlinLogging
 import net.unifey.handle.Error
 import net.unifey.handle.HTTP_CLIENT
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 
 /** Manage Google reCAPTCHA */
 object ReCaptcha {
-    private val logger: Logger = LoggerFactory.getLogger(this.javaClass)
+    private val logger = KotlinLogging.logger {}
 
     /** The secret key to ReCAPTCHA. Required for auth */
     private val SECRET = System.getenv("RECAPTCHA")

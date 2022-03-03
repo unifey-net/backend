@@ -8,6 +8,7 @@ import io.ktor.features.*
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.header
 import io.ktor.response.respond
+import mu.KotlinLogging
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -17,7 +18,7 @@ import net.unifey.handle.Error
 import net.unifey.response.Response
 import org.slf4j.LoggerFactory
 
-private val LOGGER = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
+private val LOGGER = KotlinLogging.logger {  }
 
 val DEFAULT_PAGE_RATE_LIMIT =
         PageRateLimit(Bandwidth.classic(50, Refill.greedy(1, Duration.ofSeconds(2))))

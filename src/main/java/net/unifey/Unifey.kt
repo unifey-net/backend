@@ -6,6 +6,7 @@ import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
 import io.ktor.locations.*
 import kotlinx.serialization.json.Json
+import mu.KotlinLogging
 import net.unifey.handle.SERVER
 import net.unifey.handle.live.SocketActionHandler
 import org.litote.kmongo.id.serialization.IdKotlinXSerializationModule
@@ -15,7 +16,7 @@ import org.slf4j.LoggerFactory
 
 object Unifey {
     /** The version of the backend. */
-    const val VERSION = "0.8.0"
+    const val VERSION = "0.8.1"
 
     /** The time the server started. */
     val START_TIME = System.currentTimeMillis()
@@ -28,7 +29,7 @@ object Unifey {
     /** What version is expected of the frontend. */
     const val FRONTEND_EXPECT = "0.8.0"
 
-    val ROOT_LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
+    val ROOT_LOGGER = KotlinLogging.logger {  }
 
     lateinit var webhook: DiscordWebhook
     lateinit var mongo: String
