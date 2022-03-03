@@ -1,7 +1,7 @@
 package net.unifey.handle.users.connections.handlers
 
 import io.github.bucket4j.Bandwidth
-import io.github.bucket4j.Bucket4j
+import io.github.bucket4j.Bucket
 import io.github.bucket4j.local.LocalBucket
 import java.time.Duration
 import kotlinx.coroutines.delay
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 
 abstract class ConnectionHandler(rateLimit: Bandwidth) {
     private val rateLimitBucket: LocalBucket =
-        Bucket4j.builder().addLimit(rateLimit).withMillisecondPrecision().build()
+        Bucket.builder().addLimit(rateLimit).withMillisecondPrecision().build()
 
     suspend fun handleRateLimit() {
         val probe = rateLimitBucket.tryConsumeAndReturnRemaining(1)

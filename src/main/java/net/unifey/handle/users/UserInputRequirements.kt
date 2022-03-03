@@ -85,12 +85,10 @@ object UserInputRequirements : InputRequirements() {
     /** Checks if the [username], [password] and [email] are all valid. */
     @Throws(InvalidVariableInput::class)
     suspend fun allMeets(username: String, password: String, email: String) {
-        meets(username, USERNAME_EXISTS)
-        meets(username, USERNAME)
+        username meets listOf(USERNAME, USERNAME_EXISTS)
 
-        meets(password, PASSWORD)
+        password meets PASSWORD
 
-        meets(email, EMAIL)
-        meets(email, EMAIL_EXISTS)
+        password meets listOf(EMAIL, EMAIL_EXISTS)
     }
 }

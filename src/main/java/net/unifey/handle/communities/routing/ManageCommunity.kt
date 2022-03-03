@@ -215,7 +215,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             val community = CommunityManager.getCommunityById(id)
 
-            if (CommunityRoles.ADMIN > community.getRole(token.owner) ?: CommunityRoles.DEFAULT)
+            if (CommunityRoles.ADMIN > community.getRole(token.owner))
                 throw NoPermission()
 
             val image = call.ensureProperImageBody()
@@ -316,7 +316,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             val community = CommunityManager.getCommunityById(id)
 
             val token = call.isAuthenticated()
-            val selfRole = community.getRole(token.owner) ?: CommunityRoles.DEFAULT
+            val selfRole = community.getRole(token.owner)
 
             val params = call.receiveParameters()
 

@@ -1,5 +1,6 @@
 package net.unifey.handle
 
+import dev.ajkneisl.lib.util.capitalize
 import dev.ajkneisl.lib.util.eitherOr
 import io.ktor.application.ApplicationCall
 import io.ktor.http.HttpStatusCode

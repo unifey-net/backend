@@ -114,9 +114,7 @@ object FeedManager {
     }
 
     /** Get the trending page. */
-    fun getTrendingFeedPosts(page: Int): MutableList<Post> {
-        return TODO()
-    }
+    fun getTrendingFeedPosts(page: Int): MutableList<Post> = TODO("$page")
 
     /**
      * Get [feed]'s posts. Each [page] has up to [POSTS_PAGE_SIZE] posts.

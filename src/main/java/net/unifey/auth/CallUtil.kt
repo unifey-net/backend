@@ -30,7 +30,7 @@ suspend fun ApplicationCall.isAuthenticated(
 fun ApplicationCall.getTokenFromCall(): Token {
     val header = getHeader(this) ?: throw AuthenticationException("No authentication")
 
-    when (header.first.toLowerCase()) {
+    when (header.first.lowercase()) {
         "bearer" -> return TokenManager.getToken(header.second)
                 ?: throw AuthenticationException("Invalid token")
         else -> throw AuthenticationException("Use bearer token")
