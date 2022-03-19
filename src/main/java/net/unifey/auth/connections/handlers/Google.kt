@@ -1,4 +1,4 @@
-package net.unifey.handle.users.connections.handlers
+package net.unifey.auth.connections.handlers
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill

@@ -27,7 +27,7 @@ suspend fun ApplicationCall.isAuthenticated(
 }
 
 /** Get a [Token] from an [ApplicationCall] */
-fun ApplicationCall.getTokenFromCall(): Token {
+suspend fun ApplicationCall.getTokenFromCall(): Token {
     val header = getHeader(this) ?: throw AuthenticationException("No authentication")
 
     when (header.first.lowercase()) {

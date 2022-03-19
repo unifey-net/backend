@@ -24,7 +24,7 @@ private val PUBLIC_KEY = System.getenv("SENDGRID_HOOK_KEY")
 private val EMAIL_LOGGER = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 /** Pages for email. */
-fun Routing.emailPages() {
+fun Route.emailPages() {
     route("/email") {
         get {
             val token = call.isAuthenticated()

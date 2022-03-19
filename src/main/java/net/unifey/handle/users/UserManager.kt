@@ -131,7 +131,7 @@ object UserManager {
 
     /** Signs out all users connected to the account (aka delete all tokens) */
     suspend fun signOutAll(user: User) {
-        TokenManager.getTokensForUser(user).forEach(::deleteToken)
+        TokenManager.getTokensForUser(user).forEach { token -> deleteToken(token) }
 
         Live.sendUpdate(Live.LiveObject("SIGN_OUT", user.id, JSONObject()))
     }

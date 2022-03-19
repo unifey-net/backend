@@ -102,21 +102,29 @@ val SERVER =
         }
 
         routing {
-            emotePages()
-            emailPages()
-            feedPages()
-            userPages()
-            communityPages()
-            reportPages()
-            liveSocket()
-            adminPages()
-            betaPages()
+            @Serializable
+            data class VersionEndpointResponse(val endpoint: String, val deprecated: Boolean)
+
+            route("/v1") {
+                emotePages()
+                emailPages()
+                feedPages()
+                userPages()
+                communityPages()
+                reportPages()
+                liveSocket()
+                adminPages()
+                betaPages()
+
+                get { call.respond(VersionEndpointResponse("/v1", false)) }
+            }
 
             @Serializable
             data class HomeResponse(
                 val payload: String,
                 val uptime: Long,
                 val version: String,
+                val endpoint: String = "/v1",
                 val frontendVersion: String
             )
             get("/") {
@@ -125,7 +133,7 @@ val SERVER =
                         payload = "unifey! :-)",
                         uptime = System.currentTimeMillis() - Unifey.START_TIME,
                         version = Unifey.VERSION,
-                        frontendVersion = Unifey.FRONTEND_EXPECT
+                        frontendVersion = Unifey.FRONTEND_EXPECT,
                     )
                 )
             }

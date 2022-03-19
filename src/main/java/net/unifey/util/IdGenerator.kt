@@ -67,7 +67,7 @@ object IdGenerator {
     }
 
     /** Generate a token */
-    fun generateToken(): String {
+    suspend fun generateToken(): String {
         val token = DigestUtils.sha256Hex(genBytes())
 
         if (tokenUsed(token)) return generateToken()
@@ -76,7 +76,7 @@ object IdGenerator {
     }
 
     /** Check if a token has been used before. */
-    private fun tokenUsed(token: String): Boolean {
+    private suspend fun tokenUsed(token: String): Boolean {
         return TokenManager.getToken(token) != null
     }
 }

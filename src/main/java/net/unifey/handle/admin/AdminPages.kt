@@ -21,7 +21,7 @@ import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.mindrot.jbcrypt.BCrypt
 import java.util.concurrent.TimeUnit
 
-fun Routing.adminPages() =
+fun Route.adminPages() =
     route("/admin") {
         get("/stats") { viewStats(call) }
 

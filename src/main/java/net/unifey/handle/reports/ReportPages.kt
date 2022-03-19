@@ -69,7 +69,7 @@ private suspend fun ensureExists(target: Target, reason: ReportType): String? {
     }
 }
 
-fun Routing.reportPages() {
+fun Route.reportPages() {
     route("/report") {
         /** Create a report. */
         put {

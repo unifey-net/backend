@@ -16,7 +16,7 @@ import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
 import org.mindrot.jbcrypt.BCrypt
 
-fun Routing.communityPages() {
+fun Route.communityPages() {
     route("/community") {
         route("/manage", MANAGE_SUBSCRIBED)
         route("/{id}", MANAGE_COMMUNITY)

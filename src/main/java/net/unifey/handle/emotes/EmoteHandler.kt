@@ -1,16 +1,16 @@
 package net.unifey.handle.emotes
 
+import kotlinx.coroutines.runBlocking
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.LimitReached
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.communities.Community
 import net.unifey.handle.communities.CommunityManager
-import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.mongo.MONGO
 import net.unifey.util.IdGenerator
 import net.unifey.util.URL
 import net.unifey.util.cleanInput
-import org.bson.Document
 
 /** Handles emotes. */
 object EmoteHandler {
@@ -20,20 +20,14 @@ object EmoteHandler {
     private const val MAX_EMOTE_PER_COMMUNITY = 50
 
     private val emoteCache: MutableList<Emote> by lazy {
-        val emotes = Mongo.getClient().getDatabase("global").getCollection("emotes").find()
-
-        emotes
-            .map { emote ->
-                Emote(
-                    String.format(EMOTE_URL, emote.getLong("parent"), emote.getLong("id")),
-                    emote.getLong("id"),
-                    emote.getLong("parent"),
-                    emote.getString("name"),
-                    emote.getLong("uploadedBy"),
-                    emote.getLong("date")
-                )
-            }
-            .toMutableList()
+        runBlocking {
+            MONGO
+                .getDatabase("global")
+                .getCollection<Emote>("emotes")
+                .find()
+                .toList()
+                .toMutableList()
+        }
     }
 
     /** Get a communities emotes. */
@@ -72,24 +66,12 @@ object EmoteHandler {
 
         val time = System.currentTimeMillis()
 
-        Mongo.getClient()
+        MONGO
             .getDatabase("global")
-            .getCollection("emotes")
-            .insertOne(
-                Document(
-                    mapOf(
-                        "id" to emoteId,
-                        "parent" to parent,
-                        "name" to name,
-                        "uploadedBy" to createdBy,
-                        "date" to time
-                    )
-                )
-            )
+            .getCollection<Emote>("emotes")
+            .insertOne(Emote(emoteId, parent, name, createdBy, time))
 
-        emoteCache.add(
-            Emote(String.format(EMOTE_URL, parent, emoteId), emoteId, parent, name, createdBy, time)
-        )
+        emoteCache.add(Emote(emoteId, parent, name, createdBy, time))
     }
 
     /** If an emote with this [name] already exists. */

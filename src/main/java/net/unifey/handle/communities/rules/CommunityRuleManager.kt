@@ -2,14 +2,18 @@ package net.unifey.handle.communities.rules
 
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
+import dev.ajkneisl.lib.util.getOrNull
 import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
 import net.unifey.handle.Error
+import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.mongo.Mongo
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
-import org.bson.Document
+import org.bouncycastle.asn1.x500.style.RFC4519Style.title
+import org.litote.kmongo.*
 
 object CommunityRuleManager {
     private const val MAX_RULES = 32
@@ -32,16 +36,12 @@ object CommunityRuleManager {
 
         val id = IdGenerator.getId()
 
-        Mongo.useJob {
-            getDatabase("communities")
-                .getCollection("communities")
-                .updateOne(
-                    Filters.eq("id", community.id),
-                    Updates.set("rules.${id}", Document(mapOf("title" to title, "body" to body)))
-                )
-        }
+        community.rules[id] = CommunityRule(id, title, body)
 
-        community.rules.add(CommunityRule(id, title, body))
+        MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
 
         return id
     }
@@ -53,14 +53,16 @@ object CommunityRuleManager {
      * @param id The ID of the rule.
      * @param community The community where the rule resides.
      */
+    @Throws(NotFound::class)
     suspend fun modifyTitle(title: String, id: Long, community: Community) {
-        Mongo.useJob {
-            getDatabase("communities")
-                .getCollection("communities")
-                .updateOne(Filters.eq("id", community.id), Updates.set("rules.${id}.title", title))
-        }
+        val rule = community.rules.getOrNull(id) ?: throw NotFound("rule")
 
-        community.rules.single { rule -> rule.id == id }.title = title
+        community.rules[id] = CommunityRule(id, title, rule.body)
+
+        MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
     }
 
     /**
@@ -70,14 +72,16 @@ object CommunityRuleManager {
      * @param id The ID of the rule.
      * @param community The community where the rule resides.
      */
+    @Throws(NotFound::class)
     suspend fun modifyBody(body: String, id: Long, community: Community) {
-        Mongo.useJob {
-            getDatabase("communities")
-                .getCollection("communities")
-                .updateOne(Filters.eq("id", community.id), Updates.set("rules.${id}.body", body))
-        }
+        val rule = community.rules.getOrNull(id) ?: throw NotFound("rule")
 
-        community.rules.single { rule -> rule.id == id }.body = body
+        community.rules[id] = CommunityRule(id, rule.title, body)
+
+        MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
     }
 
     /**
@@ -87,12 +91,11 @@ object CommunityRuleManager {
      * @param community The community where the rule resides.
      */
     suspend fun deleteRule(id: Long, community: Community) {
-        Mongo.useJob {
-            getDatabase("communities")
-                .getCollection("communities")
-                .updateOne(Filters.eq("id", community.id), Updates.unset("rules.${id}"))
-        }
+        community.rules.remove(id)
 
-        community.rules.removeIf { rule -> rule.id == id }
+        MONGO
+            .getDatabase("communities")
+            .getCollection<Community>("communities")
+            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
     }
 }

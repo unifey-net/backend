@@ -30,7 +30,7 @@ val socketLogger = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
 
 /** This is the websocket implementation as well as the REST implementation. */
 @OptIn(ExperimentalCoroutinesApi::class)
-fun Routing.liveSocket() {
+fun Route.liveSocket() {
     route("/manage-live") {
         get("/view") {
             @Serializable

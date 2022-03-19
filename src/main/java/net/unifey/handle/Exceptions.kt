@@ -7,6 +7,13 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.response.respond
 import net.unifey.response.Response
 
+/** No content error. */
+class NoContent :
+    Error(
+        { respond(HttpStatusCode.NoContent, "There is currently no content.") },
+        "There is currently no content."
+    )
+
 /** [obj] was not found. */
 class NotFound(private val obj: String = "") :
     Error(

@@ -5,10 +5,12 @@ import ch.qos.logback.classic.LoggerContext
 import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
 import io.ktor.locations.*
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import mu.KotlinLogging
 import net.unifey.handle.SERVER
 import net.unifey.handle.live.SocketActionHandler
+import net.unifey.handle.users.UserManager
 import org.litote.kmongo.id.serialization.IdKotlinXSerializationModule
 import org.reflections.Reflections
 import org.slf4j.Logger

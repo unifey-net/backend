@@ -1,4 +1,4 @@
-package net.unifey.handle.users.connections
+package net.unifey.auth.connections
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
@@ -7,10 +7,11 @@ import io.ktor.request.*
 import io.ktor.response.*
 import io.ktor.routing.*
 import java.time.Duration
+import net.unifey.auth.connections.handlers.Google
+import net.unifey.auth.connections.twofactor.TwoFactor
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
-import net.unifey.handle.users.connections.handlers.Google
 import net.unifey.response.Response
 import net.unifey.util.PageRateLimit
 
@@ -37,5 +38,33 @@ fun connectionPages(): Route.() -> Unit = {
         ConnectionManager.createConnection(ConnectionManager.Type.GOOGLE, token.owner, googleUser)
 
         call.respond(Response("OK"))
+    }
+
+    route("/2fa") {
+        delete {
+            val user = call.isAuthenticated()
+
+            TwoFactor.disableTwoFactor(user.owner)
+
+            call.respond(Response("OK"))
+        }
+
+        put {
+            @kotlinx.serialization.Serializable data class TwoFactorResponse(val key: String)
+
+            val user = call.isAuthenticated()
+
+            val key = TwoFactor.enableTwoFactor(user.owner)
+
+            call.respond(TwoFactorResponse(key))
+        }
+
+        get {
+            @kotlinx.serialization.Serializable data class TwoFactorResponse(val enabled: Boolean)
+
+            val user = call.isAuthenticated()
+
+            call.respond(TwoFactorResponse(TwoFactor.alreadyExists(user.owner)))
+        }
     }
 }

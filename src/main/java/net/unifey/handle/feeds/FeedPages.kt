@@ -52,7 +52,7 @@ suspend fun ApplicationCall.getFeed(
 }
 
 /** Pages for feeds. */
-fun Routing.feedPages() {
+fun Route.feedPages() {
     route("/feeds") {
         /** Get a personalized list of subscribed communities. */
         get("/self") {

@@ -15,7 +15,7 @@ import net.unifey.util.checkIpRateLimit
 
 val rateLimit = PageRateLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1))))
 
-fun Routing.betaPages() {
+fun Route.betaPages() {
     route("/beta") {
         put("/request") {
             call.checkIpRateLimit(rateLimit)
