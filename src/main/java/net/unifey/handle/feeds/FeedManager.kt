@@ -4,6 +4,7 @@ import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Filters.or
 import com.mongodb.client.model.Sorts
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.NoContent
 import net.unifey.handle.NoPermission
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
@@ -121,9 +122,14 @@ object FeedManager {
      *
      * This assumes you've previously checked for permissions. (see if user can view feed)
      */
-    @Throws(NoPermission::class, InvalidArguments::class)
+    @Throws(NoPermission::class, InvalidArguments::class, NoContent::class)
     suspend fun getFeedPosts(feed: Feed, page: Int, method: String): MutableList<Post> {
-        if (page > feed.getPageCount() || 0 >= page) throw InvalidArguments("page")
+        val pageCount = feed.getPageCount()
+
+        when {
+            pageCount == 0L -> throw NoContent()
+            page > pageCount || 0 >= page -> throw InvalidArguments("page")
+        }
 
         val parsedMethod =
             SortingMethod.values().firstOrNull { sort -> sort.toString().equals(method, true) }

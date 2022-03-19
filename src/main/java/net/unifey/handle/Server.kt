@@ -103,7 +103,10 @@ val SERVER =
 
         routing {
             @Serializable
-            data class VersionEndpointResponse(val endpoint: String, val deprecated: Boolean)
+            data class VersionEndpointResponse(
+                val endpoint: String,
+                val deprecated: Boolean
+            )
 
             route("/v1") {
                 emotePages()
@@ -116,7 +119,9 @@ val SERVER =
                 adminPages()
                 betaPages()
 
-                get { call.respond(VersionEndpointResponse("/v1", false)) }
+                get {
+                    call.respond(VersionEndpointResponse("/v1", false))
+                }
             }
 
             @Serializable
