@@ -29,7 +29,7 @@ object Unifey {
     val JSON = Json { serializersModule = IdKotlinXSerializationModule }
 
     /** What version is expected of the frontend. */
-    const val FRONTEND_EXPECT = "0.8.0"
+    const val FRONTEND_EXPECT = "0.8.1"
 
     val ROOT_LOGGER = KotlinLogging.logger {  }
 
