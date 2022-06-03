@@ -20,7 +20,7 @@ object Mongo {
                     .applyConnectionString(
                         ConnectionString(
                             if (Unifey.prod) {
-                                "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
+                                Unifey.mongo
                             } else {
                                 "mongodb://127.0.0.1:27017"
                             }
@@ -42,9 +42,7 @@ object Mongo {
     private fun makeClient() {
         client =
             if (Unifey.prod) {
-                MongoClients.create(
-                    "mongodb+srv://unify-mongo:${Unifey.mongo}@unifey.mahkb.mongodb.net/unifey?retryWrites=true&w=majority"
-                )
+                MongoClients.create(Unifey.mongo)
             } else {
                 MongoClients.create("mongodb://127.0.0.1:27017") // local testing mongodb server
             }
