@@ -1,10 +1,11 @@
 package net.unifey.handle.reports
 
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.http.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.Error
@@ -69,7 +70,7 @@ private suspend fun ensureExists(target: Target, reason: ReportType): String? {
     }
 }
 
-fun Routing.reportPages() {
+fun Route.reportPages() {
     route("/report") {
         /** Create a report. */
         put {

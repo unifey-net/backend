@@ -1,8 +1,9 @@
-package net.unifey.handle.users.connections.handlers
+package net.unifey.auth.connections.handlers
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
-import io.ktor.client.features.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import java.time.Duration
 import kotlinx.serialization.SerialName
@@ -28,9 +29,10 @@ object Google : ConnectionHandler(Bandwidth.classic(10, Refill.greedy(1, Duratio
 
         return try {
             val response =
-                HTTP_CLIENT.get<UserInfoResponse>(
-                    "https://www.googleapis.com/oauth2/v1/userinfo?alt=json"
-                ) { header("Authorization", "Bearer $token") }
+                HTTP_CLIENT.get("https://www.googleapis.com/oauth2/v1/userinfo?alt=json") {
+                        header("Authorization", "Bearer $token")
+                    }
+                    .body<UserInfoResponse>()
 
             if (response.verifiedEmail) response.email else null
         } catch (e: ClientRequestException) {
@@ -44,10 +46,10 @@ object Google : ConnectionHandler(Bandwidth.classic(10, Refill.greedy(1, Duratio
         LOGGER.trace("Using Google API to find service ID")
 
         return try {
-            HTTP_CLIENT
-                .get<UserInfoResponse>("https://www.googleapis.com/oauth2/v1/userinfo?alt=json") {
+            HTTP_CLIENT.get("https://www.googleapis.com/oauth2/v1/userinfo?alt=json") {
                     header("Authorization", "Bearer $token")
                 }
+                .body<UserInfoResponse>()
                 .id
         } catch (e: ClientRequestException) {
             null

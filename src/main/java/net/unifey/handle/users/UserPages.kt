@@ -1,10 +1,12 @@
 package net.unifey.handle.users
 
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.http.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
+import io.ktor.server.util.*
 import io.ktor.util.*
 import java.util.concurrent.TimeUnit
 import net.unifey.Unifey
@@ -15,9 +17,9 @@ import net.unifey.handle.AlreadyExists
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.S3ImageHandler
 import net.unifey.handle.notification.NotificationManager
-import net.unifey.handle.users.connections.ConnectionManager
-import net.unifey.handle.users.connections.connectionPages
-import net.unifey.handle.users.connections.handlers.Google
+import net.unifey.auth.connections.ConnectionManager
+import net.unifey.auth.connections.connectionPages
+import net.unifey.auth.connections.handlers.Google
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.friends.friendsPages
@@ -32,7 +34,7 @@ import net.unifey.util.checkCaptcha
 import net.unifey.util.ensureProperImageBody
 import org.mindrot.jbcrypt.BCrypt
 
-fun Routing.userPages() {
+fun Route.userPages() {
     route("/user") {
         route("/cosmetic", cosmeticPages())
         route("/friends", friendsPages())

@@ -1,6 +1,5 @@
 package net.unifey.handle.notification
 
-import io.ktor.http.cio.websocket.*
 import kotlinx.serialization.Serializable
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.SocketAction

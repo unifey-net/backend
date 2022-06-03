@@ -1,10 +1,18 @@
 package net.unifey.handle
 
+import dev.ajkneisl.lib.util.capitalize
 import dev.ajkneisl.lib.util.eitherOr
-import io.ktor.application.ApplicationCall
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.response.respond
 import net.unifey.response.Response
+
+/** No content error. */
+class NoContent :
+    Error(
+        { respond(HttpStatusCode.NoContent, "There is currently no content.") },
+        "There is currently no content."
+    )
 
 /** [obj] was not found. */
 class NotFound(private val obj: String = "") :

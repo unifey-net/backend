@@ -1,20 +1,28 @@
 package net.unifey.handle
 
-import io.ktor.application.*
 import io.ktor.client.*
-import io.ktor.client.features.json.*
-import io.ktor.client.features.json.serializer.*
-import io.ktor.client.features.logging.*
-import io.ktor.features.*
+import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.*
 import io.ktor.http.*
-import io.ktor.http.cio.websocket.*
-import io.ktor.locations.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import io.ktor.serialization.*
+import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.application.*
+import io.ktor.server.http.*
+import io.ktor.server.locations.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.autohead.*
+import io.ktor.server.plugins.callloging.*
+import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.cors.routing.*
+import io.ktor.server.plugins.defaultheaders.*
+import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.websocket.*
 import java.time.Duration
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.admin.adminPages
@@ -29,26 +37,28 @@ import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
 import org.apache.commons.lang3.exception.ExceptionUtils
+import org.litote.kmongo.json
 import org.slf4j.event.Level
 
-val HTTP_CLIENT = HttpClient {
-    install(JsonFeature) {
-        serializer = KotlinxSerializer(kotlinx.serialization.json.Json { ignoreUnknownKeys = true })
-        acceptContentTypes = acceptContentTypes + ContentType.Any
-    }
-
+val HTTP_CLIENT = HttpClient(CIO) {
     install(Logging) {
         logger = Logger.DEFAULT
         level = LogLevel.INFO
     }
+
+
+    install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+        json(Json)
+    }
 }
 
 /** the actual server, localhost:8077 :) */
+@OptIn(KtorExperimentalLocationsAPI::class)
 val SERVER =
     embeddedServer(Netty, 8077) {
         install(ContentNegotiation) { json(contentType = ContentType.Application.Json) }
 
-        install(io.ktor.websocket.WebSockets) { timeout = Duration.ofSeconds(15) }
+        install(io.ktor.server.websocket.WebSockets) { timeout = Duration.ofSeconds(15) }
 
         install(Locations)
 
@@ -59,19 +69,19 @@ val SERVER =
         install(AutoHeadResponse)
 
         install(StatusPages) {
-            exception<Error> { it.response.invoke(call) }
+            exception<Error> { call, err -> err.response.invoke(call) }
 
             /** Error 404 */
-            status(HttpStatusCode.NotFound) {
+            status(HttpStatusCode.NotFound) { call, _ ->
                 call.respond(HttpStatusCode.NotFound, Response("That resource was not found."))
             }
 
             /** Error 401 */
-            status(HttpStatusCode.Unauthorized) {
+            status(HttpStatusCode.Unauthorized) { call, _ ->
                 call.respond(HttpStatusCode.Unauthorized, Response("You are not authorized."))
             }
 
-            exception<Throwable> {
+            exception<Throwable> { call, it ->
                 Unifey.ROOT_LOGGER.error("There was an issue.", it)
 
                 Unifey.webhook.sendBigMessage(
@@ -90,28 +100,57 @@ val SERVER =
         install(CORS) {
             anyHost()
 
-            method(HttpMethod.Options)
-            method(HttpMethod.Put)
-            method(HttpMethod.Delete)
-            method(HttpMethod.Patch)
+            allowMethod(HttpMethod.Options)
+            allowMethod(HttpMethod.Put)
+            allowMethod(HttpMethod.Delete)
+            allowMethod(HttpMethod.Patch)
 
-            header("Authorization")
+            allowHeader("Authorization")
 
             allowNonSimpleContentTypes = true
         }
 
         routing {
-            emotePages()
-            emailPages()
-            feedPages()
-            userPages()
-            communityPages()
-            reportPages()
-            liveSocket()
-            adminPages()
-            betaPages()
+            @Serializable
+            data class VersionEndpointResponse(
+                val endpoint: String,
+                val deprecated: Boolean
+            )
 
-            get("/") { call.respond(Response("unifey :)")) }
+            route("/v1") {
+                emotePages()
+                emailPages()
+                feedPages()
+                userPages()
+                communityPages()
+                reportPages()
+                liveSocket()
+                adminPages()
+                betaPages()
+
+                get {
+                    call.respond(VersionEndpointResponse("/v1", false))
+                }
+            }
+
+            @Serializable
+            data class HomeResponse(
+                val payload: String,
+                val uptime: Long,
+                val version: String,
+                val endpoint: String = "/v1",
+                val frontendVersion: String
+            )
+            get("/") {
+                call.respond(
+                    HomeResponse(
+                        payload = "unifey! :-)",
+                        uptime = System.currentTimeMillis() - Unifey.START_TIME,
+                        version = Unifey.VERSION,
+                        frontendVersion = Unifey.FRONTEND_EXPECT,
+                    )
+                )
+            }
 
             get("/debug-notif") {
                 val token = call.isAuthenticated()

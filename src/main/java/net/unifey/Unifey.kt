@@ -1,37 +1,36 @@
 package net.unifey
 
-import ch.qos.logback.classic.Level.*
+import ch.qos.logback.classic.Level.INFO
+import ch.qos.logback.classic.Level.OFF
 import ch.qos.logback.classic.LoggerContext
 import dev.ajkneisl.lib.Lib
 import dev.ajkneisl.lib.discord.DiscordWebhook
-import io.ktor.locations.*
-import kotlin.system.exitProcess
-import kotlinx.coroutines.runBlocking
+import io.ktor.server.locations.*
 import kotlinx.serialization.json.Json
+import mu.KotlinLogging
 import net.unifey.handle.SERVER
-import net.unifey.handle.communities.CommunityManager
 import net.unifey.handle.live.SocketActionHandler
-import net.unifey.handle.users.UserManager
+import net.unifey.util.SecretsManager
 import org.litote.kmongo.id.serialization.IdKotlinXSerializationModule
 import org.reflections.Reflections
-import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 object Unifey {
     /** The version of the backend. */
-    const val VERSION = "0.8.0"
+    const val VERSION = "0.8.1"
+
+    /** The time the server started. */
+    val START_TIME = System.currentTimeMillis()
 
     /** Reflections instance */
     val REFLECTIONS = Reflections("net.unifey")
 
-    val JSON = Json {
-        serializersModule = IdKotlinXSerializationModule
-    }
+    val JSON = Json { serializersModule = IdKotlinXSerializationModule }
 
     /** What version is expected of the frontend. */
-    const val FRONTEND_EXPECT = "0.8.0"
+    const val FRONTEND_EXPECT = "0.8.1"
 
-    val ROOT_LOGGER: Logger = LoggerFactory.getLogger(this.javaClass)
+    val ROOT_LOGGER = KotlinLogging.logger {}
 
     lateinit var webhook: DiscordWebhook
     lateinit var mongo: String
@@ -41,7 +40,7 @@ object Unifey {
      *
      * @see net.unifey.util.URL
      */
-    var prod = System.getenv("PROD")?.toBoolean() ?: false
+    var prod = SecretsManager.getSecret("PROD", "false").toBoolean() ?: false
 
     @KtorExperimentalLocationsAPI
     @JvmStatic
@@ -49,12 +48,10 @@ object Unifey {
         disableLoggers()
         ROOT_LOGGER.info("BACKEND - $VERSION, $prod")
 
-        mongo = System.getenv("MONGO")
-        webhook = DiscordWebhook(System.getenv("WEBHOOK"))
+        mongo = SecretsManager.getSecret("MONGO")
+        webhook = DiscordWebhook(SecretsManager.getSecret("WEBHOOK"))
 
         Lib.DEFAULT_WEBHOOK = webhook
-
-        System.getenv("RECAPTCHA") // to ensure exists.
 
         SocketActionHandler.findActions()
 

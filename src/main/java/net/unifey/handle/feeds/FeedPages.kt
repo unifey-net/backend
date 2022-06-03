@@ -1,10 +1,10 @@
 package net.unifey.handle.feeds
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.request.receiveParameters
-import io.ktor.response.respond
-import io.ktor.routing.*
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.call
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.response.respond
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
@@ -52,7 +52,7 @@ suspend fun ApplicationCall.getFeed(
 }
 
 /** Pages for feeds. */
-fun Routing.feedPages() {
+fun Route.feedPages() {
     route("/feeds") {
         /** Get a personalized list of subscribed communities. */
         get("/self") {

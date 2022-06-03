@@ -21,4 +21,21 @@ abstract class InputRequirements {
     @Throws(InvalidVariableInput::class)
     suspend fun meets(checks: List<Pair<String, suspend (String) -> Unit>>) =
         checks.forEach { (input, check) -> meets(input, check) }
+
+    companion object {
+        /**
+         * Infix implementation of the [meets] function.
+         */
+        suspend infix fun String.meets(input: suspend (String) -> Unit) =
+            input.invoke(this)
+
+        /**
+         * Infix implementation of [meets] function with multiple different checks.
+         */
+        suspend infix fun String.meets(inputs: List<suspend (String) -> Unit>) {
+            inputs.forEach {
+                it.invoke(this@meets)
+            }
+        }
+    }
 }

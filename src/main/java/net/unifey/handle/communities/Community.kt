@@ -12,7 +12,7 @@ data class Community(
     val permissions: CommunityPermissions = CommunityPermissions(0, 0, 0),
     val name: String = "",
     val description: String = "",
-    val rules: MutableList<CommunityRule> = mutableListOf(),
+    val rules: MutableMap<Long, CommunityRule> = mutableMapOf(),
     val roles: MutableMap<Long, Int> = mutableMapOf()
 )
 

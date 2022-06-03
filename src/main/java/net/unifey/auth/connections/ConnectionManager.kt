@@ -1,11 +1,9 @@
-package net.unifey.handle.users.connections
+package net.unifey.auth.connections
 
-import io.ktor.client.*
-import io.ktor.client.request.*
 import kotlin.system.measureTimeMillis
 import net.unifey.handle.mongo.Mongo
-import net.unifey.handle.users.connections.handlers.ConnectionHandler
-import net.unifey.handle.users.connections.handlers.Google
+import net.unifey.auth.connections.handlers.ConnectionHandler
+import net.unifey.auth.connections.handlers.Google
 import org.litote.kmongo.and
 import org.litote.kmongo.eq
 import org.slf4j.Logger

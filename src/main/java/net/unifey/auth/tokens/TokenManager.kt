@@ -1,11 +1,9 @@
 package net.unifey.auth.tokens
 
-import com.mongodb.client.model.Filters
-import io.ktor.client.request.forms.*
 import java.util.concurrent.ConcurrentHashMap
-import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.users.User
-import org.bson.Document
+import org.litote.kmongo.*
 
 object TokenManager {
     /**
@@ -16,19 +14,16 @@ object TokenManager {
     private val tokenCache = ConcurrentHashMap<String, Token>()
 
     /** Get a token by their [tokenStr]. Prefers [tokenCache] over database. */
-    fun getToken(tokenStr: String): Token? {
+    suspend fun getToken(tokenStr: String): Token? {
         if (tokenCache.containsKey(tokenStr)) return tokenCache[tokenStr]!!
 
-        val doc =
-            Mongo.getClient()
+        val token =
+            MONGO
                 .getDatabase("users")
-                .getCollection("tokens")
-                .find(Filters.eq("token", tokenStr))
-                .singleOrNull()
+                .getCollection<Token>("tokens")
+                .findOne(Token::token eq tokenStr)
 
-        return if (doc != null) {
-            val token = formToken(doc)
-
+        return if (token != null) {
             tokenCache[tokenStr] = token
 
             token
@@ -40,63 +35,38 @@ object TokenManager {
         token.expires != -1L && System.currentTimeMillis() > token.expires
 
     /** Create a token with [tokenStr], [owner] and [expire]. */
-    fun createToken(tokenStr: String, owner: Long, expire: Long): Token {
+    suspend fun createToken(tokenStr: String, owner: Long, expire: Long): Token {
         val token = Token(owner, tokenStr, mutableListOf(), expire)
 
-        Mongo.getClient()
-            .getDatabase("users")
-            .getCollection("tokens")
-            .insertOne(
-                Document(
-                    mapOf(
-                        "token" to token.token,
-                        "expires" to token.expires,
-                        "permissions" to token.permissions,
-                        "owner" to token.owner
-                    )
-                )
-            )
+        MONGO.getDatabase("users").getCollection<Token>("tokens").insertOne(token)
 
         tokenCache[tokenStr] = token
 
         return token
     }
 
-    /** Form a [Token] from a [doc] */
-    private fun formToken(doc: Document): Token {
-        return Token(
-            doc.getLong("owner"),
-            doc.getString("token"),
-            doc.getList("permissions", String::class.java),
-            doc.getLong("expires")
-        )
-    }
-
     /** Get all active tokens for [user] */
-    fun getTokensForUser(user: User): List<Token> {
-        val tokens =
-            Mongo.getClient()
-                .getDatabase("users")
-                .getCollection("tokens")
-                .find(Filters.eq("owner", user.id))
-                .filter { doc ->
-                    doc.getLong("expires") == -1L ||
-                        System.currentTimeMillis() > doc.getLong("expires")
-                }
-
-        return tokens.map(::formToken)
-    }
-
-    /** Delete [token] */
-    fun deleteToken(token: String) {
-        Mongo.getClient()
+    suspend fun getTokensForUser(user: User): List<Token> {
+        return MONGO
             .getDatabase("users")
-            .getCollection("tokens")
-            .deleteOne(Filters.eq("token", token))
+            .getCollection<Token>("tokens")
+            .find(
+                and(
+                    Token::owner eq user.id,
+                    Token::expires ne -1,
+                    Token::expires lt System.currentTimeMillis()
+                )
+            )
+            .toList()
     }
 
     /** Delete [token] */
-    fun deleteToken(token: Token) {
+    suspend fun deleteToken(token: String) {
+        MONGO.getDatabase("users").getCollection<Token>("tokens").deleteOne(Token::token eq token)
+    }
+
+    /** Delete [token] */
+    suspend fun deleteToken(token: Token) {
         deleteToken(token.token)
     }
 }

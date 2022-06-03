@@ -1,10 +1,10 @@
 package net.unifey.handle.communities.routing
 
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import net.unifey.Unifey
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.Error
@@ -16,7 +16,7 @@ import net.unifey.response.Response
 import net.unifey.util.checkCaptcha
 import org.mindrot.jbcrypt.BCrypt
 
-fun Routing.communityPages() {
+fun Route.communityPages() {
     route("/community") {
         route("/manage", MANAGE_SUBSCRIBED)
         route("/{id}", MANAGE_COMMUNITY)

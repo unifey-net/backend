@@ -1,7 +1,7 @@
 package net.unifey.auth
 
-import io.ktor.application.ApplicationCall
-import io.ktor.auth.parseAuthorizationHeader
+import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.users.GlobalRoles
@@ -27,10 +27,10 @@ suspend fun ApplicationCall.isAuthenticated(
 }
 
 /** Get a [Token] from an [ApplicationCall] */
-fun ApplicationCall.getTokenFromCall(): Token {
+suspend fun ApplicationCall.getTokenFromCall(): Token {
     val header = getHeader(this) ?: throw AuthenticationException("No authentication")
 
-    when (header.first.toLowerCase()) {
+    when (header.first.lowercase()) {
         "bearer" -> return TokenManager.getToken(header.second)
                 ?: throw AuthenticationException("Invalid token")
         else -> throw AuthenticationException("Use bearer token")

@@ -1,7 +1,9 @@
 package net.unifey.handle.users.email
 
 import net.unifey.handle.NotFound
+import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.mongo.Mongo
+import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
 
 object UserPasswordResetHandler {
@@ -22,16 +24,12 @@ object UserPasswordResetHandler {
 
     /** Find user by their email ([input]) */
     private suspend fun findUsingEmail(input: String): Long? {
-        val result =
-            Mongo.useAsync {
-                    getDatabase("users").getCollection("users").find().filter { doc ->
-                        doc.getString("email").equals(input, true)
-                    }
-                }
-                .await()
+        val result = MONGO.getDatabase("users")
+            .getCollection<User>("users")
+            .find()
+            .toList()
+            .singleOrNull { user -> user.email.equals(input, true) }
 
-        val document = result.firstOrNull() ?: return null
-
-        return document.getLong("id")
+        return result?.id
     }
 }

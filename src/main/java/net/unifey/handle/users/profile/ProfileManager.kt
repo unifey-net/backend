@@ -42,7 +42,7 @@ object ProfileManager {
     }
 
     /** Add a [cosmetic] to [id] */
-    suspend fun addCosmetic(id: Long, cosmetic: Cosmetics.Cosmetic) {
+    suspend fun addCosmetic(id: Long, cosmetic: String) {
         Mongo.K_MONGO
             .getDatabase("users")
             .getCollection<Profile>("profiles")
@@ -50,7 +50,7 @@ object ProfileManager {
     }
 
     /** Add a [cosmetic] to [id] */
-    suspend fun removeCosmetic(id: Long, cosmetic: Cosmetics.Cosmetic) {
+    suspend fun removeCosmetic(id: Long, cosmetic: String) {
         Mongo.K_MONGO
             .getDatabase("users")
             .getCollection<Profile>("profiles")

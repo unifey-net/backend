@@ -2,10 +2,10 @@ package net.unifey.handle.beta
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import java.time.Duration
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
@@ -15,7 +15,7 @@ import net.unifey.util.checkIpRateLimit
 
 val rateLimit = PageRateLimit(Bandwidth.classic(5, Refill.greedy(5, Duration.ofMinutes(1))))
 
-fun Routing.betaPages() {
+fun Route.betaPages() {
     route("/beta") {
         put("/request") {
             call.checkIpRateLimit(rateLimit)

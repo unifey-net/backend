@@ -5,6 +5,7 @@ import dev.ajkneisl.lib.util.getAge
 import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.NoContent
 import net.unifey.handle.NotFound
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.MONGO
@@ -33,11 +34,11 @@ object CommunityManager {
     }
 
     /** Delete a community by it's [id] */
-    fun deleteCommunity(id: Long) {
-        Mongo.getClient()
+    suspend fun deleteCommunity(id: Long) {
+        MONGO
             .getDatabase("communities")
-            .getCollection("communities")
-            .deleteOne(eq("id", id))
+            .getCollection<Community>("communities")
+            .deleteOne(Community::id eq id)
     }
 
     /** Get a [Community] by [name]. */
@@ -63,8 +64,12 @@ object CommunityManager {
     }
 
     /** Get a page of communities. */
+    @Throws(InvalidArguments::class, NoContent::class)
     suspend fun getCommunities(page: Int): List<Community> {
         val size = getCommunitiesSize()
+
+        if (size == 0L)
+            throw NoContent()
 
         // there's 15 communities to a page.
         val pageCount = ceil(size.toDouble() / 15.0).toInt()
@@ -129,7 +134,7 @@ object CommunityManager {
                     ),
                 name = name,
                 description = desc,
-                rules = mutableListOf(),
+                rules = mutableMapOf(),
                 roles = roles
             )
 

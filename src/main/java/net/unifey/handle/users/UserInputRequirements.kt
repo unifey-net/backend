@@ -5,10 +5,6 @@ import net.unifey.handle.InvalidVariableInput
 import net.unifey.util.InputRequirements
 
 object UserInputRequirements : InputRequirements() {
-    private val EMAIL_REGEX =
-        Regex(
-            "(?:[a-z0-9!#\$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#\$%&'*+/=?^_`{|}~-]+)*|\"(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21\\x23-\\x5b\\x5d-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])*\")@(?:(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?|\\[(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?|[a-z0-9-]*[a-z0-9]:(?:[\\x01-\\x08\\x0b\\x0c\\x0e-\\x1f\\x21-\\x5a\\x53-\\x7f]|\\\\[\\x01-\\x09\\x0b\\x0c\\x0e-\\x7f])+)\\])"
-        )
     private val USERNAME_REGEX = Regex("^[A-Za-z0-9-_]{2,16}\\w+$")
     private val PASSWORD_REGEX =
         Regex(
@@ -52,11 +48,9 @@ object UserInputRequirements : InputRequirements() {
         EMAIL.invoke(email)
     }
 
-    /** Check [EMAIL_REGEX] and if the size is over 128. */
+    /** Check if the size is over 128. */
     val EMAIL: suspend (String) -> Unit = { email ->
         when {
-            !EMAIL_REGEX.matches(email) ->
-                throw InvalidVariableInput("email", "Please input a valid email!")
             email.length > 128 -> throw InvalidVariableInput("email", "That email is too long!")
         }
     }
@@ -85,12 +79,10 @@ object UserInputRequirements : InputRequirements() {
     /** Checks if the [username], [password] and [email] are all valid. */
     @Throws(InvalidVariableInput::class)
     suspend fun allMeets(username: String, password: String, email: String) {
-        meets(username, USERNAME_EXISTS)
-        meets(username, USERNAME)
+        username meets listOf(USERNAME, USERNAME_EXISTS)
 
-        meets(password, PASSWORD)
+        password meets PASSWORD
 
-        meets(email, EMAIL)
-        meets(email, EMAIL_EXISTS)
+        password meets listOf(EMAIL, EMAIL_EXISTS)
     }
 }

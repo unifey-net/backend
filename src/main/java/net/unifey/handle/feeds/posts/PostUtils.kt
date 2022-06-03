@@ -1,6 +1,6 @@
 package net.unifey.handle.feeds.posts
 
-import io.ktor.application.ApplicationCall
+import io.ktor.server.application.ApplicationCall
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission

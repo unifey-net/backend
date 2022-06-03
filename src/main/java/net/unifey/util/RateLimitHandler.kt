@@ -2,13 +2,13 @@ package net.unifey.util
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
-import io.github.bucket4j.Bucket4j
 import io.github.bucket4j.Refill
-import io.ktor.application.*
-import io.ktor.features.*
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.header
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.plugins.*
+import io.ktor.server.response.header
+import io.ktor.server.response.respond
+import mu.KotlinLogging
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -18,10 +18,10 @@ import net.unifey.handle.Error
 import net.unifey.response.Response
 import org.slf4j.LoggerFactory
 
-private val LOGGER = LoggerFactory.getLogger(object {}.javaClass.enclosingClass)
+private val LOGGER = KotlinLogging.logger {  }
 
 val DEFAULT_PAGE_RATE_LIMIT =
-    PageRateLimit(Bandwidth.classic(50, Refill.greedy(1, Duration.ofSeconds(2))))
+        PageRateLimit(Bandwidth.classic(50, Refill.greedy(1, Duration.ofSeconds(2))))
 
 /** Handle a page's rate limit. */
 class PageRateLimit(val bandwidth: Bandwidth) {
@@ -41,7 +41,7 @@ class PageRateLimit(val bandwidth: Bandwidth) {
     }
 
     /** Create a bucket for a token. */
-    private fun createBucket(): Bucket = Bucket4j.builder().addLimit(bandwidth).build()
+    private fun createBucket(): Bucket = Bucket.builder().addLimit(bandwidth).build()
 }
 
 /** Check a user's rate limit using their remoteHost. This isn't very secure :( */
@@ -69,12 +69,12 @@ fun checkRateLimit(token: Token, pageRateLimit: PageRateLimit): Long {
 
 /** If a user's exceeded their rate limit. */
 class RateLimitException(private val refill: Long, private val whenAllowed: Long = -1) :
-    Error({
-        response.header("X-Rate-Limit-Retry-After-Seconds", TimeUnit.MILLISECONDS.toSeconds(refill))
+        Error({
+            response.header("X-Rate-Limit-Retry-After-Seconds", TimeUnit.MILLISECONDS.toSeconds(refill))
 
-        if (whenAllowed != -1L) response.header("X-Rate-Limit-Reset", whenAllowed)
+            if (whenAllowed != -1L) response.header("X-Rate-Limit-Reset", whenAllowed)
 
-        response.header("Access-Control-Expose-Headers", "X-Rate-Limit-Reset")
+            response.header("Access-Control-Expose-Headers", "X-Rate-Limit-Reset")
 
-        respond(HttpStatusCode.TooManyRequests, Response("You are being rate limited!"))
-    })
+            respond(HttpStatusCode.TooManyRequests, Response("You are being rate limited!"))
+        })

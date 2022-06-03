@@ -1,14 +1,14 @@
 package net.unifey.handle.admin
 
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import java.util.concurrent.TimeUnit
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
+import net.unifey.handle.admin.pages.viewStats
 import net.unifey.handle.feeds.FeedManager
 import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.users.GlobalRoles
@@ -17,15 +17,17 @@ import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
-import net.unifey.handle.users.profile.ProfileManager
 import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.mindrot.jbcrypt.BCrypt
+import java.util.concurrent.TimeUnit
 
-fun Routing.adminPages() =
+fun Route.adminPages() =
     route("/admin") {
+        get("/stats") { viewStats(call) }
+
+        /** Creates a debug account. */
         put("/debug-account") {
-            @Serializable
-            data class DebugAccountResponse(val token: String)
+            @Serializable data class DebugAccountResponse(val token: String)
 
             call.isAuthenticated(permissionLevel = GlobalRoles.ADMIN)
             val args = call.receiveParameters()
@@ -55,7 +57,7 @@ fun Routing.adminPages() =
                     "A debug user.",
                     "Debug",
                     "Unifey HQ",
-                    listOf(Cosmetics.getAll().single { cosmetic -> cosmetic.id.equals("Debug_Account", true) })
+                    listOf()
                 )
 
             val member = Member(id, listOf(), listOf())

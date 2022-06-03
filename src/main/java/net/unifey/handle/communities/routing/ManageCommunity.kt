@@ -2,11 +2,11 @@ package net.unifey.handle.communities.routing
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.Serializable
@@ -215,7 +215,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
 
             val community = CommunityManager.getCommunityById(id)
 
-            if (CommunityRoles.ADMIN > community.getRole(token.owner) ?: CommunityRoles.DEFAULT)
+            if (CommunityRoles.ADMIN > community.getRole(token.owner))
                 throw NoPermission()
 
             val image = call.ensureProperImageBody()
@@ -316,7 +316,7 @@ val MANAGE_COMMUNITY: Route.() -> Unit = {
             val community = CommunityManager.getCommunityById(id)
 
             val token = call.isAuthenticated()
-            val selfRole = community.getRole(token.owner) ?: CommunityRoles.DEFAULT
+            val selfRole = community.getRole(token.owner)
 
             val params = call.receiveParameters()
 

@@ -1,11 +1,9 @@
 package net.unifey.handle.users.friends
 
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
-import kotlinx.serialization.encodeToString
-import net.unifey.Unifey
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.live.*
@@ -196,6 +194,8 @@ object FriendsActions : ActionHolder {
                     getFriends(token.owner).map { friend ->
                         FriendResponse(friend.id, friend.friendedAt, UserManager.getUser(friend.id))
                     }
+
+                println(getFriends(token.owner))
 
                 respondSuccess(friends)
             }

@@ -6,11 +6,9 @@ import net.unifey.handle.InvalidVariableInput
 import net.unifey.handle.NotFound
 import net.unifey.handle.live.Live
 import net.unifey.handle.mongo.MONGO
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.notification.NotificationManager
 import net.unifey.handle.users.User
 import net.unifey.handle.users.UserManager
-import org.bson.Document
 import org.litote.kmongo.and
 import org.litote.kmongo.eq
 import org.litote.kmongo.setValue
@@ -102,8 +100,10 @@ object FriendManager {
 
     /** If [id] has friends. */
     private suspend fun hasFriends(id: Long): Boolean =
-        MONGO.getDatabase("users").getCollection<UserFriends>().findOne(UserFriends::id eq id) !=
-            null
+        MONGO
+            .getDatabase("users")
+            .getCollection<UserFriends>()
+            .countDocuments(UserFriends::id eq id) > 0
 
     /** Get friend requests for [user]. */
     suspend fun getFriendRequests(user: Long): List<FriendRequest> {
@@ -164,7 +164,8 @@ object FriendManager {
 
         val friendRequestObject = FriendRequest(System.currentTimeMillis(), to, from)
 
-        MONGO.getDatabase("users")
+        MONGO
+            .getDatabase("users")
             .getCollection<FriendRequest>("friend_requests")
             .insertOne(friendRequestObject)
 

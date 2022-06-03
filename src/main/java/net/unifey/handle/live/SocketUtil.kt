@@ -1,6 +1,6 @@
 package net.unifey.handle.live
 
-import io.ktor.http.cio.websocket.*
+import io.ktor.websocket.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import net.unifey.Unifey
