@@ -111,53 +111,55 @@ val SERVER =
         }
 
         routing {
-            @Serializable
-            data class VersionEndpointResponse(
-                val endpoint: String,
-                val deprecated: Boolean
-            )
-
-            route("/v1") {
-                emotePages()
-                emailPages()
-                feedPages()
-                userPages()
-                communityPages()
-                reportPages()
-                liveSocket()
-                adminPages()
-                betaPages()
-
-                get {
-                    call.respond(VersionEndpointResponse("/v1", false))
-                }
-            }
-
-            @Serializable
-            data class HomeResponse(
-                val payload: String,
-                val uptime: Long,
-                val version: String,
-                val endpoint: String = "/v1",
-                val frontendVersion: String
-            )
-            get("/") {
-                call.respond(
-                    HomeResponse(
-                        payload = "unifey! :-)",
-                        uptime = System.currentTimeMillis() - Unifey.START_TIME,
-                        version = Unifey.VERSION,
-                        frontendVersion = Unifey.FRONTEND_EXPECT,
-                    )
+            route("/unifey") {
+                @Serializable
+                data class VersionEndpointResponse(
+                    val endpoint: String,
+                    val deprecated: Boolean
                 )
-            }
 
-            get("/debug-notif") {
-                val token = call.isAuthenticated()
+                route("/v1") {
+                    emotePages()
+                    emailPages()
+                    feedPages()
+                    userPages()
+                    communityPages()
+                    reportPages()
+                    liveSocket()
+                    adminPages()
+                    betaPages()
 
-                token.getOwner().postNotification("Debug notification")
+                    get {
+                        call.respond(VersionEndpointResponse("/v1", false))
+                    }
+                }
 
-                call.respond(Response("OK"))
+                @Serializable
+                data class HomeResponse(
+                    val payload: String,
+                    val uptime: Long,
+                    val version: String,
+                    val endpoint: String = "/v1",
+                    val frontendVersion: String
+                )
+                get("/") {
+                    call.respond(
+                        HomeResponse(
+                            payload = "unifey! :-)",
+                            uptime = System.currentTimeMillis() - Unifey.START_TIME,
+                            version = Unifey.VERSION,
+                            frontendVersion = Unifey.FRONTEND_EXPECT,
+                        )
+                    )
+                }
+
+                get("/debug-notif") {
+                    val token = call.isAuthenticated()
+
+                    token.getOwner().postNotification("Debug notification")
+
+                    call.respond(Response("OK"))
+                }
             }
         }
     }
