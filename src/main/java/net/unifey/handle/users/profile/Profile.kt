@@ -10,7 +10,7 @@ data class Profile(
     val description: String,
     val discord: String,
     val location: String,
-    val cosmetics: List<Cosmetics.Cosmetic>
+    val cosmetics: List<String>
 ) {
     companion object {
         const val MAX_DESC_LEN = 256

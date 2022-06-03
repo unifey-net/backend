@@ -2,10 +2,10 @@ package net.unifey.auth.connections
 
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Refill
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import java.time.Duration
 import net.unifey.auth.connections.handlers.Google
 import net.unifey.auth.connections.twofactor.TwoFactor

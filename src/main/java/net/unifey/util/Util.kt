@@ -1,13 +1,11 @@
 package net.unifey.util
 
-import io.ktor.application.ApplicationCall
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.http.Parameters
-import io.ktor.request.header
-import io.ktor.request.receiveParameters
-import io.ktor.request.receiveStream
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.request.header
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.request.receiveStream
+import io.ktor.server.response.respond
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
 import net.unifey.Unifey

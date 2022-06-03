@@ -1,13 +1,12 @@
 package net.unifey.auth
 
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.response.*
 import net.unifey.auth.tokens.Token
 import net.unifey.auth.tokens.TokenManager
 import net.unifey.handle.Error
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.mongo.MONGO
-import net.unifey.handle.mongo.Mongo
 import net.unifey.handle.users.User
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
@@ -16,7 +15,7 @@ import org.mindrot.jbcrypt.BCrypt
 /** Manages user authentication. */
 object Authenticator {
     /** The default token expire time. (two days) */
-    const val TOKEN_EXPIRE = 1000 * 60 * 60 * 24 * 2
+    private const val TOKEN_EXPIRE = 1000 * 60 * 60 * 24 * 2
 
     /** If [username] has been previously used. */
     suspend fun usernameTaken(username: String): Boolean =

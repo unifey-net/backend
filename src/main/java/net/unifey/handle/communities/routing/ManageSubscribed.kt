@@ -1,9 +1,10 @@
 package net.unifey.handle.communities.routing
 
-import io.ktor.application.*
 import io.ktor.http.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.http.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.AlreadyExists
 import net.unifey.handle.Error

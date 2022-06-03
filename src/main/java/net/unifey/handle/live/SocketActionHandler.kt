@@ -1,6 +1,6 @@
 package net.unifey.handle.live
 
-import io.ktor.http.cio.websocket.*
+import io.ktor.websocket.*
 import net.unifey.Unifey
 import net.unifey.handle.Error
 import net.unifey.handle.live.objs.ActionHolder

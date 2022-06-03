@@ -3,8 +3,8 @@ package net.unifey.handle.communities.rules
 import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import dev.ajkneisl.lib.util.getOrNull
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.response.respond
 import net.unifey.handle.Error
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community

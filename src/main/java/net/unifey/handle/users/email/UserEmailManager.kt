@@ -10,7 +10,8 @@ import com.sendgrid.helpers.mail.Mail
 import com.sendgrid.helpers.mail.objects.Content
 import dev.ajkneisl.lib.util.currentTimeMillis
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.http.*
+import io.ktor.server.response.*
 import java.io.IOException
 import net.unifey.Unifey
 import net.unifey.handle.Error
@@ -21,13 +22,14 @@ import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.defaults.Email
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
+import net.unifey.util.SecretsManager
 import org.bson.Document
 import org.mindrot.jbcrypt.BCrypt
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
 object UserEmailManager {
-    private val SEND_GRID = SendGrid(System.getenv("SENDGRID_API_KEY"))
+    private val SEND_GRID = SendGrid(SecretsManager.getSecret("SENDGRID_API_KEY"))
 
     /** The verification requests */
     private val verifyRequests: MutableList<UserEmailRequest> by lazy {

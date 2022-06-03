@@ -1,8 +1,8 @@
 package net.unifey.handle.reports
 
 import com.mongodb.client.model.Filters
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.response.respond
 import java.util.concurrent.TimeUnit
 import net.unifey.handle.Error
 import net.unifey.handle.NotFound

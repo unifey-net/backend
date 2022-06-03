@@ -1,6 +1,6 @@
 package net.unifey.handle.live.objs
 
-import io.ktor.http.cio.websocket.*
+import io.ktor.websocket.*
 import kotlin.jvm.Throws
 import kotlin.reflect.KClass
 import net.unifey.auth.tokens.Token

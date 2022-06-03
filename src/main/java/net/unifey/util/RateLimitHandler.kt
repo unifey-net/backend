@@ -3,11 +3,11 @@ package net.unifey.util
 import io.github.bucket4j.Bandwidth
 import io.github.bucket4j.Bucket
 import io.github.bucket4j.Refill
-import io.ktor.application.*
-import io.ktor.features.*
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.header
-import io.ktor.response.respond
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.plugins.*
+import io.ktor.server.response.header
+import io.ktor.server.response.respond
 import mu.KotlinLogging
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap

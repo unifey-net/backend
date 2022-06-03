@@ -1,7 +1,7 @@
 package net.unifey.handle.admin.pages
 
-import io.ktor.application.*
-import io.ktor.response.*
+import io.ktor.server.application.*
+import io.ktor.server.response.*
 import kotlinx.serialization.Serializable
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments

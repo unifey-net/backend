@@ -1,9 +1,11 @@
 package net.unifey.util
 
-import io.ktor.client.features.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.request.forms.*
 import io.ktor.http.*
+import io.ktor.server.http.*
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
@@ -15,7 +17,7 @@ object ReCaptcha {
     private val logger = KotlinLogging.logger {}
 
     /** The secret key to ReCAPTCHA. Required for auth */
-    private val SECRET = System.getenv("RECAPTCHA")
+    private val SECRET = SecretsManager.getSecret("RECAPTCHA_KEY")
 
     /**
      * A response to a ReCAPTCHA Request
@@ -38,15 +40,14 @@ object ReCaptcha {
     suspend fun getSuccessAsync(response: String): Boolean {
         val responseObj =
             try {
-                HTTP_CLIENT.post<Response>("https://www.google.com/recaptcha/api/siteverify") {
-                    body =
-                        FormDataContent(
-                            Parameters.build {
-                                append("secret", SECRET)
-                                append("response", response)
-                            }
-                        )
-                }
+                HTTP_CLIENT.post("https://www.google.com/recaptcha/api/siteverify") {
+                    setBody(FormDataContent(
+                        Parameters.build {
+                            append("secret", SECRET)
+                            append("response", response)
+                        }
+                    ))
+                }.body<Response>()
             } catch (ex: ClientRequestException) {
                 return false
             }

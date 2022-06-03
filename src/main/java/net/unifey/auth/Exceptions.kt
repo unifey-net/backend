@@ -1,7 +1,7 @@
 package net.unifey.auth
 
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.response.*
 import net.unifey.handle.Error
 import net.unifey.response.Response
 

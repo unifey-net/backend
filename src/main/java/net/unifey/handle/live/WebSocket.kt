@@ -1,6 +1,6 @@
 package net.unifey.handle.live
 
-import io.ktor.http.cio.websocket.*
+import io.ktor.websocket.*
 import net.unifey.handle.live.objs.SocketSession
 import org.json.JSONArray
 import org.json.JSONObject

@@ -1,21 +1,48 @@
 package net.unifey.handle.users.profile.cosmetics
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
+import mu.KotlinLogging
+import net.unifey.handle.AlreadyExists
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.MONGO
 import net.unifey.handle.users.profile.Profile
-import net.unifey.util.URL
 import org.litote.kmongo.and
 import org.litote.kmongo.eq
 
 object Cosmetics {
-    @Serializable
-    data class Cosmetic(val type: Int, val id: String, val desc: String)
+    val logger = KotlinLogging.logger {}
+
+    val cosmetics: MutableList<Cosmetic> by lazy {
+        logger.debug("Loading cosmetics...")
+
+        val cosmetics = runBlocking {
+            MONGO
+                .getDatabase("global")
+                .getCollection<Cosmetic>("cosmetics")
+                .find()
+                .toList()
+                .toMutableList()
+        }
+
+        logger.debug("Found ${cosmetics.size} cosmetics.")
+
+        cosmetics
+    }
+
+    @Serializable @JsonTypeInfo(use = JsonTypeInfo.Id.NAME) sealed class Cosmetic(val id: String)
+
+    class Badge(id: String, val description: String) : Cosmetic(id)
 
     /** Get all available cosmetics. */
-    suspend fun getAll(): List<Cosmetic> {
-        return MONGO.getDatabase("global").getCollection<Cosmetic>("cosmetics").find().toList()
+    fun getAll(): List<Cosmetic> {
+        return cosmetics
+    }
+
+    @Throws(NotFound::class)
+    fun getById(id: String): Cosmetic {
+        return cosmetics.singleOrNull { cos -> cos.id == id } ?: throw NotFound("cosmetic")
     }
 
     /** Get [user]'s [Cosmetic]'s */
@@ -27,26 +54,23 @@ object Cosmetics {
                 .findOne(Profile::id eq user)
 
         if (cosmetics != null) {
-            return cosmetics.cosmetics
+            return cosmetics.cosmetics.map { id -> getById(id) }
         } else throw NotFound("profile")
     }
+
     /** Upload a cosmetic. */
-    suspend fun uploadCosmetic(type: Int, id: String, desc: String) {
-        MONGO
-            .getDatabase("global")
-            .getCollection<Cosmetic>("cosmetics")
-            .insertOne(Cosmetic(type, id, desc))
+    @Throws(AlreadyExists::class)
+    suspend fun uploadCosmetic(cosmetic: Cosmetic) {
+        if (cosmetics.any { cos -> cos.id == cosmetic.id }) throw AlreadyExists("cosmetic", "id")
+
+        MONGO.getDatabase("global").getCollection<Cosmetic>("cosmetics").insertOne(cosmetic)
     }
 
     /** Delete a cosmetic */
-    suspend fun deleteCosmetic(type: Int, id: String) {
+    suspend fun deleteCosmetic(id: String) {
         MONGO
             .getDatabase("global")
             .getCollection<Cosmetic>("cosmetics")
-            .deleteOne(and(Cosmetic::type eq type, Cosmetic::id eq id))
-    }
-
-    fun List<Cosmetic>.hasCosmetic(id: String, type: Int): Boolean = any { cos ->
-        cos.type == type && id.equals(id, true)
+            .deleteOne(Cosmetic::id eq id)
     }
 }

@@ -1,11 +1,10 @@
 package net.unifey.handle.emotes
 
-import io.ktor.application.call
-import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
-import io.ktor.response.respond
-import io.ktor.response.respondBytes
-import io.ktor.routing.*
+import io.ktor.http.*
+import io.ktor.server.application.call
+import io.ktor.server.response.respond
+import io.ktor.server.response.respondBytes
+import io.ktor.server.routing.*
 import net.unifey.auth.isAuthenticated
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.NoPermission

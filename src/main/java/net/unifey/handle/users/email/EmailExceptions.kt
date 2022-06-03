@@ -1,7 +1,8 @@
 package net.unifey.handle.users.email
 
 import io.ktor.http.*
-import io.ktor.response.*
+import io.ktor.server.http.*
+import io.ktor.server.response.*
 import net.unifey.handle.Error
 import net.unifey.response.Response
 

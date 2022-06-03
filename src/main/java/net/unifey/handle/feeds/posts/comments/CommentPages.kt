@@ -1,10 +1,10 @@
 package net.unifey.handle.feeds.posts.comments
 
-import io.ktor.application.ApplicationCall
-import io.ktor.application.call
-import io.ktor.request.receiveParameters
-import io.ktor.response.respond
-import io.ktor.routing.*
+import io.ktor.server.application.ApplicationCall
+import io.ktor.server.application.call
+import io.ktor.server.request.receiveParameters
+import io.ktor.server.response.respond
+import io.ktor.server.routing.*
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.MalformedContent

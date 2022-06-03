@@ -1,9 +1,9 @@
 package net.unifey.handle.admin
 
-import io.ktor.application.*
-import io.ktor.request.*
-import io.ktor.response.*
-import io.ktor.routing.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import net.unifey.auth.Authenticator
 import net.unifey.auth.isAuthenticated
@@ -57,11 +57,7 @@ fun Route.adminPages() =
                     "A debug user.",
                     "Debug",
                     "Unifey HQ",
-                    listOf(
-                        Cosmetics.getAll().single { cosmetic ->
-                            cosmetic.id.equals("Debug_Account", true)
-                        }
-                    )
+                    listOf()
                 )
 
             val member = Member(id, listOf(), listOf())
