@@ -33,6 +33,7 @@ import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.live.liveSocket
 import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.reports.reportPages
+import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
@@ -53,12 +54,11 @@ val HTTP_CLIENT = HttpClient(CIO) {
 }
 
 /** the actual server, localhost:8077 :) */
-@OptIn(KtorExperimentalLocationsAPI::class)
 val SERVER =
     embeddedServer(Netty, 8077) {
         install(ContentNegotiation) { json(contentType = ContentType.Application.Json) }
 
-        install(io.ktor.server.websocket.WebSockets) { timeout = Duration.ofSeconds(15) }
+        install(WebSockets) { timeout = Duration.ofSeconds(15) }
 
         install(Locations)
 
@@ -142,6 +142,7 @@ val SERVER =
                     val endpoint: String = "/v1",
                     val frontendVersion: String
                 )
+
                 get("/") {
                     call.respond(
                         HomeResponse(
@@ -153,12 +154,14 @@ val SERVER =
                     )
                 }
 
-                get("/debug-notif") {
-                    val token = call.isAuthenticated()
+                if (!Unifey.prod) {
+                    get("/debug-notif") {
+                        val token = call.isAuthenticated()
 
-                    token.getOwner().postNotification("Debug notification")
+                        token.getOwner().postNotification("Debug notification")
 
-                    call.respond(Response("OK"))
+                        call.respond(Response("OK"))
+                    }
                 }
             }
         }

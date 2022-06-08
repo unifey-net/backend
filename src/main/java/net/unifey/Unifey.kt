@@ -16,21 +16,14 @@ import org.reflections.Reflections
 import org.slf4j.LoggerFactory
 
 object Unifey {
-    /** The version of the backend. */
-    const val VERSION = "0.8.1"
-
-    /** The time the server started. */
-    val START_TIME = System.currentTimeMillis()
-
-    /** Reflections instance */
-    val REFLECTIONS = Reflections("net.unifey")
-
-    val JSON = Json { serializersModule = IdKotlinXSerializationModule }
-
-    /** What version is expected of the frontend. */
-    const val FRONTEND_EXPECT = "0.8.1"
-
     val ROOT_LOGGER = KotlinLogging.logger {}
+
+    const val VERSION = "0.9.0"
+    const val FRONTEND_EXPECT = "0.9.0"
+
+    val START_TIME = System.currentTimeMillis()
+    val REFLECTIONS = Reflections("net.unifey")
+    val JSON = Json { serializersModule = IdKotlinXSerializationModule }
 
     lateinit var webhook: DiscordWebhook
     lateinit var mongo: String
@@ -40,7 +33,7 @@ object Unifey {
      *
      * @see net.unifey.util.URL
      */
-    var prod = SecretsManager.getSecret("PROD", "false").toBoolean() ?: false
+    var prod = SecretsManager.getSecret("PROD", "false").toBoolean()
 
     @KtorExperimentalLocationsAPI
     @JvmStatic
