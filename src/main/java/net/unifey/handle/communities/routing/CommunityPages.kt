@@ -38,15 +38,15 @@ fun Route.communityPages() {
             // only check for captcha in production
             if (Unifey.prod) call.checkCaptcha(params)
 
-//            if (!CommunityManager.canCreate(token.owner))
-//                throw Error({
-//                    call.respond(
-//                        HttpStatusCode.Unauthorized,
-//                        Response(
-//                            "Your account must be 14 days old and you can't have create a community before!"
-//                        )
-//                    )
-//                })
+            if (!CommunityManager.canCreate(token.owner) && Unifey.prod)
+                throw Error({
+                    call.respond(
+                        HttpStatusCode.Unauthorized,
+                        Response(
+                            "Your account must be 14 days old and you can't have create a community before!"
+                        )
+                    )
+                })
 
 
             val name = params["name"]

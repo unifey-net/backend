@@ -35,9 +35,9 @@ dependencies {
     api 'org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.6.21'
     implementation 'com.fasterxml.jackson.module:jackson-module-kotlin:2.13.3'
 
-    implementation 'org.litote.kmongo:kmongo-id-serialization:4.5.1'
-    implementation 'org.litote.kmongo:kmongo-coroutine:4.5.1'
-    implementation 'org.mongodb:mongodb-driver-sync:4.6.0'
+    implementation 'org.litote.kmongo:kmongo-id-serialization:4.6.0'
+    implementation 'org.litote.kmongo:kmongo-coroutine:4.6.0'
+    implementation 'org.litote.kmongo:kmongo:4.6.0'
 
     implementation "io.ktor:ktor-server-locations:$ktor_version"
     implementation "io.ktor:ktor-server-status-pages:$ktor_version"
