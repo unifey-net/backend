@@ -1,6 +1,5 @@
 package net.unifey.handle.communities.rules
 
-import com.mongodb.client.model.Filters
 import com.mongodb.client.model.Updates
 import dev.ajkneisl.lib.util.getOrNull
 import io.ktor.http.*
@@ -9,10 +8,8 @@ import net.unifey.handle.Error
 import net.unifey.handle.NotFound
 import net.unifey.handle.communities.Community
 import net.unifey.handle.mongo.MONGO
-import net.unifey.handle.mongo.Mongo
 import net.unifey.response.Response
 import net.unifey.util.IdGenerator
-import org.bouncycastle.asn1.x500.style.RFC4519Style.title
 import org.litote.kmongo.*
 
 object CommunityRuleManager {
@@ -36,12 +33,13 @@ object CommunityRuleManager {
 
         val id = IdGenerator.getId()
 
-        community.rules[id] = CommunityRule(id, title, body)
-
         MONGO
             .getDatabase("communities")
             .getCollection<Community>("communities")
-            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
+            .updateOne(
+                Community::id eq community.id,
+                Updates.set("rules.${id}", CommunityRule(id, title, body))
+            )
 
         return id
     }
@@ -57,12 +55,10 @@ object CommunityRuleManager {
     suspend fun modifyTitle(title: String, id: Long, community: Community) {
         val rule = community.rules.getOrNull(id) ?: throw NotFound("rule")
 
-        community.rules[id] = CommunityRule(id, title, rule.body)
-
         MONGO
             .getDatabase("communities")
             .getCollection<Community>("communities")
-            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
+            .updateOne(Community::id eq community.id, Updates.set("rules.${id}.title", title))
     }
 
     /**
@@ -76,12 +72,10 @@ object CommunityRuleManager {
     suspend fun modifyBody(body: String, id: Long, community: Community) {
         val rule = community.rules.getOrNull(id) ?: throw NotFound("rule")
 
-        community.rules[id] = CommunityRule(id, rule.title, body)
-
         MONGO
             .getDatabase("communities")
             .getCollection<Community>("communities")
-            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
+            .updateOne(Community::id eq community.id, Updates.set("rules.${id}.body", body))
     }
 
     /**
@@ -96,6 +90,6 @@ object CommunityRuleManager {
         MONGO
             .getDatabase("communities")
             .getCollection<Community>("communities")
-            .updateOne(Community::id eq community.id, setValue(Community::rules, community.rules))
+            .updateOne(Community::id eq community.id, Updates.unset("rules.${id}"))
     }
 }
