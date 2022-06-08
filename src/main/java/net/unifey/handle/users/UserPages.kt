@@ -279,15 +279,6 @@ fun Route.userPages() {
             if (username == null || password == null || remember == null)
                 throw InvalidArguments("username", "password", "remember")
 
-            try {
-                UserManager.getUser(username).email.endsWith("@unifey.app")
-                println(
-                    call.request.headers.toMap().toList().joinToString { (key, value) ->
-                        "${key}: $value"
-                    }
-                )
-            } catch (ex: Error) {}
-
             val auth = Authenticator.generateIfCorrect(username, password, remember)
 
             call.respond(AuthenticateResponse(auth, UserManager.getUser(auth.owner)))

@@ -195,8 +195,6 @@ object FriendsActions : ActionHolder {
                         FriendResponse(friend.id, friend.friendedAt, UserManager.getUser(friend.id))
                     }
 
-                println(getFriends(token.owner))
-
                 respondSuccess(friends)
             }
         }
