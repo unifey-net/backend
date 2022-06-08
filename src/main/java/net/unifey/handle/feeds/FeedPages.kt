@@ -10,6 +10,7 @@ import net.unifey.auth.isAuthenticated
 import net.unifey.auth.tokens.Token
 import net.unifey.handle.InvalidArguments
 import net.unifey.handle.InvalidVariableInput
+import net.unifey.handle.NoContent
 import net.unifey.handle.NoPermission
 import net.unifey.handle.feeds.custom.PersonalizedFeed
 import net.unifey.handle.feeds.posts.Post
@@ -21,6 +22,7 @@ import net.unifey.handle.feeds.posts.vote.VoteManager
 import net.unifey.handle.feeds.responses.GetFeedResponse
 import net.unifey.handle.feeds.responses.GetPostResponse
 import net.unifey.handle.users.UserManager
+import net.unifey.handle.users.member.MemberManager.getMember
 import net.unifey.response.Response
 import net.unifey.util.cleanInput
 
@@ -64,6 +66,9 @@ fun Route.feedPages() {
             val sort = params["sort"]
 
             if (page == null || sort == null) throw InvalidArguments("sort", "page")
+
+            if (token.getOwner().getMember().member.isEmpty())
+                throw NoContent()
 
             call.respond(PersonalizedFeed.getUsersFeed(token.getOwner(), page, sort))
         }
