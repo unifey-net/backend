@@ -7,11 +7,9 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.engine.*
 import io.ktor.server.http.*
 import io.ktor.server.locations.*
-import io.ktor.server.response.*
-import io.ktor.server.routing.*
-import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.autohead.*
 import io.ktor.server.plugins.callloging.*
@@ -19,6 +17,8 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.cors.routing.*
 import io.ktor.server.plugins.defaultheaders.*
 import io.ktor.server.plugins.statuspages.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
 import java.time.Duration
 import kotlinx.serialization.Serializable
@@ -33,7 +33,6 @@ import net.unifey.handle.feeds.feedPages
 import net.unifey.handle.live.liveSocket
 import net.unifey.handle.notification.NotificationManager.postNotification
 import net.unifey.handle.reports.reportPages
-import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.email.emailPages
 import net.unifey.handle.users.userPages
 import net.unifey.response.Response
@@ -41,17 +40,17 @@ import org.apache.commons.lang3.exception.ExceptionUtils
 import org.litote.kmongo.json
 import org.slf4j.event.Level
 
-val HTTP_CLIENT = HttpClient(CIO) {
-    install(Logging) {
-        logger = Logger.DEFAULT
-        level = LogLevel.INFO
-    }
+val HTTP_CLIENT =
+    HttpClient(CIO) {
+        install(Logging) {
+            logger = Logger.DEFAULT
+            level = LogLevel.INFO
+        }
 
-
-    install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
-        json(Json)
+        install(io.ktor.client.plugins.contentnegotiation.ContentNegotiation) {
+            json(Json { ignoreUnknownKeys = true })
+        }
     }
-}
 
 /** the actual server, localhost:8077 :) */
 val SERVER =
@@ -113,10 +112,7 @@ val SERVER =
         routing {
             route("/unifey") {
                 @Serializable
-                data class VersionEndpointResponse(
-                    val endpoint: String,
-                    val deprecated: Boolean
-                )
+                data class VersionEndpointResponse(val endpoint: String, val deprecated: Boolean)
 
                 route("/v1") {
                     emotePages()
@@ -129,9 +125,7 @@ val SERVER =
                     adminPages()
                     betaPages()
 
-                    get {
-                        call.respond(VersionEndpointResponse("/v1", false))
-                    }
+                    get { call.respond(VersionEndpointResponse("/v1", false)) }
                 }
 
                 @Serializable
