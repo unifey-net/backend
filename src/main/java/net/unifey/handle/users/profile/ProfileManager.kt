@@ -2,7 +2,6 @@ package net.unifey.handle.users.profile
 
 import net.unifey.handle.NotFound
 import net.unifey.handle.mongo.Mongo
-import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.litote.kmongo.*
 
 /** Manage a [User]'s [Profile]. */
@@ -39,21 +38,5 @@ object ProfileManager {
             .getDatabase("users")
             .getCollection<Profile>("profiles")
             .updateOne(Profile::id eq id, setValue(Profile::location, location))
-    }
-
-    /** Add a [cosmetic] to [id] */
-    suspend fun addCosmetic(id: Long, cosmetic: String) {
-        Mongo.K_MONGO
-            .getDatabase("users")
-            .getCollection<Profile>("profiles")
-            .updateOne(Profile::id eq id, push(Profile::cosmetics, cosmetic))
-    }
-
-    /** Add a [cosmetic] to [id] */
-    suspend fun removeCosmetic(id: Long, cosmetic: String) {
-        Mongo.K_MONGO
-            .getDatabase("users")
-            .getCollection<Profile>("profiles")
-            .updateOne(Profile::id eq id, pull(Profile::cosmetics, cosmetic))
     }
 }

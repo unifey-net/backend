@@ -17,7 +17,6 @@ import net.unifey.handle.users.UserInputRequirements
 import net.unifey.handle.users.UserManager
 import net.unifey.handle.users.member.Member
 import net.unifey.handle.users.profile.Profile
-import net.unifey.handle.users.profile.cosmetics.Cosmetics
 import org.mindrot.jbcrypt.BCrypt
 import java.util.concurrent.TimeUnit
 

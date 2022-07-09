@@ -23,7 +23,6 @@ import net.unifey.auth.connections.handlers.Google
 import net.unifey.handle.users.email.Unverified
 import net.unifey.handle.users.email.UserEmailManager
 import net.unifey.handle.users.friends.friendsPages
-import net.unifey.handle.users.profile.cosmetics.cosmeticPages
 import net.unifey.handle.users.profile.profilePages
 import net.unifey.handle.users.responses.AuthenticateResponse
 import net.unifey.handle.users.responses.GetUserResponse.Companion.response
@@ -36,7 +35,6 @@ import org.mindrot.jbcrypt.BCrypt
 
 fun Route.userPages() {
     route("/user") {
-        route("/cosmetic", cosmeticPages())
         route("/friends", friendsPages())
         route("/profile", profilePages())
         route("/connections", connectionPages())
@@ -262,7 +260,7 @@ fun Route.userPages() {
                             UserManager.getUser(connection.user)
                         )
                     )
-                else throw AuthenticationException("Invalid access token")
+                else throw AuthenticationException("An account doesn't exist with that Google account!")
             }
         }
 

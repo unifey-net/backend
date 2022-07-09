@@ -57,7 +57,7 @@ object Unifey {
     private fun disableLoggers() {
         val loggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
         val rootLogger = loggerContext.getLogger("org.mongodb.driver")
-        rootLogger.level = INFO
+        rootLogger.level = OFF
 
         val awsLogger = loggerContext.getLogger("software.amazon.awssdk")
         awsLogger.level = OFF
